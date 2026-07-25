@@ -21,6 +21,7 @@
     "typecheck": "npm run typecheck --workspace client && npm run typecheck --workspace server",
     "lint": "npm run lint --workspace client && npm run lint --workspace server",
     "prisma:generate": "npm run prisma:generate --workspace server",
+    "prisma:deploy": "npm run prisma:deploy --workspace server",
     "prisma:migrate": "npm run prisma:migrate --workspace server",
     "prisma:seed": "npm run prisma:seed --workspace server"
   }

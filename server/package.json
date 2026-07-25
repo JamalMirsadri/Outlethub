@@ -14,6 +14,7 @@
     "test:monitoring": "tsx --test tests/monitoring.service.test.ts",
     "test:scrapers": "tsx --test tests/scrapers.service.test.ts",
     "prisma:generate": "prisma generate",
+    "prisma:deploy": "prisma migrate deploy",
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "prisma db seed"
   },
