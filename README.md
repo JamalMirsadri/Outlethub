@@ -53,6 +53,12 @@ Set these on the Render `outlethub-api` service:
 - `CLIENT_URL`
 - `REDIS_URL`
 
+Important for existing manual Render services:
+
+- `render.yaml` does not retroactively inject env vars into an already-created manual service.
+- If `outlethub-api` already exists in Render, you must open `Environment` in the Render dashboard and add the required variables there.
+- `outlethub-workers` can inherit the JWT and database values from `outlethub-api` only after they exist on `outlethub-api`.
+
 These are recommended for full functionality:
 
 - `SMTP_HOST`
@@ -73,6 +79,22 @@ These are recommended for full functionality:
 - Pre-deploy: `npm run prisma:deploy`
 - Start: `npm run start`
 - Health check: `/api/v1/health`
+
+### Manual Render Setup
+
+If you created the Render services manually instead of creating them from the repo Blueprint:
+
+1. Open `outlethub-api` in Render.
+2. Go to `Environment`.
+3. Add these values:
+   - `DATABASE_URL` = your Render internal Postgres URL
+   - `JWT_ACCESS_SECRET` = random secret, at least 32 characters
+   - `JWT_REFRESH_SECRET` = different random secret, at least 32 characters
+   - `CLIENT_URL` = your frontend URL
+   - `REDIS_URL` = your Render Redis/Key Value connection string
+4. Save changes.
+5. Redeploy `outlethub-api`.
+6. After `outlethub-api` is correct, redeploy `outlethub-workers`.
 
 ### Failure Mode
 
