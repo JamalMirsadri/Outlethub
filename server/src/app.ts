@@ -14,6 +14,24 @@ import { apiRouter } from "./routes/index.js";
 
 const currentDir = dirname(fileURLToPath(import.meta.url));
 
+function resolveClientDistDir() {
+  const candidates = [
+    resolve(currentDir, "../../../client/dist"),
+    resolve(currentDir, "../../client/dist"),
+    resolve(process.cwd(), "../client/dist"),
+    resolve(process.cwd(), "client/dist"),
+  ];
+
+  const match = candidates.find((candidate) => existsSync(resolve(candidate, "index.html")));
+
+  if (!match) {
+    console.warn(`Client bundle not found. Checked: ${candidates.join(", ")}`);
+    return null;
+  }
+
+  return match;
+}
+
 function buildAllowedOrigins() {
   const configuredOrigin = env.CLIENT_URL;
   const alternatives = new Set<string>([configuredOrigin]);
@@ -45,9 +63,9 @@ function buildAllowedOrigins() {
 export function createApp() {
   const app = express();
   const allowedOrigins = buildAllowedOrigins();
-  const clientDistDir = resolve(currentDir, "../../client/dist");
-  const clientIndexPath = resolve(clientDistDir, "index.html");
-  const hasClientBundle = existsSync(clientIndexPath);
+  const clientDistDir = resolveClientDistDir();
+  const clientIndexPath = clientDistDir ? resolve(clientDistDir, "index.html") : null;
+  const hasClientBundle = Boolean(clientIndexPath);
 
   app.use(
     cors({
@@ -70,7 +88,7 @@ export function createApp() {
 
   app.use("/api/v1", apiRouter);
 
-  if (hasClientBundle) {
+  if (hasClientBundle && clientDistDir && clientIndexPath) {
     app.use(express.static(clientDistDir));
     app.get("*", (request, response, next) => {
       if (

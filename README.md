@@ -75,7 +75,7 @@ These are recommended for full functionality:
 
 ### Render Commands
 
-- Build: `npm install && npm run build:server`
+- Build: `npm install && npm run build`
 - Pre-deploy: `npm run prepare:runtime`
 - Start: `npm run start`
 - Health check: `/api/v1/health`
@@ -85,16 +85,18 @@ These are recommended for full functionality:
 If you created the Render services manually instead of creating them from the repo Blueprint:
 
 1. Open `outlethub-api` in Render.
-2. Go to `Environment`.
-3. Add these values:
+2. Set `Build Command` to `npm install && npm run build`.
+3. Set `Start Command` to `npm run start`.
+4. Go to `Environment`.
+5. Add these values:
    - `DATABASE_URL` = your Render internal Postgres URL
    - `JWT_ACCESS_SECRET` = random secret, at least 32 characters
    - `JWT_REFRESH_SECRET` = different random secret, at least 32 characters
    - `CLIENT_URL` = your frontend URL
    - `REDIS_URL` = your Render Redis/Key Value connection string
-4. Save changes.
-5. Redeploy `outlethub-api`.
-6. After `outlethub-api` is correct, redeploy `outlethub-workers`.
+6. Save changes.
+7. Redeploy `outlethub-api`.
+8. After `outlethub-api` is correct, redeploy `outlethub-workers`.
 
 ### Failure Mode
 
