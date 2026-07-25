@@ -907,12 +907,8 @@ export class CatalogService {
       throw new ApiError(404, "Product not found.");
     }
 
-    await prisma.product.update({
+    await prisma.product.delete({
       where: { id },
-      data: {
-        status: ProductStatus.ARCHIVED,
-        deletedAt: new Date(),
-      },
     });
   }
 
