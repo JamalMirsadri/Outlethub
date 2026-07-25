@@ -154,7 +154,16 @@ export function createApp() {
       credentials: true,
     })(request, response, next);
   });
-  app.use(helmet());
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        useDefaults: true,
+        directives: {
+          "img-src": ["'self'", "data:", "blob:", "https:"],
+        },
+      },
+    }),
+  );
   app.use(morgan("dev"));
   app.use(express.json());
   app.use(cookieParser());

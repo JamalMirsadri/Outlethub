@@ -15,7 +15,7 @@ import {
 
 export const authAdminRouter = Router();
 
-authAdminRouter.use(requireAuth, requireRoles(RoleCode.SUPER_ADMIN, RoleCode.ADMIN));
+authAdminRouter.use("/admin/users", requireAuth, requireRoles(RoleCode.SUPER_ADMIN, RoleCode.ADMIN));
 
 authAdminRouter.get(
   "/admin/users",
