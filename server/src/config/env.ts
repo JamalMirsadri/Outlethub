@@ -1,3 +1,4 @@
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -5,6 +6,44 @@ import dotenv from "dotenv";
 import { z } from "zod";
 
 const currentDir = dirname(fileURLToPath(import.meta.url));
+const DEBUG_SESSION_ID = "render-env-missing";
+const runtimeNodeEnv = process.env.NODE_ENV ?? "development";
+const shouldLoadDotenv = runtimeNodeEnv !== "production";
+
+function resolveDebugServerUrl() {
+  if (process.env.DEBUG_SERVER_URL) {
+    return process.env.DEBUG_SERVER_URL;
+  }
+
+  const debugEnvPath = resolve(process.cwd(), ".dbg", `${DEBUG_SESSION_ID}.env`);
+  if (!existsSync(debugEnvPath)) {
+    return "http://127.0.0.1:7777/event";
+  }
+
+  const debugEnvContent = readFileSync(debugEnvPath, "utf8");
+  const debugUrl = debugEnvContent
+    .split(/\r?\n/)
+    .find((line) => line.startsWith("DEBUG_SERVER_URL="))
+    ?.slice("DEBUG_SERVER_URL=".length)
+    .trim();
+
+  return debugUrl || "http://127.0.0.1:7777/event";
+}
+
+function reportDebugEvent(payload: Record<string, unknown>) {
+  void fetch(resolveDebugServerUrl(), {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      sessionId: DEBUG_SESSION_ID,
+      runId: process.env.DEBUG_RUN_ID ?? "pre-fix",
+      source: "server:env-config",
+      ...payload,
+    }),
+  }).catch(() => undefined);
+}
 
 const envCandidates = [
   resolve(process.cwd(), ".env"),
@@ -13,11 +52,53 @@ const envCandidates = [
   resolve(currentDir, "../../../../.env"),
 ];
 
-for (const candidate of envCandidates) {
-  dotenv.config({ path: candidate });
+const dotenvCandidatesChecked = shouldLoadDotenv ? envCandidates : [];
+
+if (shouldLoadDotenv) {
+  for (const candidate of envCandidates) {
+    dotenv.config({ path: candidate });
+  }
+
+  dotenv.config();
 }
 
-dotenv.config();
+const requiredEnvKeys = ["DATABASE_URL", "JWT_ACCESS_SECRET", "JWT_REFRESH_SECRET"] as const;
+const missingRequiredEnvKeys = requiredEnvKeys.filter((key) => !process.env[key]);
+
+// #region debug-point A:env-loader-snapshot
+reportDebugEvent({
+  hypothesisId: "A",
+  msg: "[DEBUG] env loader snapshot",
+  data: {
+    nodeEnv: runtimeNodeEnv,
+    cwd: process.cwd(),
+    serviceMode: process.env.SERVICE_MODE ?? null,
+    dotenvEnabled: shouldLoadDotenv,
+    requiredEnvPresence: Object.fromEntries(requiredEnvKeys.map((key) => [key, Boolean(process.env[key])])),
+    missingRequiredEnvKeys,
+    envCandidatesChecked: dotenvCandidatesChecked,
+  },
+});
+// #endregion
+
+if (missingRequiredEnvKeys.length > 0) {
+  const message = `Missing required environment variables: ${missingRequiredEnvKeys.join(", ")}`;
+
+  // #region debug-point C:env-missing-required
+  reportDebugEvent({
+    hypothesisId: "B",
+    msg: "[DEBUG] required env variables missing",
+    data: {
+      nodeEnv: runtimeNodeEnv,
+      dotenvEnabled: shouldLoadDotenv,
+      missingRequiredEnvKeys,
+    },
+  });
+  // #endregion
+
+  console.error(message);
+  throw new Error(message);
+}
 
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
@@ -48,7 +129,31 @@ const envSchema = z.object({
   CLOUDINARY_API_SECRET: z.string().optional(),
 });
 
-const parsedEnv = envSchema.parse(process.env);
+let parsedEnv: z.infer<typeof envSchema>;
+
+try {
+  parsedEnv = envSchema.parse(process.env);
+} catch (error) {
+  // #region debug-point B:env-parse-failure
+  reportDebugEvent({
+    hypothesisId: "D",
+    msg: "[DEBUG] env parse failure",
+    data: {
+      missingRequiredEnvKeys,
+      nodeEnv: runtimeNodeEnv,
+      dotenvEnabled: shouldLoadDotenv,
+      error:
+        error instanceof Error
+          ? {
+              name: error.name,
+              message: error.message,
+            }
+          : { value: String(error) },
+    },
+  });
+  // #endregion
+  throw error;
+}
 
 export const env = {
   ...parsedEnv,

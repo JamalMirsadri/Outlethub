@@ -32,3 +32,50 @@ Independent full-stack marketplace built with:
 - Sprint 1 foundation is in place for `User`, `Role`, auth, JWT, and refresh tokens.
 - Existing UI layouts remain intact while backend/data plumbing is being migrated domain by domain.
 - Remaining storefront/admin data modules still use a temporary internal client facade until their REST APIs are implemented.
+
+## Render Deployment
+
+### Runtime Behavior
+
+- Production startup uses `process.env` only.
+- `.env` files are for local development and are not required in production.
+- Root start command runs the server workspace: `npm run start` -> `npm run start --workspace server`.
+- Render web service should run in `SERVICE_MODE=web`.
+- Render worker service should run in `SERVICE_MODE=worker`.
+
+### Required Environment Variables
+
+Set these on the Render `outlethub-api` service:
+
+- `DATABASE_URL`
+- `JWT_ACCESS_SECRET`
+- `JWT_REFRESH_SECRET`
+- `CLIENT_URL`
+- `REDIS_URL`
+
+These are recommended for full functionality:
+
+- `SMTP_HOST`
+- `SMTP_PORT`
+- `SMTP_SECURE`
+- `SMTP_USER`
+- `SMTP_PASS`
+- `SMTP_FROM`
+- `STRIPE_SECRET_KEY`
+- `STRIPE_WEBHOOK_SECRET`
+- `CLOUDINARY_CLOUD_NAME`
+- `CLOUDINARY_API_KEY`
+- `CLOUDINARY_API_SECRET`
+
+### Render Commands
+
+- Build: `npm install && npm run build:server`
+- Pre-deploy: `npm run prisma:deploy`
+- Start: `npm run start`
+- Health check: `/api/v1/health`
+
+### Failure Mode
+
+- If required variables are missing, startup fails fast with a names-only error such as:
+  - `Missing required environment variables: DATABASE_URL, JWT_ACCESS_SECRET, JWT_REFRESH_SECRET`
+- Secret values are never logged by startup diagnostics.
