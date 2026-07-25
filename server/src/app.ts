@@ -16,8 +16,10 @@ const currentDir = dirname(fileURLToPath(import.meta.url));
 
 function resolveClientDistDir() {
   const candidates = [
-    resolve(currentDir, "../../../client/dist"),
+    resolve(currentDir, "../client"),
     resolve(currentDir, "../../client/dist"),
+    resolve(currentDir, "../../../client/dist"),
+    resolve(process.cwd(), "dist/client"),
     resolve(process.cwd(), "../client/dist"),
     resolve(process.cwd(), "client/dist"),
   ];

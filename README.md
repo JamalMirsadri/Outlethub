@@ -80,6 +80,8 @@ These are recommended for full functionality:
 - Start: `npm run start`
 - Health check: `/api/v1/health`
 
+The web-service build now compiles the client, compiles the server, and copies the built frontend into `server/dist/client` so the running Express server can serve it directly.
+
 ### Manual Render Setup
 
 If you created the Render services manually instead of creating them from the repo Blueprint:
