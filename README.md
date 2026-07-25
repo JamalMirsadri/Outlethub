@@ -75,20 +75,20 @@ These are recommended for full functionality:
 
 ### Render Commands
 
-- Build: `npm install && npm run build`
-- Pre-deploy: `npm run prepare:runtime`
-- Start: `npm run start`
+- Build: `npm install && npm run build --workspace server`
+- Pre-deploy: `npm run prepare:runtime --workspace server`
+- Start: `npm run start --workspace server`
 - Health check: `/api/v1/health`
 
-The web-service build now compiles the client, compiles the server, and copies the built frontend into `server/dist/client` so the running Express server can serve it directly.
+The server workspace build now handles the full web-service pipeline: it builds the React client, builds the server, and copies the frontend into `server/dist/client` so Express can serve it directly at runtime.
 
 ### Manual Render Setup
 
 If you created the Render services manually instead of creating them from the repo Blueprint:
 
 1. Open `outlethub-api` in Render.
-2. Set `Build Command` to `npm install && npm run build`.
-3. Set `Start Command` to `npm run start`.
+2. Set `Build Command` to `npm install && npm run build --workspace server`.
+3. Set `Start Command` to `npm run start --workspace server`.
 4. Go to `Environment`.
 5. Add these values:
    - `DATABASE_URL` = your Render internal Postgres URL

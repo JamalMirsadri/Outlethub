@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "build": "prisma generate && tsc -p tsconfig.json",
+    "build": "node scripts/build-package.mjs",
     "prepare:runtime": "node scripts/prepare-runtime.mjs",
     "verify:web-assets": "node scripts/verify-web-assets.mjs",
     "prestart": "npm run prepare:runtime && npm run verify:web-assets",
