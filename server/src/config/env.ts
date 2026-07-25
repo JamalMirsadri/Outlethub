@@ -21,6 +21,7 @@ dotenv.config();
 
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
+  SERVICE_MODE: z.enum(["web", "worker", "all"]).optional(),
   PORT: z.coerce.number().int().positive().default(4000),
   CLIENT_URL: z.string().url().default("http://localhost:5174"),
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
@@ -47,5 +48,10 @@ const envSchema = z.object({
   CLOUDINARY_API_SECRET: z.string().optional(),
 });
 
-export const env = envSchema.parse(process.env);
+const parsedEnv = envSchema.parse(process.env);
+
+export const env = {
+  ...parsedEnv,
+  SERVICE_MODE: parsedEnv.SERVICE_MODE ?? (parsedEnv.NODE_ENV === "production" ? "web" : "all"),
+};
 export type Env = typeof env;

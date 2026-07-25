@@ -14,6 +14,8 @@ services:
         value: production
       - key: PORT
         value: "10000"
+      - key: SERVICE_MODE
+        value: web
       - key: CLIENT_URL
         sync: false
       - key: DATABASE_URL
@@ -59,6 +61,107 @@ services:
         sync: false
       - key: CLOUDINARY_API_SECRET
         sync: false
+
+  - type: worker
+    name: outlethub-workers
+    runtime: node
+    plan: free
+    region: oregon
+    branch: main
+    buildCommand: npm install && npm run build:server
+    startCommand: npm run start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SERVICE_MODE
+        value: worker
+      - key: DATABASE_URL
+        fromDatabase:
+          name: outlethub-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: outlethub-redis
+          property: connectionString
+      - key: CLIENT_URL
+        fromService:
+          type: web
+          name: outlethub-api
+          envVarKey: CLIENT_URL
+      - key: JWT_ACCESS_SECRET
+        fromService:
+          type: web
+          name: outlethub-api
+          envVarKey: JWT_ACCESS_SECRET
+      - key: JWT_REFRESH_SECRET
+        fromService:
+          type: web
+          name: outlethub-api
+          envVarKey: JWT_REFRESH_SECRET
+      - key: JWT_ACCESS_EXPIRES_IN
+        value: 15m
+      - key: JWT_REFRESH_EXPIRES_IN
+        value: 7d
+      - key: REFRESH_TOKEN_COOKIE_NAME
+        value: outlethub_refresh_token
+      - key: BCRYPT_SALT_ROUNDS
+        value: "12"
+      - key: SMTP_HOST
+        fromService:
+          type: web
+          name: outlethub-api
+          envVarKey: SMTP_HOST
+      - key: SMTP_PORT
+        fromService:
+          type: web
+          name: outlethub-api
+          envVarKey: SMTP_PORT
+      - key: SMTP_SECURE
+        fromService:
+          type: web
+          name: outlethub-api
+          envVarKey: SMTP_SECURE
+      - key: SMTP_USER
+        fromService:
+          type: web
+          name: outlethub-api
+          envVarKey: SMTP_USER
+      - key: SMTP_PASS
+        fromService:
+          type: web
+          name: outlethub-api
+          envVarKey: SMTP_PASS
+      - key: SMTP_FROM
+        fromService:
+          type: web
+          name: outlethub-api
+          envVarKey: SMTP_FROM
+      - key: STRIPE_SECRET_KEY
+        fromService:
+          type: web
+          name: outlethub-api
+          envVarKey: STRIPE_SECRET_KEY
+      - key: STRIPE_WEBHOOK_SECRET
+        fromService:
+          type: web
+          name: outlethub-api
+          envVarKey: STRIPE_WEBHOOK_SECRET
+      - key: CLOUDINARY_CLOUD_NAME
+        fromService:
+          type: web
+          name: outlethub-api
+          envVarKey: CLOUDINARY_CLOUD_NAME
+      - key: CLOUDINARY_API_KEY
+        fromService:
+          type: web
+          name: outlethub-api
+          envVarKey: CLOUDINARY_API_KEY
+      - key: CLOUDINARY_API_SECRET
+        fromService:
+          type: web
+          name: outlethub-api
+          envVarKey: CLOUDINARY_API_SECRET
 
   - type: keyvalue
     name: outlethub-redis
