@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { toast } from "@/components/ui/use-toast";
 
 type BankAccountForm = {
   bankName: string;
@@ -50,6 +51,15 @@ export default function AdminBankAccounts() {
   const [items, setItems] = useState<BankAccountRecord[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const getErrorMessage = (error: unknown) => {
+    if (error instanceof Error && error.message) {
+      return error.message;
+    }
+
+    return "Failed to save bank account.";
+  };
 
   const load = async () => setItems(await listBankAccounts());
 
@@ -63,21 +73,53 @@ export default function AdminBankAccounts() {
   };
 
   const save = async () => {
-    await upsertBankAccount({
-      id: editingId ?? undefined,
-      bankName: form.bankName,
-      accountHolder: form.accountHolder,
-      iban: form.iban || null,
-      accountNumber: form.accountNumber || null,
-      cardNumber: form.cardNumber || null,
-      swift: form.swift || null,
-      country: form.country,
-      currency: form.currency,
-      notes: form.notes || null,
-      isActive: true,
-    });
-    await load();
-    reset();
+    if (!form.bankName.trim()) {
+      toast({ title: "Bank name is required", variant: "destructive" });
+      return;
+    }
+
+    if (!form.accountHolder.trim()) {
+      toast({ title: "Account holder is required", variant: "destructive" });
+      return;
+    }
+
+    if (!form.country.trim()) {
+      toast({ title: "Country is required", variant: "destructive" });
+      return;
+    }
+
+    if (!form.currency.trim()) {
+      toast({ title: "Currency is required", variant: "destructive" });
+      return;
+    }
+
+    setIsSaving(true);
+
+    try {
+      await upsertBankAccount({
+        id: editingId ?? undefined,
+        bankName: form.bankName.trim(),
+        accountHolder: form.accountHolder.trim(),
+        iban: form.iban.trim() || null,
+        accountNumber: form.accountNumber.trim() || null,
+        cardNumber: form.cardNumber.trim() || null,
+        swift: form.swift.trim() || null,
+        country: form.country.trim(),
+        currency: form.currency.trim().toUpperCase(),
+        notes: form.notes.trim() || null,
+        isActive: true,
+      });
+      await load();
+      reset();
+      toast({ title: editingId ? "Bank account updated" : "Bank account added" });
+    } catch (error) {
+      toast({
+        title: getErrorMessage(error),
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -110,7 +152,9 @@ export default function AdminBankAccounts() {
           </div>
         </div>
         <div className="mt-4 flex gap-3">
-          <Button onClick={() => void save()}>{editingId ? "Update Account" : "Add Account"}</Button>
+          <Button disabled={isSaving} onClick={() => void save()}>
+            {isSaving ? "Saving..." : editingId ? "Update Account" : "Add Account"}
+          </Button>
           {editingId ? <Button variant="outline" onClick={reset}>Cancel</Button> : null}
         </div>
       </div>
