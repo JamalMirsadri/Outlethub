@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 
 import cookieParser from "cookie-parser";
 import cors from "cors";
@@ -13,6 +13,45 @@ import { errorMiddleware, notFoundMiddleware } from "./middleware/error.middlewa
 import { apiRouter } from "./routes/index.js";
 
 const currentDir = dirname(fileURLToPath(import.meta.url));
+
+// #region debug-point A:cors-origin
+const DEBUG_SESSION_ID = "login-500-error";
+
+function resolveDebugServerUrl() {
+  if (process.env.DEBUG_SERVER_URL) {
+    return process.env.DEBUG_SERVER_URL;
+  }
+
+  const debugEnvPath = resolve(process.cwd(), ".dbg", `${DEBUG_SESSION_ID}.env`);
+  if (!existsSync(debugEnvPath)) {
+    return "http://127.0.0.1:7777/event";
+  }
+
+  const debugEnvContent = readFileSync(debugEnvPath, "utf8");
+  const debugUrl = debugEnvContent
+    .split(/\r?\n/)
+    .find((line) => line.startsWith("DEBUG_SERVER_URL="))
+    ?.slice("DEBUG_SERVER_URL=".length)
+    .trim();
+
+  return debugUrl || "http://127.0.0.1:7777/event";
+}
+
+function reportDebugEvent(payload: Record<string, unknown>) {
+  void fetch(resolveDebugServerUrl(), {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      sessionId: DEBUG_SESSION_ID,
+      runId: process.env.DEBUG_RUN_ID ?? "pre-fix",
+      source: "server:app-cors",
+      ...payload,
+    }),
+  }).catch(() => undefined);
+}
+// #endregion
 
 function resolveClientDistDir() {
   const candidates = [
@@ -69,19 +108,52 @@ export function createApp() {
   const clientIndexPath = clientDistDir ? resolve(clientDistDir, "index.html") : null;
   const hasClientBundle = Boolean(clientIndexPath);
 
-  app.use(
-    cors({
+  app.use((request, response, next) => {
+    const forwardedProto = request.header("x-forwarded-proto");
+    const requestOrigin = `${forwardedProto ?? request.protocol}://${request.get("host")}`;
+    const normalizedRequestOrigin = requestOrigin.replace(/\/$/, "");
+
+    return cors({
       origin: (origin, callback) => {
-        if (!origin || allowedOrigins.includes(origin)) {
+        const normalizedOrigin = origin?.replace(/\/$/, "");
+        const isSameOrigin = Boolean(normalizedOrigin && normalizedOrigin === normalizedRequestOrigin);
+
+        if (!origin || isSameOrigin || allowedOrigins.includes(origin)) {
+          // #region debug-point A:cors-allow
+          reportDebugEvent({
+            hypothesisId: "A",
+            location: "app.ts:cors-allow",
+            msg: "[DEBUG] CORS origin allowed",
+            data: {
+              origin: origin ?? null,
+              requestOrigin: normalizedRequestOrigin,
+              isSameOrigin,
+              allowedOrigins,
+            },
+          });
+          // #endregion
           callback(null, true);
           return;
         }
 
+        // #region debug-point A:cors-reject
+        reportDebugEvent({
+          hypothesisId: "A",
+          location: "app.ts:cors-reject",
+          msg: "[DEBUG] CORS origin rejected",
+          data: {
+            origin,
+            requestOrigin: normalizedRequestOrigin,
+            allowedOrigins,
+            clientUrl: env.CLIENT_URL,
+          },
+        });
+        // #endregion
         callback(new Error(`Origin ${origin} is not allowed by CORS.`));
       },
       credentials: true,
-    }),
-  );
+    })(request, response, next);
+  });
   app.use(helmet());
   app.use(morgan("dev"));
   app.use(express.json());
