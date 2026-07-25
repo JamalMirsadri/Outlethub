@@ -121,7 +121,7 @@ const envSchema = z.object({
   SMTP_USER: z.string().optional(),
   SMTP_PASS: z.string().optional(),
   SMTP_FROM: z.string().email().default("no-reply@outlethub.local"),
-  REDIS_URL: z.string().default("redis://127.0.0.1:6379"),
+  REDIS_URL: z.string().optional(),
   STRIPE_SECRET_KEY: z.string().optional(),
   STRIPE_WEBHOOK_SECRET: z.string().optional(),
   CLOUDINARY_CLOUD_NAME: z.string().optional(),
@@ -158,5 +158,6 @@ try {
 export const env = {
   ...parsedEnv,
   SERVICE_MODE: parsedEnv.SERVICE_MODE ?? (parsedEnv.NODE_ENV === "production" ? "web" : "all"),
+  REDIS_URL: parsedEnv.REDIS_URL ?? (parsedEnv.NODE_ENV === "production" ? undefined : "redis://127.0.0.1:6379"),
 };
 export type Env = typeof env;

@@ -6,7 +6,7 @@ services:
     region: oregon
     branch: main
     buildCommand: npm install && npm run build:server
-    preDeployCommand: npm run prisma:deploy
+    preDeployCommand: npm run prepare:runtime
     startCommand: npm run start
     healthCheckPath: /api/v1/health
     envVars:

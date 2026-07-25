@@ -6,6 +6,11 @@ import { ApiError } from "../utils/api-error.js";
 export function rateLimit(prefix: string, limit: number, windowSeconds: number) {
   return async (request: Request, _response: Response, next: NextFunction): Promise<void> => {
     try {
+      if (!redis) {
+        next();
+        return;
+      }
+
       const ipAddress = request.ip || "unknown";
       const key = `${prefix}:${ipAddress}`;
       const hits = await redis.incr(key);

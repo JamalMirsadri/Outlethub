@@ -76,7 +76,7 @@ These are recommended for full functionality:
 ### Render Commands
 
 - Build: `npm install && npm run build:server`
-- Pre-deploy: `npm run prisma:deploy`
+- Pre-deploy: `npm run prepare:runtime`
 - Start: `npm run start`
 - Health check: `/api/v1/health`
 
