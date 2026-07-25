@@ -1,0 +1,1733 @@
+{
+  "baseUrl": "http://127.0.0.1:5176",
+  "apiBaseUrl": "http://127.0.0.1:4002/api/v1",
+  "artifacts": {
+    "adminBankAccounts": "D:\\uber\\outlethub\\luxe-outlet-hub\\artifacts\\sprint8-final\\admin-bank-accounts.png",
+    "adminExchangeRates": "D:\\uber\\outlethub\\luxe-outlet-hub\\artifacts\\sprint8-final\\admin-exchange-rates.png",
+    "adminPaymentsInitial": "D:\\uber\\outlethub\\luxe-outlet-hub\\artifacts\\sprint8-final\\admin-payments-initial.png",
+    "customerCatalogEur": "D:\\uber\\outlethub\\luxe-outlet-hub\\artifacts\\sprint8-final\\customer-catalog-eur.png",
+    "customerProductEur": "D:\\uber\\outlethub\\luxe-outlet-hub\\artifacts\\sprint8-final\\customer-product-eur.png",
+    "customerCartToman": "D:\\uber\\outlethub\\luxe-outlet-hub\\artifacts\\sprint8-final\\customer-cart-toman.png",
+    "customerCatalogToman": "D:\\uber\\outlethub\\luxe-outlet-hub\\artifacts\\sprint8-final\\customer-catalog-toman.png",
+    "customerProductToman": "D:\\uber\\outlethub\\luxe-outlet-hub\\artifacts\\sprint8-final\\customer-product-toman.png",
+    "customerCheckoutBankTransfer": "D:\\uber\\outlethub\\luxe-outlet-hub\\artifacts\\sprint8-final\\customer-checkout-bank-transfer.png",
+    "customerPaymentPendingReview": "D:\\uber\\outlethub\\luxe-outlet-hub\\artifacts\\sprint8-final\\customer-payment-pending-review.png",
+    "receiptPreviewImage": "D:\\uber\\outlethub\\luxe-outlet-hub\\artifacts\\sprint8-final\\receipt-preview-image.png",
+    "adminPaymentReviewQueue": "D:\\uber\\outlethub\\luxe-outlet-hub\\artifacts\\sprint8-final\\admin-payment-review-queue.png",
+    "customerPaymentApproved": "D:\\uber\\outlethub\\luxe-outlet-hub\\artifacts\\sprint8-final\\customer-payment-approved.png",
+    "adminPaymentsApproved": "D:\\uber\\outlethub\\luxe-outlet-hub\\artifacts\\sprint8-final\\admin-payments-approved.png",
+    "adminPaymentsCompleted": "D:\\uber\\outlethub\\luxe-outlet-hub\\artifacts\\sprint8-final\\admin-payments-completed.png",
+    "customerPaymentPaid": "D:\\uber\\outlethub\\luxe-outlet-hub\\artifacts\\sprint8-final\\customer-payment-paid.png",
+    "customerOrders": "D:\\uber\\outlethub\\luxe-outlet-hub\\artifacts\\sprint8-final\\customer-orders.png",
+    "adminOrderDetailApproved": "D:\\uber\\outlethub\\luxe-outlet-hub\\artifacts\\sprint8-final\\admin-order-detail-approved.png",
+    "customerPaymentPendingReviewPdf": "D:\\uber\\outlethub\\luxe-outlet-hub\\artifacts\\sprint8-final\\customer-payment-pending-review-pdf.png",
+    "adminPaymentsRejected": "D:\\uber\\outlethub\\luxe-outlet-hub\\artifacts\\sprint8-final\\admin-payments-rejected.png",
+    "customerPaymentRejected": "D:\\uber\\outlethub\\luxe-outlet-hub\\artifacts\\sprint8-final\\customer-payment-rejected.png"
+  },
+  "customerEmail": "sprint8.customer.1782329124176@outlethub.local",
+  "adminEmail": "admin@outlethub.local",
+  "bankAccount": {
+    "id": "cmqsgqtmq0024uoywkrde1j1c",
+    "bankName": "Sprint 8 QA Bank 1782329124176",
+    "accountHolder": "OutletHub Payments",
+    "iban": "PT50000201231234567890154",
+    "accountNumber": "1234567890",
+    "cardNumber": "6037991234567890",
+    "swift": "OUTLPTPL",
+    "country": "Portugal",
+    "currency": "EUR",
+    "isActive": true,
+    "notes": "Sprint 8 verification account",
+    "createdAt": "2026-06-24T19:25:29.090Z",
+    "updatedAt": "2026-06-24T19:25:29.090Z"
+  },
+  "exchangeRate": {
+    "id": "cmqs07zuc000cuop8iz9txh9t",
+    "baseCurrency": "EUR",
+    "quoteCurrency": "TOMAN",
+    "rate": 184000,
+    "isActive": true,
+    "updatedByUserId": "cmqo370wo0004uotkhoddtvzk",
+    "notes": "Sprint 8 verification rate",
+    "createdAt": "2026-06-24T11:42:56.820Z",
+    "updatedAt": "2026-06-24T19:25:29.106Z"
+  },
+  "products": {
+    "primary": {
+      "id": "cmqrplxmx007puoqcfp1hi74f",
+      "name": "Cobertura Piscina Intex Easy Set",
+      "slug": "intex-cobertura-piscina-intex-easy-set"
+    },
+    "secondary": {
+      "id": "cmqrplxmn007juoqcrh6n0dya",
+      "name": "Tenda Tipo Cúpula Para 2 Pessoas Aktive Sport Camping",
+      "slug": "aktive-tenda-tipo-c-pula-para-2-pessoas-aktive-sport-camping"
+    }
+  },
+  "checkoutSnapshot": {
+    "cart": {
+      "id": "cmqsgqy01002huoywulei4dsw",
+      "itemCount": 1,
+      "currency": "EUR",
+      "countryCode": "IR",
+      "subtotalAmount": 35.03,
+      "shippingAmount": 27,
+      "handlingAmount": 1.99,
+      "paymentFeeAmount": 1.49,
+      "taxAmount": 15.07,
+      "totalAmount": 80.58,
+      "items": [
+        {
+          "id": "cmqsgr2js002juoyw3bkw5vtj",
+          "productId": "cmqrplxmx007puoqcfp1hi74f",
+          "variantId": null,
+          "quantity": 1,
+          "currency": "EUR",
+          "supplierCost": 12.3,
+          "customerPaid": 35.03,
+          "profitAmount": 16.18,
+          "title": "Cobertura Piscina Intex Easy Set",
+          "brand": "Intex",
+          "imageUrl": "https://resize.sprintercdn.com/f/512x512/products/56c00beab6b44a599238d5b4c3486b90/cobertor-intex-piscina-hinchable-easy-set-244-cm_56c00beab6b44a599238d5b4c3486b90_369815206.jpg",
+          "sourceUrl": "https://www.sprintersports.com/pt/cobertura-piscina-intex-easy-set-mk0001265",
+          "size": null,
+          "color": null,
+          "product": {
+            "id": "cmqrplxmx007puoqcfp1hi74f",
+            "slug": "intex-cobertura-piscina-intex-easy-set",
+            "name": "Cobertura Piscina Intex Easy Set",
+            "brand": "Intex",
+            "stockStatus": "IN_STOCK",
+            "imageUrl": "https://resize.sprintercdn.com/f/512x512/products/56c00beab6b44a599238d5b4c3486b90/cobertor-intex-piscina-hinchable-easy-set-244-cm_56c00beab6b44a599238d5b4c3486b90_369815206.jpg"
+          }
+        }
+      ],
+      "shippingMethod": null
+    },
+    "addresses": [
+      {
+        "id": "cmqsgr3i0002luoyw8c4x3jws",
+        "fullName": "Sprint 8 Customer",
+        "phone": "+989121234567",
+        "countryCode": "IR",
+        "city": "Tehran",
+        "postalCode": "1599814713",
+        "addressLine1": "Valiasr Street, No. 100",
+        "addressLine2": "Unit 12",
+        "isDefaultShipping": true,
+        "isDefaultBilling": true,
+        "createdAt": "2026-06-24T19:25:41.880Z",
+        "updatedAt": "2026-06-24T19:25:41.880Z"
+      }
+    ],
+    "shippingMethods": [
+      {
+        "id": "cmqqfy7mn000cuowslkx5gfvy",
+        "name": "Spain Standard",
+        "countryCode": "ES",
+        "originCountryCode": null,
+        "currency": "EUR",
+        "minWeightKg": null,
+        "maxWeightKg": null,
+        "minDeliveryDays": 3,
+        "maxDeliveryDays": 5,
+        "baseFee": 8.99,
+        "freeShippingThreshold": 150,
+        "deliveryEstimate": null,
+        "isActive": true,
+        "country": {
+          "code": "ES",
+          "name": "Spain",
+          "region": "EUROPE",
+          "isActive": true,
+          "createdAt": "2026-06-23T09:27:41.824Z",
+          "updatedAt": "2026-06-24T11:41:48.293Z"
+        },
+        "createdAt": "2026-06-23T09:27:41.855Z",
+        "updatedAt": "2026-06-24T11:41:48.330Z"
+      },
+      {
+        "id": "cmqqh56xs0006uopsjad67rqz",
+        "name": "Portugal to Iran 0-1kg",
+        "countryCode": "IR",
+        "originCountryCode": "PT",
+        "currency": "EUR",
+        "minWeightKg": 0,
+        "maxWeightKg": 1,
+        "minDeliveryDays": 6,
+        "maxDeliveryDays": 10,
+        "baseFee": 25,
+        "freeShippingThreshold": null,
+        "deliveryEstimate": "International delivery to Iran",
+        "isActive": true,
+        "country": {
+          "code": "IR",
+          "name": "Iran",
+          "region": "MIDDLE_EAST",
+          "isActive": true,
+          "createdAt": "2026-06-23T10:00:48.916Z",
+          "updatedAt": "2026-06-24T11:41:48.295Z"
+        },
+        "createdAt": "2026-06-23T10:01:07.169Z",
+        "updatedAt": "2026-06-24T11:41:48.336Z"
+      },
+      {
+        "id": "cmqqh56xz0008uops3m5l9tc7",
+        "name": "Portugal to Iran 1-2kg",
+        "countryCode": "IR",
+        "originCountryCode": "PT",
+        "currency": "EUR",
+        "minWeightKg": 1,
+        "maxWeightKg": 2,
+        "minDeliveryDays": 6,
+        "maxDeliveryDays": 10,
+        "baseFee": 34,
+        "freeShippingThreshold": null,
+        "deliveryEstimate": "International delivery to Iran",
+        "isActive": true,
+        "country": {
+          "code": "IR",
+          "name": "Iran",
+          "region": "MIDDLE_EAST",
+          "isActive": true,
+          "createdAt": "2026-06-23T10:00:48.916Z",
+          "updatedAt": "2026-06-24T11:41:48.295Z"
+        },
+        "createdAt": "2026-06-23T10:01:07.175Z",
+        "updatedAt": "2026-06-24T11:41:48.340Z"
+      },
+      {
+        "id": "cmqqh56y2000auops8tvhx24h",
+        "name": "Portugal to Iran 2-5kg",
+        "countryCode": "IR",
+        "originCountryCode": "PT",
+        "currency": "EUR",
+        "minWeightKg": 2,
+        "maxWeightKg": 5,
+        "minDeliveryDays": 7,
+        "maxDeliveryDays": 12,
+        "baseFee": 58,
+        "freeShippingThreshold": null,
+        "deliveryEstimate": "International delivery to Iran",
+        "isActive": true,
+        "country": {
+          "code": "IR",
+          "name": "Iran",
+          "region": "MIDDLE_EAST",
+          "isActive": true,
+          "createdAt": "2026-06-23T10:00:48.916Z",
+          "updatedAt": "2026-06-24T11:41:48.295Z"
+        },
+        "createdAt": "2026-06-23T10:01:07.178Z",
+        "updatedAt": "2026-06-24T11:41:48.343Z"
+      },
+      {
+        "id": "cmqqh56y4000cuopsu5r1vezy",
+        "name": "Portugal to Iran 5-10kg",
+        "countryCode": "IR",
+        "originCountryCode": "PT",
+        "currency": "EUR",
+        "minWeightKg": 5,
+        "maxWeightKg": 10,
+        "minDeliveryDays": 8,
+        "maxDeliveryDays": 14,
+        "baseFee": 92,
+        "freeShippingThreshold": null,
+        "deliveryEstimate": "International delivery to Iran",
+        "isActive": true,
+        "country": {
+          "code": "IR",
+          "name": "Iran",
+          "region": "MIDDLE_EAST",
+          "isActive": true,
+          "createdAt": "2026-06-23T10:00:48.916Z",
+          "updatedAt": "2026-06-24T11:41:48.295Z"
+        },
+        "createdAt": "2026-06-23T10:01:07.180Z",
+        "updatedAt": "2026-06-24T11:41:48.345Z"
+      },
+      {
+        "id": "cmqqh56y5000euopsk2oezlhp",
+        "name": "Spain to Iran 0-1kg",
+        "countryCode": "IR",
+        "originCountryCode": "ES",
+        "currency": "EUR",
+        "minWeightKg": 0,
+        "maxWeightKg": 1,
+        "minDeliveryDays": 6,
+        "maxDeliveryDays": 10,
+        "baseFee": 27,
+        "freeShippingThreshold": null,
+        "deliveryEstimate": "International delivery to Iran",
+        "isActive": true,
+        "country": {
+          "code": "IR",
+          "name": "Iran",
+          "region": "MIDDLE_EAST",
+          "isActive": true,
+          "createdAt": "2026-06-23T10:00:48.916Z",
+          "updatedAt": "2026-06-24T11:41:48.295Z"
+        },
+        "createdAt": "2026-06-23T10:01:07.182Z",
+        "updatedAt": "2026-06-24T11:41:48.348Z"
+      },
+      {
+        "id": "cmqqh56y7000guopsg1ycj0ly",
+        "name": "Spain to Iran 1-2kg",
+        "countryCode": "IR",
+        "originCountryCode": "ES",
+        "currency": "EUR",
+        "minWeightKg": 1,
+        "maxWeightKg": 2,
+        "minDeliveryDays": 6,
+        "maxDeliveryDays": 10,
+        "baseFee": 36,
+        "freeShippingThreshold": null,
+        "deliveryEstimate": "International delivery to Iran",
+        "isActive": true,
+        "country": {
+          "code": "IR",
+          "name": "Iran",
+          "region": "MIDDLE_EAST",
+          "isActive": true,
+          "createdAt": "2026-06-23T10:00:48.916Z",
+          "updatedAt": "2026-06-24T11:41:48.295Z"
+        },
+        "createdAt": "2026-06-23T10:01:07.183Z",
+        "updatedAt": "2026-06-24T11:41:48.352Z"
+      },
+      {
+        "id": "cmqqh56y8000iuopsiedotbuv",
+        "name": "Spain to Iran 2-5kg",
+        "countryCode": "IR",
+        "originCountryCode": "ES",
+        "currency": "EUR",
+        "minWeightKg": 2,
+        "maxWeightKg": 5,
+        "minDeliveryDays": 7,
+        "maxDeliveryDays": 12,
+        "baseFee": 61,
+        "freeShippingThreshold": null,
+        "deliveryEstimate": "International delivery to Iran",
+        "isActive": true,
+        "country": {
+          "code": "IR",
+          "name": "Iran",
+          "region": "MIDDLE_EAST",
+          "isActive": true,
+          "createdAt": "2026-06-23T10:00:48.916Z",
+          "updatedAt": "2026-06-24T11:41:48.295Z"
+        },
+        "createdAt": "2026-06-23T10:01:07.185Z",
+        "updatedAt": "2026-06-24T11:41:48.355Z"
+      },
+      {
+        "id": "cmqqh56ya000kuopsnfp4ib87",
+        "name": "Spain to Iran 5-10kg",
+        "countryCode": "IR",
+        "originCountryCode": "ES",
+        "currency": "EUR",
+        "minWeightKg": 5,
+        "maxWeightKg": 10,
+        "minDeliveryDays": 8,
+        "maxDeliveryDays": 14,
+        "baseFee": 97,
+        "freeShippingThreshold": null,
+        "deliveryEstimate": "International delivery to Iran",
+        "isActive": true,
+        "country": {
+          "code": "IR",
+          "name": "Iran",
+          "region": "MIDDLE_EAST",
+          "isActive": true,
+          "createdAt": "2026-06-23T10:00:48.916Z",
+          "updatedAt": "2026-06-24T11:41:48.295Z"
+        },
+        "createdAt": "2026-06-23T10:01:07.186Z",
+        "updatedAt": "2026-06-24T11:41:48.359Z"
+      },
+      {
+        "id": "cmqqfy7mj000auowsohlmltqu",
+        "name": "Portugal Standard",
+        "countryCode": "PT",
+        "originCountryCode": null,
+        "currency": "EUR",
+        "minWeightKg": null,
+        "maxWeightKg": null,
+        "minDeliveryDays": 2,
+        "maxDeliveryDays": 4,
+        "baseFee": 5.99,
+        "freeShippingThreshold": 120,
+        "deliveryEstimate": null,
+        "isActive": true,
+        "country": {
+          "code": "PT",
+          "name": "Portugal",
+          "region": "EUROPE",
+          "isActive": true,
+          "createdAt": "2026-06-23T09:27:41.819Z",
+          "updatedAt": "2026-06-24T11:41:48.291Z"
+        },
+        "createdAt": "2026-06-23T09:27:41.851Z",
+        "updatedAt": "2026-06-24T11:41:48.327Z"
+      }
+    ],
+    "countries": [
+      {
+        "code": "IR",
+        "name": "Iran",
+        "region": "MIDDLE_EAST",
+        "isActive": true,
+        "createdAt": "2026-06-23T10:00:48.916Z",
+        "updatedAt": "2026-06-24T11:41:48.295Z"
+      },
+      {
+        "code": "PT",
+        "name": "Portugal",
+        "region": "EUROPE",
+        "isActive": true,
+        "createdAt": "2026-06-23T09:27:41.819Z",
+        "updatedAt": "2026-06-24T11:41:48.291Z"
+      },
+      {
+        "code": "ES",
+        "name": "Spain",
+        "region": "EUROPE",
+        "isActive": true,
+        "createdAt": "2026-06-23T09:27:41.824Z",
+        "updatedAt": "2026-06-24T11:41:48.293Z"
+      }
+    ],
+    "paymentProviders": [
+      {
+        "id": "cmqs081ep000euop8jb0i0k01",
+        "code": "BANK_TRANSFER",
+        "displayName": "Bank Transfer",
+        "isActive": true,
+        "priority": 100,
+        "supportsReceipts": true,
+        "supportsRefunds": false,
+        "supportsWebhooks": false,
+        "supportedCurrencies": [
+          "EUR",
+          "IRR",
+          "TOMAN"
+        ],
+        "settings": null,
+        "createdAt": "2026-06-24T11:42:58.850Z",
+        "updatedAt": "2026-06-24T19:25:45.825Z"
+      },
+      {
+        "id": "cmqs081ep000duop8hobrpx04",
+        "code": "STRIPE",
+        "displayName": "Stripe",
+        "isActive": true,
+        "priority": 80,
+        "supportsReceipts": false,
+        "supportsRefunds": true,
+        "supportsWebhooks": true,
+        "supportedCurrencies": [
+          "EUR"
+        ],
+        "settings": null,
+        "createdAt": "2026-06-24T11:42:58.850Z",
+        "updatedAt": "2026-06-24T19:25:45.825Z"
+      },
+      {
+        "id": "cmqs081eq000fuop83ctwpjcx",
+        "code": "PAYPAL",
+        "displayName": "PayPal",
+        "isActive": true,
+        "priority": 70,
+        "supportsReceipts": false,
+        "supportsRefunds": true,
+        "supportsWebhooks": true,
+        "supportedCurrencies": [
+          "EUR"
+        ],
+        "settings": null,
+        "createdAt": "2026-06-24T11:42:58.850Z",
+        "updatedAt": "2026-06-24T19:25:45.825Z"
+      },
+      {
+        "id": "cmqs081io000huop80nxjcjec",
+        "code": "MB_WAY",
+        "displayName": "MB Way",
+        "isActive": true,
+        "priority": 60,
+        "supportsReceipts": false,
+        "supportsRefunds": false,
+        "supportsWebhooks": true,
+        "supportedCurrencies": [
+          "EUR"
+        ],
+        "settings": null,
+        "createdAt": "2026-06-24T11:42:58.850Z",
+        "updatedAt": "2026-06-24T19:25:45.825Z"
+      },
+      {
+        "id": "cmqs081gu000guop8y4nkxn8r",
+        "code": "MULTIBANCO",
+        "displayName": "Multibanco",
+        "isActive": true,
+        "priority": 50,
+        "supportsReceipts": false,
+        "supportsRefunds": false,
+        "supportsWebhooks": true,
+        "supportedCurrencies": [
+          "EUR"
+        ],
+        "settings": null,
+        "createdAt": "2026-06-24T11:42:58.850Z",
+        "updatedAt": "2026-06-24T19:25:45.826Z"
+      }
+    ],
+    "bankAccounts": [
+      {
+        "id": "cmqsgqtmq0024uoywkrde1j1c",
+        "bankName": "Sprint 8 QA Bank 1782329124176",
+        "accountHolder": "OutletHub Payments",
+        "iban": "PT50000201231234567890154",
+        "accountNumber": "1234567890",
+        "cardNumber": "6037991234567890",
+        "swift": "OUTLPTPL",
+        "country": "Portugal",
+        "currency": "EUR",
+        "isActive": true,
+        "notes": "Sprint 8 verification account",
+        "createdAt": "2026-06-24T19:25:29.090Z",
+        "updatedAt": "2026-06-24T19:25:29.090Z"
+      },
+      {
+        "id": "cmqsgppvu000auoywhccu7z2q",
+        "bankName": "Sprint 8 QA Bank 1782329072040",
+        "accountHolder": "OutletHub Payments",
+        "iban": "PT50000201231234567890154",
+        "accountNumber": "1234567890",
+        "cardNumber": "6037991234567890",
+        "swift": "OUTLPTPL",
+        "country": "Portugal",
+        "currency": "EUR",
+        "isActive": true,
+        "notes": "Sprint 8 verification account",
+        "createdAt": "2026-06-24T19:24:37.579Z",
+        "updatedAt": "2026-06-24T19:24:37.579Z"
+      },
+      {
+        "id": "cmqs11m9l007tuo5cxsq8vghz",
+        "bankName": "Sprint 8 QA Bank 1782302752667",
+        "accountHolder": "OutletHub Payments",
+        "iban": "PT50000201231234567890154",
+        "accountNumber": "1234567890",
+        "cardNumber": "6037991234567890",
+        "swift": "OUTLPTPL",
+        "country": "Portugal",
+        "currency": "EUR",
+        "isActive": true,
+        "notes": "Sprint 8 verification account",
+        "createdAt": "2026-06-24T12:05:58.905Z",
+        "updatedAt": "2026-06-24T12:05:58.905Z"
+      },
+      {
+        "id": "cmqs0xpho005xuo5c7m9otn4j",
+        "bankName": "Sprint 8 QA Bank 1782302571131",
+        "accountHolder": "OutletHub Payments",
+        "iban": "PT50000201231234567890154",
+        "accountNumber": "1234567890",
+        "cardNumber": "6037991234567890",
+        "swift": "OUTLPTPL",
+        "country": "Portugal",
+        "currency": "EUR",
+        "isActive": true,
+        "notes": "Sprint 8 verification account",
+        "createdAt": "2026-06-24T12:02:56.460Z",
+        "updatedAt": "2026-06-24T12:02:56.460Z"
+      },
+      {
+        "id": "cmqs0tes5001vuo5cz0nfiqi7",
+        "bankName": "Sprint 8 QA Bank 1782302371146",
+        "accountHolder": "OutletHub Payments",
+        "iban": "PT50000201231234567890154",
+        "accountNumber": "1234567890",
+        "cardNumber": "6037991234567890",
+        "swift": "OUTLPTPL",
+        "country": "Portugal",
+        "currency": "EUR",
+        "isActive": true,
+        "notes": "Sprint 8 verification account",
+        "createdAt": "2026-06-24T11:59:35.957Z",
+        "updatedAt": "2026-06-24T11:59:35.957Z"
+      },
+      {
+        "id": "cmqs0rqt8000auo5cmasx6dya",
+        "bankName": "Sprint 8 QA Bank 1782302292920",
+        "accountHolder": "OutletHub Payments",
+        "iban": "PT50000201231234567890154",
+        "accountNumber": "1234567890",
+        "cardNumber": "6037991234567890",
+        "swift": "OUTLPTPL",
+        "country": "Portugal",
+        "currency": "EUR",
+        "isActive": true,
+        "notes": "Sprint 8 verification account",
+        "createdAt": "2026-06-24T11:58:18.237Z",
+        "updatedAt": "2026-06-24T11:58:18.237Z"
+      },
+      {
+        "id": "cmqs0pq3s0038uokw3d43ap19",
+        "bankName": "Sprint 8 QA Bank 1782302198888",
+        "accountHolder": "OutletHub Payments",
+        "iban": "PT50000201231234567890154",
+        "accountNumber": "1234567890",
+        "cardNumber": "6037991234567890",
+        "swift": "OUTLPTPL",
+        "country": "Portugal",
+        "currency": "EUR",
+        "isActive": true,
+        "notes": "Sprint 8 verification account",
+        "createdAt": "2026-06-24T11:56:44.009Z",
+        "updatedAt": "2026-06-24T11:56:44.009Z"
+      },
+      {
+        "id": "cmqs0n02d001ruokwdype7jbb",
+        "bankName": "Sprint 8 QA Bank 1782302071974",
+        "accountHolder": "OutletHub Payments",
+        "iban": "PT50000201231234567890154",
+        "accountNumber": "1234567890",
+        "cardNumber": "6037991234567890",
+        "swift": "OUTLPTPL",
+        "country": "Portugal",
+        "currency": "EUR",
+        "isActive": true,
+        "notes": "Sprint 8 verification account",
+        "createdAt": "2026-06-24T11:54:36.950Z",
+        "updatedAt": "2026-06-24T11:54:36.950Z"
+      },
+      {
+        "id": "cmqs0krgg000auokwf70cter0",
+        "bankName": "Sprint 8 QA Bank 1782301964116",
+        "accountHolder": "OutletHub Payments",
+        "iban": "PT50000201231234567890154",
+        "accountNumber": "1234567890",
+        "cardNumber": "6037991234567890",
+        "swift": "OUTLPTPL",
+        "country": "Portugal",
+        "currency": "EUR",
+        "isActive": true,
+        "notes": "Sprint 8 verification account",
+        "createdAt": "2026-06-24T11:52:52.481Z",
+        "updatedAt": "2026-06-24T11:52:52.481Z"
+      },
+      {
+        "id": "cmqs0j1hz003quop86dk5gjzb",
+        "bankName": "Sprint 8 QA Bank 1782301886841",
+        "accountHolder": "OutletHub Payments",
+        "iban": "PT50000201231234567890154",
+        "accountNumber": "1234567890",
+        "cardNumber": "6037991234567890",
+        "swift": "OUTLPTPL",
+        "country": "Portugal",
+        "currency": "EUR",
+        "isActive": true,
+        "notes": "Sprint 8 verification account",
+        "createdAt": "2026-06-24T11:51:32.183Z",
+        "updatedAt": "2026-06-24T11:51:32.183Z"
+      },
+      {
+        "id": "cmqs0gfnr002ouop8dkegj6p9",
+        "bankName": "Sprint 8 QA Bank 1782301764611",
+        "accountHolder": "OutletHub Payments",
+        "iban": "PT50000201231234567890154",
+        "accountNumber": "1234567890",
+        "cardNumber": "6037991234567890",
+        "swift": "OUTLPTPL",
+        "country": "Portugal",
+        "currency": "EUR",
+        "isActive": true,
+        "notes": "Sprint 8 verification account",
+        "createdAt": "2026-06-24T11:49:30.567Z",
+        "updatedAt": "2026-06-24T11:49:30.567Z"
+      },
+      {
+        "id": "cmqs0ekka001muop8hx4nc9fx",
+        "bankName": "Sprint 8 QA Bank 1782301675994",
+        "accountHolder": "OutletHub Payments",
+        "iban": "PT50000201231234567890154",
+        "accountNumber": "1234567890",
+        "cardNumber": "6037991234567890",
+        "swift": "OUTLPTPL",
+        "country": "Portugal",
+        "currency": "EUR",
+        "isActive": true,
+        "notes": "Sprint 8 verification account",
+        "createdAt": "2026-06-24T11:48:03.610Z",
+        "updatedAt": "2026-06-24T11:48:03.610Z"
+      },
+      {
+        "id": "cmqs0atgr000yuop8rfj9tz4q",
+        "bankName": "Sprint 8 QA Bank 1782301503504",
+        "accountHolder": "OutletHub Payments",
+        "iban": "PT50000201231234567890154",
+        "accountNumber": "1234567890",
+        "cardNumber": "6037991234567890",
+        "swift": "OUTLPTPL",
+        "country": "Portugal",
+        "currency": "EUR",
+        "isActive": true,
+        "notes": "Sprint 8 verification account",
+        "createdAt": "2026-06-24T11:45:08.524Z",
+        "updatedAt": "2026-06-24T11:45:08.524Z"
+      },
+      {
+        "id": "cmqs07ztk000auop8w6mbppzt",
+        "bankName": "Sprint 8 QA Bank 1782301367886",
+        "accountHolder": "OutletHub Payments",
+        "iban": "PT50000201231234567890154",
+        "accountNumber": "1234567890",
+        "cardNumber": "6037991234567890",
+        "swift": "OUTLPTPL",
+        "country": "Portugal",
+        "currency": "EUR",
+        "isActive": true,
+        "notes": "Sprint 8 verification account",
+        "createdAt": "2026-06-24T11:42:56.792Z",
+        "updatedAt": "2026-06-24T11:42:56.792Z"
+      }
+    ],
+    "businessSettings": {
+      "id": "cmqqfy7mt000euows92tzmnsy",
+      "businessName": "OutletHub",
+      "supportEmail": "support@outlethub.local",
+      "defaultCurrency": "EUR",
+      "defaultCountryCode": "PT",
+      "defaultMarginPercent": 18,
+      "minimumProfitAmount": 12,
+      "portugalShippingFee": 5.99,
+      "spainShippingFee": 8.99,
+      "iranShippingFee": 25,
+      "fixedProfitAmount": 4.99,
+      "handlingFee": 1.99,
+      "paymentFee": 1.49,
+      "vatPercent": 23,
+      "freeShippingThreshold": 120,
+      "minimumOrderValue": 15,
+      "returnPeriodDays": 30,
+      "country": {
+        "code": "PT",
+        "name": "Portugal",
+        "region": "EUROPE",
+        "isActive": true,
+        "createdAt": "2026-06-23T09:27:41.819Z",
+        "updatedAt": "2026-06-24T11:41:48.291Z"
+      },
+      "createdAt": "2026-06-23T09:27:41.862Z",
+      "updatedAt": "2026-06-24T11:41:48.370Z"
+    },
+    "currencyContext": {
+      "preferredCurrency": "TOMAN",
+      "supportedDisplayCurrencies": [
+        {
+          "code": "EUR",
+          "name": "Euro",
+          "symbol": "EUR",
+          "isDefault": true
+        },
+        {
+          "code": "GBP",
+          "name": "British Pound",
+          "symbol": "GBP",
+          "isDefault": false
+        },
+        {
+          "code": "IRR",
+          "name": "Iranian Rial",
+          "symbol": "IRR",
+          "isDefault": false
+        },
+        {
+          "code": "TOMAN",
+          "name": "Iranian Toman",
+          "symbol": "TOMAN",
+          "isDefault": false
+        },
+        {
+          "code": "USD",
+          "name": "US Dollar",
+          "symbol": "USD",
+          "isDefault": false
+        }
+      ],
+      "exchangeRates": [
+        {
+          "id": "cmqs07zuc000cuop8iz9txh9t",
+          "baseCurrency": "EUR",
+          "quoteCurrency": "TOMAN",
+          "rate": 184000,
+          "updatedByUserId": "cmqo370wo0004uotkhoddtvzk",
+          "notes": "Sprint 8 verification rate",
+          "updatedAt": "2026-06-24T19:25:29.106Z",
+          "createdAt": "2026-06-24T11:42:56.820Z"
+        }
+      ]
+    },
+    "checkoutSteps": [
+      "Cart Review",
+      "Shipping Address",
+      "Shipping Method",
+      "Payment Method",
+      "Order Review",
+      "Place Order"
+    ]
+  },
+  "approvedFlow": {
+    "order": {
+      "id": "cmqsgr6rp002xuoywdek4ql4u",
+      "orderNumber": "OH-1782329146115",
+      "status": "PENDING",
+      "customerName": "Sprint 8 Customer",
+      "customerEmail": "sprint8.customer.1782329124176@outlethub.local",
+      "supplierSubtotal": 12.3,
+      "subtotal": 35.03,
+      "shippingAmount": 25,
+      "handlingAmount": 1.99,
+      "paymentFeeAmount": 1.49,
+      "taxAmount": 14.61,
+      "totalAmount": 78.12,
+      "customerPaid": 78.12,
+      "profitAmount": 16.18,
+      "currency": "EUR",
+      "displayCurrency": "TOMAN",
+      "exchangeRateSnapshot": {
+        "rate": 184000,
+        "baseCurrency": "EUR",
+        "quoteCurrency": "TOMAN",
+        "originalAmount": 1,
+        "convertedAmount": 184000
+      },
+      "paymentProvider": "BANK_TRANSFER",
+      "paymentMethodLabel": "Bank Transfer",
+      "trackingNumber": null,
+      "notes": null,
+      "internalNotes": null,
+      "refundedAmount": 0,
+      "totalWeightKg": 1,
+      "createdAt": "2026-06-24T19:25:46.117Z",
+      "updatedAt": "2026-06-24T19:25:46.117Z",
+      "shippedAt": null,
+      "deliveredAt": null,
+      "purchasedAt": null,
+      "refundedAt": null,
+      "customerAddress": {
+        "id": "cmqsgr3i0002luoyw8c4x3jws",
+        "fullName": "Sprint 8 Customer",
+        "phone": "+989121234567",
+        "countryCode": "IR",
+        "city": "Tehran",
+        "postalCode": "1599814713",
+        "addressLine1": "Valiasr Street, No. 100",
+        "addressLine2": "Unit 12"
+      },
+      "billingAddress": {
+        "id": "cmqsgr3i0002luoyw8c4x3jws",
+        "fullName": "Sprint 8 Customer",
+        "phone": "+989121234567",
+        "countryCode": "IR",
+        "city": "Tehran",
+        "postalCode": "1599814713",
+        "addressLine1": "Valiasr Street, No. 100",
+        "addressLine2": "Unit 12"
+      },
+      "shippingMethod": {
+        "id": "cmqqh56xs0006uopsjad67rqz",
+        "name": "Portugal to Iran 0-1kg",
+        "countryCode": "IR",
+        "originCountryCode": "PT",
+        "minWeightKg": 0,
+        "maxWeightKg": 1,
+        "minDeliveryDays": 6,
+        "maxDeliveryDays": 10,
+        "deliveryEstimate": "International delivery to Iran",
+        "baseFee": 25
+      },
+      "items": [
+        {
+          "id": "cmqsgr6rp002zuoywldk8iowu",
+          "productId": "cmqrplxmx007puoqcfp1hi74f",
+          "title": "Cobertura Piscina Intex Easy Set",
+          "brandName": "Intex",
+          "size": null,
+          "color": null,
+          "quantity": 1,
+          "supplierCost": 12.3,
+          "customerPaid": 35.03,
+          "profitAmount": 16.18,
+          "unitPrice": 35.03,
+          "totalPrice": 35.03,
+          "imageUrl": "https://resize.sprintercdn.com/f/512x512/products/56c00beab6b44a599238d5b4c3486b90/cobertor-intex-piscina-hinchable-easy-set-244-cm_56c00beab6b44a599238d5b4c3486b90_369815206.jpg",
+          "sourceUrl": "https://www.sprintersports.com/pt/cobertura-piscina-intex-easy-set-mk0001265",
+          "sourceStore": "Intex",
+          "currency": "EUR"
+        }
+      ]
+    },
+    "initialPayment": {
+      "id": "cmqsgr6t90036uoywsgs2i6xq",
+      "orderId": "cmqsgr6rp002xuoywdek4ql4u",
+      "provider": "BANK_TRANSFER",
+      "providerLabel": "Bank Transfer",
+      "providerConfiguration": {
+        "id": "cmqs081ep000euop8jb0i0k01",
+        "code": "BANK_TRANSFER",
+        "displayName": "Bank Transfer",
+        "isActive": true,
+        "priority": 100,
+        "supportsReceipts": true,
+        "supportsRefunds": false,
+        "supportsWebhooks": false,
+        "supportedCurrencies": [
+          "EUR",
+          "IRR",
+          "TOMAN"
+        ],
+        "settings": null,
+        "createdAt": "2026-06-24T11:42:58.850Z",
+        "updatedAt": "2026-06-24T19:25:46.156Z"
+      },
+      "status": "PAYMENT_PENDING_REVIEW",
+      "statusLabel": "PAYMENT PENDING REVIEW",
+      "kind": "CHARGE",
+      "currency": "EUR",
+      "displayCurrency": "TOMAN",
+      "amount": 78.12,
+      "exchangeRate": 184000,
+      "paymentReference": "SPRINT8-APPROVE-1782329124176",
+      "receiptUrl": "http://127.0.0.1:4002/uploads/payments/receipts/payment-cmqsgr6t90036uoywsgs2i6xq-1782329147056.png",
+      "receiptFileName": "receipt-image.png",
+      "receiptMimeType": "image/png",
+      "receiptUploadedAt": "2026-06-24T19:25:47.060Z",
+      "customerNotes": "Sprint 8 approved receipt",
+      "internalNotes": null,
+      "reviewRequestedAt": "2026-06-24T19:25:47.060Z",
+      "approvedAt": null,
+      "rejectedAt": null,
+      "processedAt": null,
+      "metadata": {
+        "paymentMethodLabel": "Bank Transfer"
+      },
+      "order": {
+        "id": "cmqsgr6rp002xuoywdek4ql4u",
+        "orderNumber": "OH-1782329146115",
+        "customerEmail": "sprint8.customer.1782329124176@outlethub.local",
+        "status": "PENDING",
+        "totalAmount": 78.12,
+        "currency": "EUR"
+      },
+      "transactions": [
+        {
+          "id": "cmqsgr7hy003cuoywjh22og5t",
+          "provider": "BANK_TRANSFER",
+          "status": "PAYMENT_PENDING_REVIEW",
+          "kind": "CHARGE",
+          "amount": 78.12,
+          "currency": "EUR",
+          "exchangeRate": 184000,
+          "externalReference": "SPRINT8-APPROVE-1782329124176",
+          "externalTransactionId": null,
+          "createdAt": "2026-06-24T19:25:47.062Z",
+          "updatedAt": "2026-06-24T19:25:47.062Z"
+        },
+        {
+          "id": "cmqsgr6t90038uoywmtbe612n",
+          "provider": "BANK_TRANSFER",
+          "status": "PAYMENT_PENDING",
+          "kind": "CHARGE",
+          "amount": 78.12,
+          "currency": "EUR",
+          "exchangeRate": 184000,
+          "externalReference": "BT-DEK4QL4U",
+          "externalTransactionId": null,
+          "createdAt": "2026-06-24T19:25:46.174Z",
+          "updatedAt": "2026-06-24T19:25:46.174Z"
+        }
+      ],
+      "refunds": [],
+      "auditLogs": [
+        {
+          "id": "cmqsgr7hy003euoywyasplgfv",
+          "action": "PAYMENT_RECEIPT_UPLOADED",
+          "fromStatus": "PAYMENT_PENDING",
+          "toStatus": "PAYMENT_PENDING_REVIEW",
+          "notes": "Sprint 8 approved receipt",
+          "metadata": null,
+          "actorUser": {
+            "id": "cmqsgqq69001vuoywjz4t5v53",
+            "email": "sprint8.customer.1782329124176@outlethub.local"
+          },
+          "createdAt": "2026-06-24T19:25:47.062Z"
+        },
+        {
+          "id": "cmqsgr6t9003auoyw4ch4ab06",
+          "action": "PAYMENT_INITIALIZED",
+          "fromStatus": null,
+          "toStatus": "PAYMENT_PENDING",
+          "notes": "Initialized via Bank Transfer.",
+          "metadata": {
+            "provider": "BANK_TRANSFER"
+          },
+          "actorUser": {
+            "id": "cmqsgqq69001vuoywjz4t5v53",
+            "email": "sprint8.customer.1782329124176@outlethub.local"
+          },
+          "createdAt": "2026-06-24T19:25:46.174Z"
+        }
+      ],
+      "createdAt": "2026-06-24T19:25:46.174Z",
+      "updatedAt": "2026-06-24T19:25:47.062Z"
+    },
+    "receiptPreview": {
+      "url": "http://127.0.0.1:4002/uploads/payments/receipts/payment-cmqsgr6t90036uoywsgs2i6xq-1782329147056.png",
+      "status": 200,
+      "contentType": "image/png",
+      "sizeBytes": 68
+    },
+    "reviewResponse": {
+      "id": "cmqsgr6t90036uoywsgs2i6xq",
+      "orderId": "cmqsgr6rp002xuoywdek4ql4u",
+      "provider": "BANK_TRANSFER",
+      "providerLabel": "Bank Transfer",
+      "providerConfiguration": {
+        "id": "cmqs081ep000euop8jb0i0k01",
+        "code": "BANK_TRANSFER",
+        "displayName": "Bank Transfer",
+        "isActive": true,
+        "priority": 100,
+        "supportsReceipts": true,
+        "supportsRefunds": false,
+        "supportsWebhooks": false,
+        "supportedCurrencies": [
+          "EUR",
+          "IRR",
+          "TOMAN"
+        ],
+        "settings": null,
+        "createdAt": "2026-06-24T11:42:58.850Z",
+        "updatedAt": "2026-06-24T19:25:46.156Z"
+      },
+      "status": "PAYMENT_APPROVED",
+      "statusLabel": "PAYMENT APPROVED",
+      "kind": "CHARGE",
+      "currency": "EUR",
+      "displayCurrency": "TOMAN",
+      "amount": 78.12,
+      "exchangeRate": 184000,
+      "paymentReference": "SPRINT8-APPROVE-1782329124176",
+      "receiptUrl": "http://127.0.0.1:4002/uploads/payments/receipts/payment-cmqsgr6t90036uoywsgs2i6xq-1782329147056.png",
+      "receiptFileName": "receipt-image.png",
+      "receiptMimeType": "image/png",
+      "receiptUploadedAt": "2026-06-24T19:25:47.060Z",
+      "customerNotes": "Sprint 8 approved receipt",
+      "internalNotes": "Approved during Sprint 8 verification",
+      "reviewRequestedAt": "2026-06-24T19:25:47.060Z",
+      "approvedAt": "2026-06-24T19:25:48.852Z",
+      "rejectedAt": null,
+      "processedAt": null,
+      "metadata": {
+        "paymentMethodLabel": "Bank Transfer"
+      },
+      "order": {
+        "id": "cmqsgr6rp002xuoywdek4ql4u",
+        "orderNumber": "OH-1782329146115",
+        "customerEmail": "sprint8.customer.1782329124176@outlethub.local",
+        "status": "PENDING",
+        "totalAmount": 78.12,
+        "currency": "EUR"
+      },
+      "transactions": [
+        {
+          "id": "cmqsgr8vq003guoywpnm6qyf4",
+          "provider": "BANK_TRANSFER",
+          "status": "PAYMENT_APPROVED",
+          "kind": "CHARGE",
+          "amount": 78.12,
+          "currency": "EUR",
+          "exchangeRate": 184000,
+          "externalReference": "SPRINT8-APPROVE-1782329124176",
+          "externalTransactionId": null,
+          "createdAt": "2026-06-24T19:25:48.854Z",
+          "updatedAt": "2026-06-24T19:25:48.854Z"
+        },
+        {
+          "id": "cmqsgr7hy003cuoywjh22og5t",
+          "provider": "BANK_TRANSFER",
+          "status": "PAYMENT_PENDING_REVIEW",
+          "kind": "CHARGE",
+          "amount": 78.12,
+          "currency": "EUR",
+          "exchangeRate": 184000,
+          "externalReference": "SPRINT8-APPROVE-1782329124176",
+          "externalTransactionId": null,
+          "createdAt": "2026-06-24T19:25:47.062Z",
+          "updatedAt": "2026-06-24T19:25:47.062Z"
+        },
+        {
+          "id": "cmqsgr6t90038uoywmtbe612n",
+          "provider": "BANK_TRANSFER",
+          "status": "PAYMENT_PENDING",
+          "kind": "CHARGE",
+          "amount": 78.12,
+          "currency": "EUR",
+          "exchangeRate": 184000,
+          "externalReference": "BT-DEK4QL4U",
+          "externalTransactionId": null,
+          "createdAt": "2026-06-24T19:25:46.174Z",
+          "updatedAt": "2026-06-24T19:25:46.174Z"
+        }
+      ],
+      "refunds": [],
+      "auditLogs": [
+        {
+          "id": "cmqsgr8vq003iuoywlumi87s3",
+          "action": "PAYMENT_APPROVED",
+          "fromStatus": "PAYMENT_PENDING_REVIEW",
+          "toStatus": "PAYMENT_APPROVED",
+          "notes": "Approved during Sprint 8 verification",
+          "metadata": {
+            "approvedAt": "2026-06-24T19:25:48.852Z",
+            "rejectedAt": null,
+            "paymentMethod": "BANK_TRANSFER"
+          },
+          "actorUser": {
+            "id": "cmqo370wo0004uotkhoddtvzk",
+            "email": "admin@outlethub.local"
+          },
+          "createdAt": "2026-06-24T19:25:48.854Z"
+        },
+        {
+          "id": "cmqsgr7hy003euoywyasplgfv",
+          "action": "PAYMENT_RECEIPT_UPLOADED",
+          "fromStatus": "PAYMENT_PENDING",
+          "toStatus": "PAYMENT_PENDING_REVIEW",
+          "notes": "Sprint 8 approved receipt",
+          "metadata": null,
+          "actorUser": {
+            "id": "cmqsgqq69001vuoywjz4t5v53",
+            "email": "sprint8.customer.1782329124176@outlethub.local"
+          },
+          "createdAt": "2026-06-24T19:25:47.062Z"
+        },
+        {
+          "id": "cmqsgr6t9003auoyw4ch4ab06",
+          "action": "PAYMENT_INITIALIZED",
+          "fromStatus": null,
+          "toStatus": "PAYMENT_PENDING",
+          "notes": "Initialized via Bank Transfer.",
+          "metadata": {
+            "provider": "BANK_TRANSFER"
+          },
+          "actorUser": {
+            "id": "cmqsgqq69001vuoywjz4t5v53",
+            "email": "sprint8.customer.1782329124176@outlethub.local"
+          },
+          "createdAt": "2026-06-24T19:25:46.174Z"
+        }
+      ],
+      "createdAt": "2026-06-24T19:25:46.174Z",
+      "updatedAt": "2026-06-24T19:25:48.854Z"
+    },
+    "orderAfterApproval": {
+      "id": "cmqsgr6rp002xuoywdek4ql4u",
+      "status": "PAYMENT_APPROVED",
+      "paidAt": null
+    },
+    "completionResponse": {
+      "id": "cmqsgr6t90036uoywsgs2i6xq",
+      "orderId": "cmqsgr6rp002xuoywdek4ql4u",
+      "provider": "BANK_TRANSFER",
+      "providerLabel": "Bank Transfer",
+      "providerConfiguration": {
+        "id": "cmqs081ep000euop8jb0i0k01",
+        "code": "BANK_TRANSFER",
+        "displayName": "Bank Transfer",
+        "isActive": true,
+        "priority": 100,
+        "supportsReceipts": true,
+        "supportsRefunds": false,
+        "supportsWebhooks": false,
+        "supportedCurrencies": [
+          "EUR",
+          "IRR",
+          "TOMAN"
+        ],
+        "settings": null,
+        "createdAt": "2026-06-24T11:42:58.850Z",
+        "updatedAt": "2026-06-24T19:25:49.036Z"
+      },
+      "status": "PAID",
+      "statusLabel": "PAID",
+      "kind": "CHARGE",
+      "currency": "EUR",
+      "displayCurrency": "TOMAN",
+      "amount": 78.12,
+      "exchangeRate": 184000,
+      "paymentReference": "SPRINT8-APPROVE-1782329124176",
+      "receiptUrl": "http://127.0.0.1:4002/uploads/payments/receipts/payment-cmqsgr6t90036uoywsgs2i6xq-1782329147056.png",
+      "receiptFileName": "receipt-image.png",
+      "receiptMimeType": "image/png",
+      "receiptUploadedAt": "2026-06-24T19:25:47.060Z",
+      "customerNotes": "Sprint 8 approved receipt",
+      "internalNotes": "Approved during Sprint 8 verification",
+      "reviewRequestedAt": "2026-06-24T19:25:47.060Z",
+      "approvedAt": "2026-06-24T19:25:48.852Z",
+      "rejectedAt": null,
+      "processedAt": "2026-06-24T19:25:50.583Z",
+      "metadata": {
+        "paymentMethodLabel": "Bank Transfer"
+      },
+      "order": {
+        "id": "cmqsgr6rp002xuoywdek4ql4u",
+        "orderNumber": "OH-1782329146115",
+        "customerEmail": "sprint8.customer.1782329124176@outlethub.local",
+        "status": "PAYMENT_APPROVED",
+        "totalAmount": 78.12,
+        "currency": "EUR"
+      },
+      "transactions": [
+        {
+          "id": "cmqsgra7s003puoywlf06f09c",
+          "provider": "BANK_TRANSFER",
+          "status": "PAID",
+          "kind": "CHARGE",
+          "amount": 78.12,
+          "currency": "EUR",
+          "exchangeRate": 184000,
+          "externalReference": "SPRINT8-APPROVE-1782329124176",
+          "externalTransactionId": null,
+          "createdAt": "2026-06-24T19:25:50.585Z",
+          "updatedAt": "2026-06-24T19:25:50.585Z"
+        },
+        {
+          "id": "cmqsgr8vq003guoywpnm6qyf4",
+          "provider": "BANK_TRANSFER",
+          "status": "PAYMENT_APPROVED",
+          "kind": "CHARGE",
+          "amount": 78.12,
+          "currency": "EUR",
+          "exchangeRate": 184000,
+          "externalReference": "SPRINT8-APPROVE-1782329124176",
+          "externalTransactionId": null,
+          "createdAt": "2026-06-24T19:25:48.854Z",
+          "updatedAt": "2026-06-24T19:25:48.854Z"
+        },
+        {
+          "id": "cmqsgr7hy003cuoywjh22og5t",
+          "provider": "BANK_TRANSFER",
+          "status": "PAYMENT_PENDING_REVIEW",
+          "kind": "CHARGE",
+          "amount": 78.12,
+          "currency": "EUR",
+          "exchangeRate": 184000,
+          "externalReference": "SPRINT8-APPROVE-1782329124176",
+          "externalTransactionId": null,
+          "createdAt": "2026-06-24T19:25:47.062Z",
+          "updatedAt": "2026-06-24T19:25:47.062Z"
+        },
+        {
+          "id": "cmqsgr6t90038uoywmtbe612n",
+          "provider": "BANK_TRANSFER",
+          "status": "PAYMENT_PENDING",
+          "kind": "CHARGE",
+          "amount": 78.12,
+          "currency": "EUR",
+          "exchangeRate": 184000,
+          "externalReference": "BT-DEK4QL4U",
+          "externalTransactionId": null,
+          "createdAt": "2026-06-24T19:25:46.174Z",
+          "updatedAt": "2026-06-24T19:25:46.174Z"
+        }
+      ],
+      "refunds": [],
+      "auditLogs": [
+        {
+          "id": "cmqsgra7s003ruoywre9lhwsc",
+          "action": "PAYMENT_COMPLETED",
+          "fromStatus": "PAYMENT_APPROVED",
+          "toStatus": "PAID",
+          "notes": "Approved during Sprint 8 verification",
+          "metadata": {
+            "approvedAt": "2026-06-24T19:25:48.852Z",
+            "approvalNotes": "Approved during Sprint 8 verification",
+            "paymentMethod": "BANK_TRANSFER"
+          },
+          "actorUser": {
+            "id": "cmqo370wo0004uotkhoddtvzk",
+            "email": "admin@outlethub.local"
+          },
+          "createdAt": "2026-06-24T19:25:50.585Z"
+        },
+        {
+          "id": "cmqsgr8vq003iuoywlumi87s3",
+          "action": "PAYMENT_APPROVED",
+          "fromStatus": "PAYMENT_PENDING_REVIEW",
+          "toStatus": "PAYMENT_APPROVED",
+          "notes": "Approved during Sprint 8 verification",
+          "metadata": {
+            "approvedAt": "2026-06-24T19:25:48.852Z",
+            "rejectedAt": null,
+            "paymentMethod": "BANK_TRANSFER"
+          },
+          "actorUser": {
+            "id": "cmqo370wo0004uotkhoddtvzk",
+            "email": "admin@outlethub.local"
+          },
+          "createdAt": "2026-06-24T19:25:48.854Z"
+        },
+        {
+          "id": "cmqsgr7hy003euoywyasplgfv",
+          "action": "PAYMENT_RECEIPT_UPLOADED",
+          "fromStatus": "PAYMENT_PENDING",
+          "toStatus": "PAYMENT_PENDING_REVIEW",
+          "notes": "Sprint 8 approved receipt",
+          "metadata": null,
+          "actorUser": {
+            "id": "cmqsgqq69001vuoywjz4t5v53",
+            "email": "sprint8.customer.1782329124176@outlethub.local"
+          },
+          "createdAt": "2026-06-24T19:25:47.062Z"
+        },
+        {
+          "id": "cmqsgr6t9003auoyw4ch4ab06",
+          "action": "PAYMENT_INITIALIZED",
+          "fromStatus": null,
+          "toStatus": "PAYMENT_PENDING",
+          "notes": "Initialized via Bank Transfer.",
+          "metadata": {
+            "provider": "BANK_TRANSFER"
+          },
+          "actorUser": {
+            "id": "cmqsgqq69001vuoywjz4t5v53",
+            "email": "sprint8.customer.1782329124176@outlethub.local"
+          },
+          "createdAt": "2026-06-24T19:25:46.174Z"
+        }
+      ],
+      "createdAt": "2026-06-24T19:25:46.174Z",
+      "updatedAt": "2026-06-24T19:25:50.585Z"
+    },
+    "finalPayment": {
+      "id": "cmqsgr6t90036uoywsgs2i6xq",
+      "status": "PAID",
+      "approvedAt": "2026-06-24T19:25:48.852Z",
+      "rejectedAt": null,
+      "processedAt": "2026-06-24T19:25:50.583Z",
+      "internalNotes": "Approved during Sprint 8 verification",
+      "orderStatus": "PAID",
+      "orderNumber": "OH-1782329146115",
+      "reviewerUser": "admin@outlethub.local",
+      "latestAuditAction": "PAYMENT_COMPLETED",
+      "latestAuditToStatus": "PAID",
+      "transitionHistory": [
+        {
+          "action": "PAYMENT_COMPLETED",
+          "fromStatus": "PAYMENT_APPROVED",
+          "toStatus": "PAID",
+          "notes": "Approved during Sprint 8 verification",
+          "actorUser": "admin@outlethub.local",
+          "createdAt": "2026-06-24T19:25:50.585Z"
+        },
+        {
+          "action": "PAYMENT_APPROVED",
+          "fromStatus": "PAYMENT_PENDING_REVIEW",
+          "toStatus": "PAYMENT_APPROVED",
+          "notes": "Approved during Sprint 8 verification",
+          "actorUser": "admin@outlethub.local",
+          "createdAt": "2026-06-24T19:25:48.854Z"
+        },
+        {
+          "action": "PAYMENT_RECEIPT_UPLOADED",
+          "fromStatus": "PAYMENT_PENDING",
+          "toStatus": "PAYMENT_PENDING_REVIEW",
+          "notes": "Sprint 8 approved receipt",
+          "actorUser": "sprint8.customer.1782329124176@outlethub.local",
+          "createdAt": "2026-06-24T19:25:47.062Z"
+        },
+        {
+          "action": "PAYMENT_INITIALIZED",
+          "fromStatus": null,
+          "toStatus": "PAYMENT_PENDING",
+          "notes": "Initialized via Bank Transfer.",
+          "actorUser": "sprint8.customer.1782329124176@outlethub.local",
+          "createdAt": "2026-06-24T19:25:46.174Z"
+        }
+      ]
+    }
+  },
+  "rejectedFlow": {
+    "order": {
+      "id": "cmqsgrfld0047uoywd6iaelwx",
+      "orderNumber": "OH-1782329157551",
+      "status": "PENDING",
+      "customerName": "Sprint 8 Customer",
+      "customerEmail": "sprint8.customer.1782329124176@outlethub.local",
+      "supplierSubtotal": 24.95,
+      "subtotal": 76.78,
+      "shippingAmount": 25,
+      "handlingAmount": 1.99,
+      "paymentFeeAmount": 1.49,
+      "taxAmount": 24.21,
+      "totalAmount": 129.47,
+      "customerPaid": 129.47,
+      "profitAmount": 37.47,
+      "currency": "EUR",
+      "displayCurrency": "TOMAN",
+      "exchangeRateSnapshot": {
+        "rate": 184000,
+        "baseCurrency": "EUR",
+        "quoteCurrency": "TOMAN",
+        "originalAmount": 1,
+        "convertedAmount": 184000
+      },
+      "paymentProvider": "BANK_TRANSFER",
+      "paymentMethodLabel": "Bank Transfer",
+      "trackingNumber": null,
+      "notes": null,
+      "internalNotes": null,
+      "refundedAmount": 0,
+      "totalWeightKg": 1,
+      "createdAt": "2026-06-24T19:25:57.553Z",
+      "updatedAt": "2026-06-24T19:25:57.553Z",
+      "shippedAt": null,
+      "deliveredAt": null,
+      "purchasedAt": null,
+      "refundedAt": null,
+      "customerAddress": {
+        "id": "cmqsgr3i0002luoyw8c4x3jws",
+        "fullName": "Sprint 8 Customer",
+        "phone": "+989121234567",
+        "countryCode": "IR",
+        "city": "Tehran",
+        "postalCode": "1599814713",
+        "addressLine1": "Valiasr Street, No. 100",
+        "addressLine2": "Unit 12"
+      },
+      "billingAddress": {
+        "id": "cmqsgr3i0002luoyw8c4x3jws",
+        "fullName": "Sprint 8 Customer",
+        "phone": "+989121234567",
+        "countryCode": "IR",
+        "city": "Tehran",
+        "postalCode": "1599814713",
+        "addressLine1": "Valiasr Street, No. 100",
+        "addressLine2": "Unit 12"
+      },
+      "shippingMethod": {
+        "id": "cmqqh56xs0006uopsjad67rqz",
+        "name": "Portugal to Iran 0-1kg",
+        "countryCode": "IR",
+        "originCountryCode": "PT",
+        "minWeightKg": 0,
+        "maxWeightKg": 1,
+        "minDeliveryDays": 6,
+        "maxDeliveryDays": 10,
+        "deliveryEstimate": "International delivery to Iran",
+        "baseFee": 25
+      },
+      "items": [
+        {
+          "id": "cmqsgrfld0049uoywqwq8nnca",
+          "productId": "cmqrplxmn007juoqcrh6n0dya",
+          "title": "Tenda Tipo Cúpula Para 2 Pessoas Aktive Sport Camping",
+          "brandName": "Aktive",
+          "size": null,
+          "color": null,
+          "quantity": 1,
+          "supplierCost": 24.95,
+          "customerPaid": 76.78,
+          "profitAmount": 37.47,
+          "unitPrice": 76.78,
+          "totalPrice": 76.78,
+          "imageUrl": "https://resize.sprintercdn.com/f/512x512/products/e7843ffcd94a4bdfa084eb1523b3d1db/tienda-iglu-dome-2-personas-aktive-sport_e7843ffcd94a4bdfa084eb1523b3d1db_52973665.jpg",
+          "sourceUrl": "https://www.sprintersports.com/pt/tenda-tipo-cupula-para-2-pessoas-aktive-sport-camping-mk0000912",
+          "sourceStore": "Aktive",
+          "currency": "EUR"
+        }
+      ]
+    },
+    "initialPayment": {
+      "id": "cmqsgrfma004guoywzkvf9rjr",
+      "orderId": "cmqsgrfld0047uoywd6iaelwx",
+      "provider": "BANK_TRANSFER",
+      "providerLabel": "Bank Transfer",
+      "providerConfiguration": {
+        "id": "cmqs081ep000euop8jb0i0k01",
+        "code": "BANK_TRANSFER",
+        "displayName": "Bank Transfer",
+        "isActive": true,
+        "priority": 100,
+        "supportsReceipts": true,
+        "supportsRefunds": false,
+        "supportsWebhooks": false,
+        "supportedCurrencies": [
+          "EUR",
+          "IRR",
+          "TOMAN"
+        ],
+        "settings": null,
+        "createdAt": "2026-06-24T11:42:58.850Z",
+        "updatedAt": "2026-06-24T19:25:57.568Z"
+      },
+      "status": "PAYMENT_PENDING_REVIEW",
+      "statusLabel": "PAYMENT PENDING REVIEW",
+      "kind": "CHARGE",
+      "currency": "EUR",
+      "displayCurrency": "TOMAN",
+      "amount": 129.47,
+      "exchangeRate": 184000,
+      "paymentReference": "SPRINT8-REJECT-1782329124176",
+      "receiptUrl": "http://127.0.0.1:4002/uploads/payments/receipts/payment-cmqsgrfma004guoywzkvf9rjr-1782329158435.pdf",
+      "receiptFileName": "receipt-document.pdf",
+      "receiptMimeType": "application/pdf",
+      "receiptUploadedAt": "2026-06-24T19:25:58.441Z",
+      "customerNotes": "Sprint 8 rejected receipt",
+      "internalNotes": null,
+      "reviewRequestedAt": "2026-06-24T19:25:58.441Z",
+      "approvedAt": null,
+      "rejectedAt": null,
+      "processedAt": null,
+      "metadata": {
+        "paymentMethodLabel": "Bank Transfer"
+      },
+      "order": {
+        "id": "cmqsgrfld0047uoywd6iaelwx",
+        "orderNumber": "OH-1782329157551",
+        "customerEmail": "sprint8.customer.1782329124176@outlethub.local",
+        "status": "PENDING",
+        "totalAmount": 129.47,
+        "currency": "EUR"
+      },
+      "transactions": [
+        {
+          "id": "cmqsgrga3004muoyw2afy9xuv",
+          "provider": "BANK_TRANSFER",
+          "status": "PAYMENT_PENDING_REVIEW",
+          "kind": "CHARGE",
+          "amount": 129.47,
+          "currency": "EUR",
+          "exchangeRate": 184000,
+          "externalReference": "SPRINT8-REJECT-1782329124176",
+          "externalTransactionId": null,
+          "createdAt": "2026-06-24T19:25:58.443Z",
+          "updatedAt": "2026-06-24T19:25:58.443Z"
+        },
+        {
+          "id": "cmqsgrfma004iuoyw4q3kknsc",
+          "provider": "BANK_TRANSFER",
+          "status": "PAYMENT_PENDING",
+          "kind": "CHARGE",
+          "amount": 129.47,
+          "currency": "EUR",
+          "exchangeRate": 184000,
+          "externalReference": "BT-D6IAELWX",
+          "externalTransactionId": null,
+          "createdAt": "2026-06-24T19:25:57.586Z",
+          "updatedAt": "2026-06-24T19:25:57.586Z"
+        }
+      ],
+      "refunds": [],
+      "auditLogs": [
+        {
+          "id": "cmqsgrga3004ouoywss5hn0mz",
+          "action": "PAYMENT_RECEIPT_UPLOADED",
+          "fromStatus": "PAYMENT_PENDING",
+          "toStatus": "PAYMENT_PENDING_REVIEW",
+          "notes": "Sprint 8 rejected receipt",
+          "metadata": null,
+          "actorUser": {
+            "id": "cmqsgqq69001vuoywjz4t5v53",
+            "email": "sprint8.customer.1782329124176@outlethub.local"
+          },
+          "createdAt": "2026-06-24T19:25:58.443Z"
+        },
+        {
+          "id": "cmqsgrfma004kuoywzja2k076",
+          "action": "PAYMENT_INITIALIZED",
+          "fromStatus": null,
+          "toStatus": "PAYMENT_PENDING",
+          "notes": "Initialized via Bank Transfer.",
+          "metadata": {
+            "provider": "BANK_TRANSFER"
+          },
+          "actorUser": {
+            "id": "cmqsgqq69001vuoywjz4t5v53",
+            "email": "sprint8.customer.1782329124176@outlethub.local"
+          },
+          "createdAt": "2026-06-24T19:25:57.586Z"
+        }
+      ],
+      "createdAt": "2026-06-24T19:25:57.586Z",
+      "updatedAt": "2026-06-24T19:25:58.443Z"
+    },
+    "reviewResponse": {
+      "id": "cmqsgrfma004guoywzkvf9rjr",
+      "orderId": "cmqsgrfld0047uoywd6iaelwx",
+      "provider": "BANK_TRANSFER",
+      "providerLabel": "Bank Transfer",
+      "providerConfiguration": {
+        "id": "cmqs081ep000euop8jb0i0k01",
+        "code": "BANK_TRANSFER",
+        "displayName": "Bank Transfer",
+        "isActive": true,
+        "priority": 100,
+        "supportsReceipts": true,
+        "supportsRefunds": false,
+        "supportsWebhooks": false,
+        "supportedCurrencies": [
+          "EUR",
+          "IRR",
+          "TOMAN"
+        ],
+        "settings": null,
+        "createdAt": "2026-06-24T11:42:58.850Z",
+        "updatedAt": "2026-06-24T19:25:57.568Z"
+      },
+      "status": "PAYMENT_REJECTED",
+      "statusLabel": "PAYMENT REJECTED",
+      "kind": "CHARGE",
+      "currency": "EUR",
+      "displayCurrency": "TOMAN",
+      "amount": 129.47,
+      "exchangeRate": 184000,
+      "paymentReference": "SPRINT8-REJECT-1782329124176",
+      "receiptUrl": "http://127.0.0.1:4002/uploads/payments/receipts/payment-cmqsgrfma004guoywzkvf9rjr-1782329158435.pdf",
+      "receiptFileName": "receipt-document.pdf",
+      "receiptMimeType": "application/pdf",
+      "receiptUploadedAt": "2026-06-24T19:25:58.441Z",
+      "customerNotes": "Sprint 8 rejected receipt",
+      "internalNotes": "Rejected during Sprint 8 verification",
+      "reviewRequestedAt": "2026-06-24T19:25:58.441Z",
+      "approvedAt": null,
+      "rejectedAt": "2026-06-24T19:25:59.367Z",
+      "processedAt": "2026-06-24T19:25:59.367Z",
+      "metadata": {
+        "paymentMethodLabel": "Bank Transfer"
+      },
+      "order": {
+        "id": "cmqsgrfld0047uoywd6iaelwx",
+        "orderNumber": "OH-1782329157551",
+        "customerEmail": "sprint8.customer.1782329124176@outlethub.local",
+        "status": "PENDING",
+        "totalAmount": 129.47,
+        "currency": "EUR"
+      },
+      "transactions": [
+        {
+          "id": "cmqsgrgzu004quoywpbgytbaq",
+          "provider": "BANK_TRANSFER",
+          "status": "PAYMENT_REJECTED",
+          "kind": "CHARGE",
+          "amount": 129.47,
+          "currency": "EUR",
+          "exchangeRate": 184000,
+          "externalReference": "SPRINT8-REJECT-1782329124176",
+          "externalTransactionId": null,
+          "createdAt": "2026-06-24T19:25:59.370Z",
+          "updatedAt": "2026-06-24T19:25:59.370Z"
+        },
+        {
+          "id": "cmqsgrga3004muoyw2afy9xuv",
+          "provider": "BANK_TRANSFER",
+          "status": "PAYMENT_PENDING_REVIEW",
+          "kind": "CHARGE",
+          "amount": 129.47,
+          "currency": "EUR",
+          "exchangeRate": 184000,
+          "externalReference": "SPRINT8-REJECT-1782329124176",
+          "externalTransactionId": null,
+          "createdAt": "2026-06-24T19:25:58.443Z",
+          "updatedAt": "2026-06-24T19:25:58.443Z"
+        },
+        {
+          "id": "cmqsgrfma004iuoyw4q3kknsc",
+          "provider": "BANK_TRANSFER",
+          "status": "PAYMENT_PENDING",
+          "kind": "CHARGE",
+          "amount": 129.47,
+          "currency": "EUR",
+          "exchangeRate": 184000,
+          "externalReference": "BT-D6IAELWX",
+          "externalTransactionId": null,
+          "createdAt": "2026-06-24T19:25:57.586Z",
+          "updatedAt": "2026-06-24T19:25:57.586Z"
+        }
+      ],
+      "refunds": [],
+      "auditLogs": [
+        {
+          "id": "cmqsgrgzu004suoywae50ot5o",
+          "action": "PAYMENT_REJECTED",
+          "fromStatus": "PAYMENT_PENDING_REVIEW",
+          "toStatus": "PAYMENT_REJECTED",
+          "notes": "Rejected during Sprint 8 verification",
+          "metadata": {
+            "approvedAt": null,
+            "rejectedAt": "2026-06-24T19:25:59.367Z",
+            "paymentMethod": "BANK_TRANSFER"
+          },
+          "actorUser": {
+            "id": "cmqo370wo0004uotkhoddtvzk",
+            "email": "admin@outlethub.local"
+          },
+          "createdAt": "2026-06-24T19:25:59.370Z"
+        },
+        {
+          "id": "cmqsgrga3004ouoywss5hn0mz",
+          "action": "PAYMENT_RECEIPT_UPLOADED",
+          "fromStatus": "PAYMENT_PENDING",
+          "toStatus": "PAYMENT_PENDING_REVIEW",
+          "notes": "Sprint 8 rejected receipt",
+          "metadata": null,
+          "actorUser": {
+            "id": "cmqsgqq69001vuoywjz4t5v53",
+            "email": "sprint8.customer.1782329124176@outlethub.local"
+          },
+          "createdAt": "2026-06-24T19:25:58.443Z"
+        },
+        {
+          "id": "cmqsgrfma004kuoywzja2k076",
+          "action": "PAYMENT_INITIALIZED",
+          "fromStatus": null,
+          "toStatus": "PAYMENT_PENDING",
+          "notes": "Initialized via Bank Transfer.",
+          "metadata": {
+            "provider": "BANK_TRANSFER"
+          },
+          "actorUser": {
+            "id": "cmqsgqq69001vuoywjz4t5v53",
+            "email": "sprint8.customer.1782329124176@outlethub.local"
+          },
+          "createdAt": "2026-06-24T19:25:57.586Z"
+        }
+      ],
+      "createdAt": "2026-06-24T19:25:57.586Z",
+      "updatedAt": "2026-06-24T19:25:59.370Z"
+    },
+    "finalPayment": {
+      "id": "cmqsgrfma004guoywzkvf9rjr",
+      "status": "PAYMENT_REJECTED",
+      "approvedAt": null,
+      "rejectedAt": "2026-06-24T19:25:59.367Z",
+      "processedAt": "2026-06-24T19:25:59.367Z",
+      "internalNotes": "Rejected during Sprint 8 verification",
+      "orderStatus": "PENDING",
+      "orderNumber": "OH-1782329157551",
+      "reviewerUser": "admin@outlethub.local",
+      "latestAuditAction": "PAYMENT_REJECTED",
+      "latestAuditToStatus": "PAYMENT_REJECTED"
+    },
+    "receiptDownload": {
+      "url": "http://127.0.0.1:4002/uploads/payments/receipts/payment-cmqsgrfma004guoywzkvf9rjr-1782329158435.pdf",
+      "status": 200,
+      "contentType": "application/pdf",
+      "sizeBytes": 593
+    }
+  }
+}

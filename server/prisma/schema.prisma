@@ -1,0 +1,1899 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum RoleCode {
+  SUPER_ADMIN
+  ADMIN
+  CUSTOMER
+}
+
+enum UserStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  DELETED
+}
+
+enum ProductStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+enum ProductSource {
+  MANUAL
+  IMPORT
+  AWIN
+  CJ
+  SCRAPER
+}
+
+enum StockStatus {
+  IN_STOCK
+  LOW_STOCK
+  OUT_OF_STOCK
+  UNKNOWN
+}
+
+enum DealLevel {
+  NONE
+  GOOD
+  HOT
+  FEATURED
+}
+
+enum SyncFrequency {
+  MANUAL
+  HOURLY
+  EVERY_6_HOURS
+  DAILY
+  WEEKLY
+}
+
+enum ImportSourceType {
+  MANUAL
+  JSON_FEED
+  XML_FEED
+  SCRAPER
+  AWIN
+  CJ
+}
+
+enum BrandSourceType {
+  PLAYWRIGHT
+  JSON_FEED
+  XML_FEED
+  MANUAL_IMPORT
+}
+
+enum BrandSourceStatus {
+  ACTIVE
+  DISABLED
+  ERROR
+}
+
+enum ImportSourceStatus {
+  ACTIVE
+  DISABLED
+  ERROR
+}
+
+enum ImportJobStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+enum ImportLogLevel {
+  INFO
+  WARN
+  ERROR
+}
+
+enum ScraperType {
+  PLAYWRIGHT
+  PUPPETEER
+}
+
+enum ScraperStatus {
+  ACTIVE
+  DISABLED
+  ERROR
+}
+
+enum ScraperRunStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+enum ConnectorRunStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+enum ImportProductResultStatus {
+  NEW
+  UPDATED
+  UNCHANGED
+  FAILED
+}
+
+enum ImportFailureReason {
+  MISSING_NAME
+  MISSING_PRICE
+  MISSING_IMAGE
+  INVALID_URL
+  INVALID_BRAND
+  MISSING_BRAND
+  MISSING_CATEGORY
+  NORMALIZATION_ERROR
+  RULE_REJECTED
+  UPSERT_ERROR
+  UNKNOWN
+}
+
+enum ScraperArtifactType {
+  SCREENSHOT
+  HTML_DUMP
+  JSON_DUMP
+}
+
+enum SyncRunStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+enum AlertType {
+  PRICE_DROP
+  PRICE_INCREASE
+  STOCK_CHANGE
+  SYNC_FAILURE
+  SCRAPER_FAILURE
+}
+
+enum AlertSeverity {
+  INFO
+  WARNING
+  CRITICAL
+}
+
+enum IntegrationType {
+  AWIN
+  CJ
+}
+
+enum IntegrationStatus {
+  CONNECTED
+  DISCONNECTED
+  ERROR
+}
+
+enum OrderStatus {
+  PENDING
+  PAYMENT_APPROVED
+  PAID
+  PROCESSING
+  PURCHASED_FROM_SUPPLIER
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  REFUNDED
+}
+
+enum ProcurementStatus {
+  PURCHASE_REQUIRED
+  PURCHASED_FROM_SUPPLIER
+  RECEIVED_AT_WAREHOUSE
+  READY_TO_SHIP
+}
+
+enum PaymentProvider {
+  BANK_TRANSFER
+  STRIPE
+  PAYPAL
+  MB_WAY
+  MULTIBANCO
+  MANUAL
+}
+
+enum PaymentKind {
+  CHARGE
+  REFUND
+}
+
+enum PaymentStatus {
+  PAYMENT_PENDING_REVIEW
+  PAYMENT_APPROVED
+  PAYMENT_REJECTED
+  PAYMENT_PENDING
+  AUTHORIZED
+  PAID
+  PENDING
+  REQUIRES_ACTION
+  SUCCEEDED
+  FAILED
+  CANCELLED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+enum AlertStatus {
+  ACTIVE
+  TRIGGERED
+  EXPIRED
+}
+
+enum NotificationType {
+  PRICE_ALERT
+  ORDER_UPDATE
+  PAYMENT_UPDATE
+  PROCUREMENT_UPDATE
+  SHIPPING_UPDATE
+  ADMIN_OPERATIONAL
+  MARKETING
+  SYSTEM
+}
+
+enum NotificationStatus {
+  UNREAD
+  READ
+  ARCHIVED
+}
+
+enum NotificationChannelCode {
+  EMAIL
+  IN_APP
+  ADMIN_OPERATIONAL
+  SMS
+  WHATSAPP
+  TELEGRAM
+  PUSH_NOTIFICATION
+}
+
+enum NotificationDeliveryState {
+  PENDING
+  QUEUED
+  SENT
+  DELIVERED
+  OPENED
+  FAILED
+  SKIPPED
+}
+
+enum NotificationEventSource {
+  AUTH
+  ORDERS
+  PAYMENTS
+  PROCUREMENT
+  SHIPPING
+  IMPORTS
+  MONITORING
+  CONNECTORS
+  SYSTEM
+  MARKETING
+}
+
+enum NotificationCategory {
+  ORDERS
+  PAYMENTS
+  SHIPPING
+  PROCUREMENT
+  SYSTEM
+  MARKETING
+  IMPORTS
+  MONITORING
+  CONNECTORS
+  OPERATIONS
+}
+
+enum NotificationPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum AuditActorType {
+  USER
+  SYSTEM
+  JOB
+}
+
+enum PricingTargetType {
+  GLOBAL
+  BRAND
+  CATEGORY
+}
+
+enum CartType {
+  GUEST
+  USER
+}
+
+enum ReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model Role {
+  id          String    @id @default(cuid())
+  code        RoleCode  @unique
+  name        String    @unique
+  description String?
+  users       User[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model User {
+  id                  String                  @id @default(cuid())
+  roleId              String
+  email               String                  @unique
+  passwordHash        String?
+  fullName            String?
+  firstName           String?
+  lastName            String?
+  phone               String?
+  avatarUrl           String?
+  avatarPublicId      String?
+  preferredCurrency   String                  @default("EUR")
+  status              UserStatus              @default(PENDING)
+  emailVerified       Boolean                 @default(false)
+  emailVerifiedAt     DateTime?
+  stripeCustomerId    String?                 @unique
+  lastLoginAt         DateTime?
+  notificationPreference NotificationPreference?
+  role                Role                    @relation(fields: [roleId], references: [id])
+  refreshTokens       RefreshToken[]
+  emailTokens         EmailVerificationToken[]
+  passwordResetTokens PasswordResetToken[]
+  wishlistItems       Wishlist[]
+  addresses           Address[]
+  customerAddresses   CustomerAddress[]
+  carts               Cart[]
+  orders              Order[]
+  payments            Payment[]
+  updatedExchangeRates ExchangeRate[]         @relation("ExchangeRateUpdatedBy")
+  paymentAuditLogs    PaymentAuditLog[]
+  notifications       Notification[]
+  notificationEvents  NotificationEvent[]     @relation("NotificationEventActor")
+  receivedNotificationEvents NotificationEvent[] @relation("NotificationEventTarget")
+  notificationAudits  NotificationAudit[]
+  notificationTemplates NotificationTemplate[] @relation("NotificationTemplateCreatedBy")
+  notificationTemplateVersions NotificationTemplateVersion[] @relation("NotificationTemplateVersionCreatedBy")
+  priceAlerts         PriceAlert[]
+  reviews             Review[]
+  auditLogs           AuditLog[]
+  createdAt           DateTime                @default(now())
+  updatedAt           DateTime                @updatedAt
+
+  @@index([roleId])
+  @@index([status])
+}
+
+model RefreshToken {
+  id             String   @id @default(cuid())
+  userId         String
+  tokenHash      String   @unique
+  expiresAt      DateTime
+  revokedAt      DateTime?
+  replacedByHash String?
+  userAgent      String?
+  ipAddress      String?
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt      DateTime @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model EmailVerificationToken {
+  id         String   @id @default(cuid())
+  userId     String
+  tokenHash  String   @unique
+  expiresAt  DateTime
+  verifiedAt DateTime?
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model PasswordResetToken {
+  id         String   @id @default(cuid())
+  userId     String
+  tokenHash  String   @unique
+  expiresAt  DateTime
+  usedAt     DateTime?
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model Brand {
+  id                String        @id @default(cuid())
+  name              String        @unique
+  slug              String        @unique
+  logo              String?       @map("logoUrl")
+  cloudinaryPublicId String?      @map("logoPublicId")
+  description       String?
+  website           String?
+  isActive          Boolean       @default(true)
+  marginPercent     Decimal?      @db.Decimal(5, 2)
+  isLuxury          Boolean       @default(false)
+  isFeatured        Boolean       @default(false)
+  products          Product[]
+  pricingRules      PricingRule[]
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  @@index([isActive])
+}
+
+model Category {
+  id           String       @id @default(cuid())
+  name         String
+  slug         String       @unique
+  description  String?
+  icon         String?
+  parentId     String?
+  sortOrder    Int          @default(0)
+  parent       Category?    @relation("CategoryTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children     Category[]   @relation("CategoryTree")
+  products     Product[]
+  pricingRules PricingRule[]
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@unique([name, parentId])
+  @@index([parentId])
+}
+
+model Product {
+  id              String         @id @default(cuid())
+  brandId         String
+  categoryId      String
+  importSourceId  String?
+  slug            String         @unique
+  sourceProductId String?        @map("externalId")
+  sku             String         @unique
+  name            String         @map("title")
+  description     String?
+  oldPrice        Decimal?       @db.Decimal(10, 2) @map("originalPrice")
+  outletPrice     Decimal?       @db.Decimal(10, 2)
+  supplierPrice   Decimal?       @db.Decimal(10, 2)
+  price           Decimal        @db.Decimal(10, 2) @map("finalPrice")
+  customPrice     Decimal?       @db.Decimal(10, 2)
+  profitAmount    Decimal?       @db.Decimal(10, 2)
+  discountPercent Int?           @default(0)
+  currency        String         @default("USD")
+  marginPercent   Decimal?       @db.Decimal(5, 2)
+  stock           Int            @default(0)
+  stockStatus     StockStatus    @default(UNKNOWN)
+  status          ProductStatus  @default(DRAFT)
+  dealLevel       DealLevel      @default(NONE)
+  contentHash     String?
+  isFeatured      Boolean        @default(false)
+  isTrending      Boolean        @default(false)
+  useCustomPricing Boolean       @default(false)
+  sourceType      ProductSource  @default(MANUAL) @map("source")
+  sourceUrl       String?
+  sourceStore     String?
+  gender          String?
+  material        String?
+  sizes           String[]
+  colors          String[]
+  views           Int            @default(0)
+  purchases       Int            @default(0)
+  importedAt      DateTime?
+  lastSyncedAt    DateTime?
+  deletedAt       DateTime?
+  brand           Brand          @relation(fields: [brandId], references: [id])
+  category        Category       @relation(fields: [categoryId], references: [id])
+  importSource    ImportSource?  @relation(fields: [importSourceId], references: [id])
+  images          ProductImage[]
+  variants        ProductVariant[]
+  cartItems       CartItem[]
+  priceHistory    PriceHistory[]
+  priceChanges    PriceChange[]
+  stockChanges    StockChange[]
+  wishlistItems   Wishlist[]
+  priceAlerts     PriceAlert[]
+  orderItems      OrderItem[]
+  reviews         Review[]
+  importResults   ImportProductResult[]
+  procurementTasks ProcurementTask[]
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@index([brandId])
+  @@index([categoryId])
+  @@index([importSourceId])
+  @@index([status])
+  @@index([sku])
+  @@index([slug])
+  @@index([dealLevel])
+  @@index([contentHash])
+  @@index([isFeatured])
+  @@index([isTrending])
+  @@index([useCustomPricing])
+  @@index([deletedAt])
+  @@index([stockStatus])
+  @@index([lastSyncedAt])
+}
+
+model PriceChange {
+  id            String    @id @default(cuid())
+  productId     String
+  oldPrice      Decimal?  @db.Decimal(10, 2)
+  newPrice      Decimal   @db.Decimal(10, 2)
+  changePercent Decimal   @db.Decimal(8, 2)
+  detectedAt    DateTime  @default(now())
+  product       Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@index([detectedAt])
+}
+
+model StockChange {
+  id         String      @id @default(cuid())
+  productId  String
+  oldStatus  StockStatus
+  newStatus  StockStatus
+  detectedAt DateTime    @default(now())
+  product    Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@index([detectedAt])
+}
+
+model ProductImage {
+  id                 String   @id @default(cuid())
+  productId          String
+  imageUrl           String   @map("url")
+  cloudinaryPublicId String?  @map("publicId")
+  altText            String?
+  sortOrder          Int      @default(0) @map("position")
+  width              Int?
+  height             Int?
+  format             String?
+  bytes              Int?
+  product            Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([productId])
+  @@unique([productId, sortOrder])
+}
+
+model ProductVariant {
+  id            String   @id @default(cuid())
+  productId     String
+  size          String?
+  color         String?
+  stockQuantity Int      @default(0)
+  product       Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  cartItems     CartItem[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([productId])
+  @@unique([productId, size, color])
+}
+
+model PriceHistory {
+  id              String     @id @default(cuid())
+  productId       String
+  importJobId     String?
+  oldPrice        Decimal?   @db.Decimal(10, 2) @map("originalPrice")
+  newPrice        Decimal    @db.Decimal(10, 2) @map("finalPrice")
+  discountPercent Int?
+  capturedAt      DateTime   @default(now())
+  product         Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  importJob       ImportJob? @relation(fields: [importJobId], references: [id], onDelete: SetNull)
+
+  @@index([productId, capturedAt])
+  @@index([importJobId])
+}
+
+model Wishlist {
+  id                 String   @id @default(cuid())
+  userId             String
+  productId          String
+  priceAtAdd         Decimal? @db.Decimal(10, 2)
+  originalPriceAtAdd Decimal? @db.Decimal(10, 2)
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product            Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt          DateTime @default(now())
+
+  @@unique([userId, productId])
+  @@index([userId])
+  @@index([productId])
+}
+
+model Address {
+  id         String   @id @default(cuid())
+  userId     String
+  label      String?
+  name       String
+  phone      String?
+  street     String
+  city       String
+  state      String?
+  postalCode String?
+  country    String
+  isDefault  Boolean  @default(false)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model CustomerAddress {
+  id               String   @id @default(cuid())
+  userId           String?
+  fullName         String
+  phone            String?
+  countryCode      String
+  city             String
+  postalCode       String
+  addressLine1     String
+  addressLine2     String?
+  isDefaultShipping Boolean @default(false)
+  isDefaultBilling Boolean @default(false)
+  user             User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  country          Country  @relation(fields: [countryCode], references: [code])
+  shippingOrders   Order[]  @relation("OrderShippingAddress")
+  billingOrders    Order[]  @relation("OrderBillingAddress")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([userId])
+  @@index([countryCode])
+}
+
+model Cart {
+  id                String       @id @default(cuid())
+  userId            String?
+  guestToken        String?      @unique
+  type              CartType     @default(GUEST)
+  currency          String       @default("EUR")
+  displayCurrency   String       @default("EUR")
+  countryCode       String
+  subtotalAmount    Decimal      @db.Decimal(10, 2) @default(0)
+  shippingAmount    Decimal      @db.Decimal(10, 2) @default(0)
+  handlingAmount    Decimal      @db.Decimal(10, 2) @default(0)
+  paymentFeeAmount  Decimal      @db.Decimal(10, 2) @default(0)
+  taxAmount         Decimal      @db.Decimal(10, 2) @default(0)
+  totalAmount       Decimal      @db.Decimal(10, 2) @default(0)
+  pricingRuleId     String?
+  shippingMethodId  String?
+  expiresAt         DateTime?
+  lastMergedAt      DateTime?
+  user              User?        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  country           Country      @relation(fields: [countryCode], references: [code])
+  pricingRule       PricingRule? @relation(fields: [pricingRuleId], references: [id], onDelete: SetNull)
+  shippingMethod    ShippingMethod? @relation(fields: [shippingMethodId], references: [id], onDelete: SetNull)
+  items             CartItem[]
+  orders            Order[]
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  @@index([userId])
+  @@index([countryCode])
+  @@index([pricingRuleId])
+  @@index([shippingMethodId])
+}
+
+model CartItem {
+  id               String   @id @default(cuid())
+  cartId           String
+  productId        String
+  variantId        String?
+  quantity         Int      @default(1)
+  currency         String   @default("EUR")
+  supplierCost     Decimal  @db.Decimal(10, 2)
+  customerPaid     Decimal  @db.Decimal(10, 2)
+  profitAmount     Decimal  @db.Decimal(10, 2)
+  snapshotTitle    String
+  snapshotBrand    String?
+  snapshotImageUrl String?
+  snapshotSourceUrl String?
+  cart             Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  product          Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variant          ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@unique([cartId, productId, variantId])
+  @@index([cartId])
+  @@index([productId])
+  @@index([variantId])
+}
+
+model Order {
+  id                      String       @id @default(cuid())
+  userId                  String
+  cartId                  String?
+  customerAddressId       String?
+  billingAddressId        String?
+  pricingRuleId           String?
+  shippingMethodId        String?
+  orderNumber             String       @unique
+  status                  OrderStatus  @default(PENDING)
+  customerName            String?
+  customerEmail           String
+  supplierSubtotal        Decimal      @db.Decimal(10, 2) @default(0)
+  subtotal                Decimal      @db.Decimal(10, 2)
+  shippingAmount          Decimal      @db.Decimal(10, 2)
+  handlingAmount          Decimal      @db.Decimal(10, 2) @default(0)
+  paymentFeeAmount        Decimal      @db.Decimal(10, 2) @default(0)
+  taxAmount               Decimal      @db.Decimal(10, 2)
+  profitAmount            Decimal      @db.Decimal(10, 2) @default(0)
+  customerPaid            Decimal      @db.Decimal(10, 2) @default(0)
+  totalAmount             Decimal      @db.Decimal(10, 2)
+  currency                String       @default("EUR")
+  displayCurrency         String       @default("EUR")
+  shippingAddress         Json
+  billingAddress          Json?
+  businessSettingsSnapshot Json?
+  pricingSnapshot         Json?
+  exchangeRateSnapshot    Json?
+  paymentProvider         PaymentProvider @default(MANUAL)
+  paymentMethodLabel      String?
+  trackingNumber          String?
+  carrier                 String?
+  trackingUrl             String?
+  estimatedDeliveryDate   DateTime?
+  shipmentNotes           String?
+  notes                   String?
+  internalNotes           String?
+  refundedAmount          Decimal      @db.Decimal(10, 2) @default(0)
+  totalWeightKg           Decimal      @db.Decimal(10, 2) @default(0)
+  stripeCheckoutSessionId String?      @unique
+  stripePaymentIntentId   String?      @unique
+  paidAt                  DateTime?
+  purchasedAt             DateTime?
+  shippedAt               DateTime?
+  deliveredAt             DateTime?
+  cancelledAt             DateTime?
+  refundedAt              DateTime?
+  user                    User         @relation(fields: [userId], references: [id])
+  cart                    Cart?        @relation(fields: [cartId], references: [id], onDelete: SetNull)
+  customerAddress         CustomerAddress? @relation("OrderShippingAddress", fields: [customerAddressId], references: [id], onDelete: SetNull)
+  billingAddressRef       CustomerAddress? @relation("OrderBillingAddress", fields: [billingAddressId], references: [id], onDelete: SetNull)
+  pricingRule             PricingRule? @relation(fields: [pricingRuleId], references: [id], onDelete: SetNull)
+  shippingMethod          ShippingMethod? @relation(fields: [shippingMethodId], references: [id], onDelete: SetNull)
+  items                   OrderItem[]
+  procurementTasks        ProcurementTask[]
+  payments                Payment[]
+  paymentTransactions     PaymentTransaction[]
+  paymentWebhooks         PaymentWebhook[]
+  paymentRefunds          PaymentRefund[]
+  notifications           Notification[]
+  notificationEvents      NotificationEvent[]
+  createdAt               DateTime     @default(now())
+  updatedAt               DateTime     @updatedAt
+
+  @@index([userId])
+  @@index([cartId])
+  @@index([customerAddressId])
+  @@index([billingAddressId])
+  @@index([pricingRuleId])
+  @@index([shippingMethodId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model OrderItem {
+  id         String   @id @default(cuid())
+  orderId    String
+  productId  String?
+  title      String
+  brandName  String?
+  size       String?
+  color      String?
+  quantity   Int
+  supplierCost Decimal @db.Decimal(10, 2) @default(0)
+  customerPaid Decimal @db.Decimal(10, 2) @default(0)
+  profitAmount Decimal @db.Decimal(10, 2) @default(0)
+  unitPrice  Decimal  @db.Decimal(10, 2)
+  totalPrice Decimal  @db.Decimal(10, 2)
+  imageUrl   String?
+  sourceUrl  String?
+  sourceStore String?
+  currency   String   @default("EUR")
+  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product    Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  procurementTask ProcurementTask?
+  createdAt  DateTime @default(now())
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+model ProcurementTask {
+  id                   String            @id @default(cuid())
+  orderId              String
+  orderItemId          String            @unique
+  productId            String?
+  brandSourceId        String?
+  status               ProcurementStatus @default(PURCHASE_REQUIRED)
+  supplierName         String?
+  sourceWebsite        String?
+  productUrl           String?
+  quantity             Int
+  currency             String            @default("EUR")
+  supplierPrice        Decimal           @db.Decimal(10, 2) @default(0)
+  shippingToPortugal   Decimal           @db.Decimal(10, 2) @default(0)
+  customsCost          Decimal           @db.Decimal(10, 2) @default(0)
+  totalProcurementCost Decimal           @db.Decimal(10, 2) @default(0)
+  expectedProfit       Decimal           @db.Decimal(10, 2) @default(0)
+  realProfit           Decimal           @db.Decimal(10, 2) @default(0)
+  actualMarginPercent  Decimal           @db.Decimal(8, 2) @default(0)
+  notes                String?
+  purchasedAt          DateTime?
+  receivedAtWarehouseAt DateTime?
+  readyToShipAt        DateTime?
+  order                Order             @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderItem            OrderItem         @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  product              Product?          @relation(fields: [productId], references: [id], onDelete: SetNull)
+  brandSource          BrandSource?      @relation(fields: [brandSourceId], references: [id], onDelete: SetNull)
+  notificationEvents   NotificationEvent[]
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+
+  @@index([orderId])
+  @@index([productId])
+  @@index([brandSourceId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model Payment {
+  id                      String          @id @default(cuid())
+  userId                  String
+  orderId                 String?
+  providerConfigurationId String?
+  provider                PaymentProvider @default(STRIPE)
+  kind                    PaymentKind     @default(CHARGE)
+  status                  PaymentStatus   @default(PENDING)
+  currency                String          @default("EUR")
+  displayCurrency         String          @default("EUR")
+  amount                  Decimal         @db.Decimal(10, 2)
+  exchangeRate            Decimal?        @db.Decimal(18, 6)
+  paymentReference        String?
+  stripePaymentIntentId   String?
+  stripeCheckoutSessionId String?
+  stripeChargeId          String?
+  stripeRefundId          String?
+  receiptUrl              String?
+  receiptPublicId         String?
+  receiptFileName         String?
+  receiptMimeType         String?
+  receiptUploadedAt       DateTime?
+  customerNotes           String?
+  internalNotes           String?
+  reviewRequestedAt       DateTime?
+  approvedAt              DateTime?
+  rejectedAt              DateTime?
+  metadata                Json?
+  processedAt             DateTime?
+  user                    User            @relation(fields: [userId], references: [id])
+  order                   Order?          @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  providerConfiguration   PaymentProviderConfig? @relation(fields: [providerConfigurationId], references: [id], onDelete: SetNull)
+  transactions            PaymentTransaction[]
+  webhooks                PaymentWebhook[]
+  refunds                 PaymentRefund[]
+  auditLogs               PaymentAuditLog[]
+  notifications           Notification[]
+  notificationEvents      NotificationEvent[]
+  createdAt               DateTime        @default(now())
+  updatedAt               DateTime        @updatedAt
+
+  @@index([userId])
+  @@index([orderId])
+  @@index([providerConfigurationId])
+  @@index([status])
+  @@index([kind])
+}
+
+model PaymentProviderConfig {
+  id                    String          @id @default(cuid())
+  code                  PaymentProvider @unique
+  displayName           String
+  isActive              Boolean         @default(true)
+  priority              Int             @default(0)
+  supportsReceipts      Boolean         @default(false)
+  supportsRefunds       Boolean         @default(false)
+  supportsWebhooks      Boolean         @default(false)
+  supportedCurrencies   Json?
+  settings              Json?
+  payments              Payment[]
+  transactions          PaymentTransaction[]
+  webhooks              PaymentWebhook[]
+  refunds               PaymentRefund[]
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+
+  @@index([isActive, priority])
+}
+
+model PaymentTransaction {
+  id                      String          @id @default(cuid())
+  paymentId               String
+  orderId                 String?
+  providerConfigurationId String?
+  provider                PaymentProvider
+  kind                    PaymentKind     @default(CHARGE)
+  status                  PaymentStatus   @default(PENDING)
+  currency                String          @default("EUR")
+  amount                  Decimal         @db.Decimal(10, 2)
+  exchangeRate            Decimal?        @db.Decimal(18, 6)
+  externalReference       String?
+  externalTransactionId   String?
+  providerResponse        Json?
+  metadata                Json?
+  authorizedAt            DateTime?
+  paidAt                  DateTime?
+  failedAt                DateTime?
+  payment                 Payment         @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  order                   Order?          @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  providerConfiguration   PaymentProviderConfig? @relation(fields: [providerConfigurationId], references: [id], onDelete: SetNull)
+  refunds                 PaymentRefund[]
+  createdAt               DateTime        @default(now())
+  updatedAt               DateTime        @updatedAt
+
+  @@index([paymentId])
+  @@index([orderId])
+  @@index([providerConfigurationId])
+  @@index([provider, status])
+}
+
+model PaymentWebhook {
+  id                      String          @id @default(cuid())
+  paymentId               String?
+  orderId                 String?
+  providerConfigurationId String?
+  provider                PaymentProvider
+  eventType               String
+  externalEventId         String?         @unique
+  status                  String          @default("RECEIVED")
+  payload                 Json
+  errorMessage            String?
+  receivedAt              DateTime        @default(now())
+  processedAt             DateTime?
+  payment                 Payment?        @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+  order                   Order?          @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  providerConfiguration   PaymentProviderConfig? @relation(fields: [providerConfigurationId], references: [id], onDelete: SetNull)
+
+  @@index([paymentId])
+  @@index([orderId])
+  @@index([providerConfigurationId])
+  @@index([provider, status])
+}
+
+model PaymentRefund {
+  id                      String          @id @default(cuid())
+  paymentId               String
+  orderId                 String?
+  transactionId           String?
+  providerConfigurationId String?
+  provider                PaymentProvider
+  status                  PaymentStatus   @default(PENDING)
+  currency                String          @default("EUR")
+  amount                  Decimal         @db.Decimal(10, 2)
+  externalRefundId        String?
+  reason                  String?
+  metadata                Json?
+  processedAt             DateTime?
+  payment                 Payment         @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  order                   Order?          @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  transaction             PaymentTransaction? @relation(fields: [transactionId], references: [id], onDelete: SetNull)
+  providerConfiguration   PaymentProviderConfig? @relation(fields: [providerConfigurationId], references: [id], onDelete: SetNull)
+  createdAt               DateTime        @default(now())
+  updatedAt               DateTime        @updatedAt
+
+  @@index([paymentId])
+  @@index([orderId])
+  @@index([transactionId])
+  @@index([providerConfigurationId])
+  @@index([provider, status])
+}
+
+model PaymentAuditLog {
+  id         String        @id @default(cuid())
+  paymentId  String
+  actorUserId String?
+  action     String
+  fromStatus PaymentStatus?
+  toStatus   PaymentStatus?
+  notes      String?
+  metadata   Json?
+  payment    Payment       @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  actorUser  User?         @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+  createdAt  DateTime      @default(now())
+
+  @@index([paymentId])
+  @@index([actorUserId])
+  @@index([createdAt])
+}
+
+model BankAccount {
+  id             String   @id @default(cuid())
+  bankName       String
+  accountHolder  String
+  iban           String?
+  accountNumber  String?
+  cardNumber     String?
+  swift          String?
+  country        String
+  currency       String   @default("EUR")
+  isActive       Boolean  @default(true)
+  notes          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([isActive, currency])
+}
+
+model ExchangeRate {
+  id              String   @id @default(cuid())
+  baseCurrency    String
+  quoteCurrency   String
+  rate            Decimal  @db.Decimal(18, 6)
+  isActive        Boolean  @default(true)
+  updatedByUserId String?
+  notes           String?
+  updatedByUser   User?    @relation("ExchangeRateUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([baseCurrency, quoteCurrency])
+  @@index([isActive])
+  @@index([updatedByUserId])
+}
+
+model PriceAlert {
+  id             String        @id @default(cuid())
+  userId         String
+  productId      String
+  targetPrice    Decimal       @db.Decimal(10, 2)
+  lastKnownPrice Decimal?      @db.Decimal(10, 2)
+  status         AlertStatus   @default(ACTIVE)
+  triggeredAt    DateTime?
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product        Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  notifications  Notification[]
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@unique([userId, productId])
+  @@index([status])
+}
+
+model PricingRule {
+  id            String            @id @default(cuid())
+  name          String
+  targetType    PricingTargetType @default(GLOBAL)
+  brandId       String?
+  categoryId    String?
+  countryCode   String?
+  currency      String            @default("EUR")
+  marginPercent Decimal?          @db.Decimal(5, 2)
+  localShippingFee Decimal?       @db.Decimal(10, 2)
+  minimumProfitAmount Decimal?    @db.Decimal(10, 2)
+  fixedFee      Decimal?          @db.Decimal(10, 2)
+  shippingFee   Decimal?          @db.Decimal(10, 2)
+  handlingFee   Decimal?          @db.Decimal(10, 2)
+  paymentFee    Decimal?          @db.Decimal(10, 2)
+  taxPercent    Decimal?          @db.Decimal(5, 2)
+  freeShippingThreshold Decimal?  @db.Decimal(10, 2)
+  minimumOrderValue Decimal?      @db.Decimal(10, 2)
+  isDefault     Boolean           @default(false)
+  isActive      Boolean           @default(true)
+  priority      Int               @default(0)
+  brand         Brand?            @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  category      Category?         @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  country       Country?          @relation(fields: [countryCode], references: [code], onDelete: SetNull)
+  carts         Cart[]
+  orders        Order[]
+  importSources ImportSource[]
+  brandSources  BrandSource[]
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  @@index([brandId])
+  @@index([categoryId])
+  @@index([countryCode])
+  @@index([isActive, priority])
+}
+
+model BusinessSettings {
+  id                    String   @id @default(cuid())
+  businessName          String
+  supportEmail          String
+  defaultCurrency       String   @default("EUR")
+  defaultCountryCode    String
+  defaultMarginPercent  Decimal  @db.Decimal(5, 2)
+  minimumProfitAmount   Decimal  @db.Decimal(10, 2) @default(0)
+  portugalShippingFee   Decimal  @db.Decimal(10, 2) @default(0)
+  spainShippingFee      Decimal  @db.Decimal(10, 2) @default(0)
+  iranShippingFee       Decimal  @db.Decimal(10, 2) @default(0)
+  fixedProfitAmount     Decimal  @db.Decimal(10, 2)
+  handlingFee           Decimal  @db.Decimal(10, 2)
+  paymentFee            Decimal  @db.Decimal(10, 2)
+  vatPercent            Decimal  @db.Decimal(5, 2)
+  freeShippingThreshold Decimal  @db.Decimal(10, 2)
+  minimumOrderValue     Decimal  @db.Decimal(10, 2)
+  returnPeriodDays      Int      @default(30)
+  country               Country  @relation(fields: [defaultCountryCode], references: [code])
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([defaultCountryCode])
+}
+
+model Country {
+  code              String            @id
+  name              String
+  region            String?
+  isActive          Boolean           @default(true)
+  customerAddresses CustomerAddress[]
+  carts             Cart[]
+  pricingRules      PricingRule[]
+  businessSettings  BusinessSettings[]
+  taxSettings       TaxSettings[]
+  shippingMethods   ShippingMethod[]
+  brandSources      BrandSource[]
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+}
+
+model Currency {
+  code       String   @id
+  name       String
+  symbol     String
+  isDefault  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model TaxSettings {
+  id          String   @id @default(cuid())
+  countryCode String
+  name        String
+  taxPercent  Decimal  @db.Decimal(5, 2)
+  isActive    Boolean  @default(true)
+  country     Country  @relation(fields: [countryCode], references: [code], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([countryCode, name])
+  @@index([countryCode])
+  @@index([isActive])
+}
+
+model ShippingMethod {
+  id                    String   @id @default(cuid())
+  name                  String
+  countryCode           String
+  originCountryCode     String?
+  currency              String   @default("EUR")
+  minWeightKg           Decimal? @db.Decimal(10, 2)
+  maxWeightKg           Decimal? @db.Decimal(10, 2)
+  minDeliveryDays       Int
+  maxDeliveryDays       Int
+  baseFee               Decimal  @db.Decimal(10, 2)
+  freeShippingThreshold Decimal? @db.Decimal(10, 2)
+  deliveryEstimate      String?
+  isActive              Boolean  @default(true)
+  country               Country  @relation(fields: [countryCode], references: [code], onDelete: Cascade)
+  carts                 Cart[]
+  orders                Order[]
+  importSources         ImportSource[]
+  brandSources          BrandSource[]
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([countryCode])
+  @@index([originCountryCode])
+  @@index([isActive])
+}
+
+model BrandSource {
+  id               String            @id @default(cuid())
+  brandName        String
+  website          String
+  countryCode      String?
+  currencyCode     String?
+  region           String?
+  sourceType       BrandSourceType
+  status           BrandSourceStatus @default(ACTIVE)
+  pricingRuleId    String?
+  shippingMethodId String?
+  notes            String?
+  country          Country?          @relation(fields: [countryCode], references: [code], onDelete: SetNull)
+  pricingRule      PricingRule?      @relation(fields: [pricingRuleId], references: [id], onDelete: SetNull)
+  shippingMethod   ShippingMethod?   @relation(fields: [shippingMethodId], references: [id], onDelete: SetNull)
+  connectorConfiguration ConnectorConfiguration?
+  connectorRuns ConnectorRun[]
+  procurementTasks ProcurementTask[]
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  @@unique([brandName, website])
+  @@index([countryCode])
+  @@index([currencyCode])
+  @@index([status])
+  @@index([sourceType])
+  @@index([pricingRuleId])
+  @@index([shippingMethodId])
+}
+
+model ConnectorTemplate {
+  id               String              @id @default(cuid())
+  key              String              @unique
+  name             String
+  sourceType       BrandSourceType
+  description      String?
+  isSystemTemplate Boolean             @default(false)
+  configurations   ConnectorConfiguration[]
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+
+  @@index([sourceType])
+  @@index([isSystemTemplate])
+}
+
+model ConnectorConfiguration {
+  id                  String                   @id @default(cuid())
+  brandSourceId       String                   @unique
+  templateId          String
+  scraperSourceId     String?                  @unique
+  isEnabled           Boolean                  @default(true)
+  feedUrl             String?
+  recordPath          String?
+  importApprovedAt    DateTime?
+  lastTestedAt        DateTime?
+  lastTestStatus      String?
+  lastTestMessage     String?
+  brandSource         BrandSource              @relation(fields: [brandSourceId], references: [id], onDelete: Cascade)
+  template            ConnectorTemplate        @relation(fields: [templateId], references: [id], onDelete: Restrict)
+  scraperSource       ScraperSource?           @relation(fields: [scraperSourceId], references: [id], onDelete: SetNull)
+  fieldMappings       ConnectorFieldMapping[]
+  executionProfile    ConnectorExecutionProfile?
+  runs                ConnectorRun[]
+  createdAt           DateTime                 @default(now())
+  updatedAt           DateTime                 @updatedAt
+
+  @@index([templateId])
+  @@index([scraperSourceId])
+  @@index([isEnabled])
+}
+
+model ConnectorFieldMapping {
+  id               String                 @id @default(cuid())
+  configurationId  String
+  externalField    String
+  internalField    String
+  configuration    ConnectorConfiguration @relation(fields: [configurationId], references: [id], onDelete: Cascade)
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+
+  @@unique([configurationId, internalField])
+  @@index([configurationId])
+}
+
+model ConnectorExecutionProfile {
+  id                    String                 @id @default(cuid())
+  configurationId       String                 @unique
+  listingUrl            String?
+  headless              Boolean                @default(true)
+  timeoutMs             Int                    @default(30000)
+  retryAttempts         Int                    @default(2)
+  userAgent             String?
+  maxRequestsPerMinute  Int?
+  maxConcurrentPages    Int?
+  pageLimit             Int                    @default(1)
+  sampleSize            Int                    @default(6)
+  productCardSelector   String?
+  productNameSelector   String?
+  productPriceSelector  String?
+  productOldPriceSelector String?
+  productImageSelector  String?
+  productUrlSelector    String?
+  paginationSelector    String?
+  nextPageSelector      String?
+  configuration         ConnectorConfiguration @relation(fields: [configurationId], references: [id], onDelete: Cascade)
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+}
+
+model AffiliateIntegration {
+  id              String            @id @default(cuid())
+  type            IntegrationType
+  name            String
+  apiKeyEncrypted String?
+  publisherId     String?
+  websiteId       String?
+  status          IntegrationStatus @default(DISCONNECTED)
+  lastSyncAt      DateTime?
+  productCount    Int               @default(0)
+  syncFrequency   SyncFrequency     @default(DAILY)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@unique([type, name])
+  @@index([status])
+}
+
+model ImportSource {
+  id            String             @id @default(cuid())
+  name          String
+  brandName     String?
+  website       String?
+  countryCode   String?
+  currencyCode  String?
+  sourceType    ImportSourceType
+  status        ImportSourceStatus @default(ACTIVE)
+  syncFrequency SyncFrequency      @default(DAILY)
+  pricingRuleId String?
+  shippingMethodId String?
+  notes         String?
+  configuration Json?
+  lastSyncAt    DateTime?
+  productCount  Int                @default(0)
+  pricingRule   PricingRule?       @relation(fields: [pricingRuleId], references: [id], onDelete: SetNull)
+  shippingMethod ShippingMethod?   @relation(fields: [shippingMethodId], references: [id], onDelete: SetNull)
+  products      Product[]
+  jobs          ImportJob[]
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  @@index([status])
+  @@index([sourceType])
+  @@index([countryCode])
+  @@index([currencyCode])
+  @@index([pricingRuleId])
+  @@index([shippingMethodId])
+}
+
+model ImportJob {
+  id            String          @id @default(cuid())
+  sourceId      String?
+  scraperRunId  String?
+  status        ImportJobStatus @default(PENDING)
+  triggerMode   String?
+  totalCount    Int             @default(0)
+  discoveredCount Int           @default(0)
+  fetchedCount  Int             @default(0)
+  normalizedCount Int           @default(0)
+  validatedCount Int            @default(0)
+  processedCount Int            @default(0)
+  importedCount Int             @default(0)
+  failedCount   Int             @default(0)
+  updatedCount  Int             @default(0)
+  unchangedCount Int            @default(0)
+  errorMessage  String?
+  errorPayload  Json?
+  startedAt     DateTime?
+  completedAt   DateTime?
+  source        ImportSource?   @relation(fields: [sourceId], references: [id], onDelete: SetNull)
+  scraperRun    ScraperRun?     @relation(fields: [scraperRunId], references: [id], onDelete: SetNull)
+  connectorRun  ConnectorRun?
+  logs          ImportLog[]
+  snapshots     ImportSnapshot[]
+  productResults ImportProductResult[]
+  priceHistory  PriceHistory[]
+  auditLogs     AuditLog[]
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@index([sourceId])
+  @@index([scraperRunId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model ImportLog {
+  id        String         @id @default(cuid())
+  jobId      String
+  level      ImportLogLevel @default(INFO)
+  message    String
+  createdAt  DateTime       @default(now())
+  job        ImportJob      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId])
+  @@index([level])
+  @@index([createdAt])
+}
+
+model ImportSnapshot {
+  id           String    @id @default(cuid())
+  jobId         String
+  productCount  Int
+  createdAt     DateTime @default(now())
+  job           ImportJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId])
+  @@index([createdAt])
+}
+
+model ImportRule {
+  id                String   @id @default(cuid())
+  name              String
+  minDiscount       Int      @default(0)
+  allowedBrands     String[]
+  allowedCategories String[]
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([isActive])
+}
+
+model ScraperSource {
+  id            String        @id @default(cuid())
+  name          String
+  website       String?
+  status        ScraperStatus @default(ACTIVE)
+  scraperType   ScraperType
+  connectorKey  String
+  countryCode   String?
+  currencyCode  String?
+  region        String?
+  syncFrequency SyncFrequency @default(MANUAL)
+  connectorConfiguration ConnectorConfiguration?
+  lastRunAt     DateTime?
+  configuration Json?
+  runCount      Int           @default(0)
+  runs          ScraperRun[]
+  connectorRuns ConnectorRun[]
+  syncRuns      SyncRun[]
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([status])
+  @@index([scraperType])
+  @@index([connectorKey])
+  @@index([syncFrequency])
+  @@index([countryCode])
+  @@index([currencyCode])
+}
+
+model ScraperRun {
+  id               String           @id @default(cuid())
+  sourceId         String
+  status           ScraperRunStatus @default(PENDING)
+  startedAt        DateTime?
+  completedAt      DateTime?
+  productsFound    Int              @default(0)
+  discoveredCount  Int              @default(0)
+  fetchedCount     Int              @default(0)
+  normalizedCount  Int              @default(0)
+  validatedCount   Int              @default(0)
+  productsImported Int              @default(0)
+  productsUpdated  Int              @default(0)
+  unchangedCount   Int              @default(0)
+  failedCount      Int              @default(0)
+  errorMessage     String?
+  errorPayload     Json?
+  source           ScraperSource    @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  connectorRun     ConnectorRun?
+  importJobs       ImportJob[]
+  artifacts        ScraperArtifact[]
+  productResults   ImportProductResult[]
+  auditLogs        AuditLog[]
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  @@index([sourceId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model ScraperArtifact {
+  id           String              @id @default(cuid())
+  scraperRunId String
+  type         ScraperArtifactType
+  filePath     String
+  createdAt    DateTime            @default(now())
+  scraperRun   ScraperRun          @relation(fields: [scraperRunId], references: [id], onDelete: Cascade)
+
+  @@index([scraperRunId])
+  @@index([type])
+  @@index([createdAt])
+}
+
+model ConnectorRun {
+  id                       String                   @id @default(cuid())
+  connectorConfigurationId String
+  brandSourceId            String
+  scraperSourceId          String?
+  scraperRunId             String?                  @unique
+  importJobId              String?                  @unique
+  status                   ConnectorRunStatus       @default(PENDING)
+  triggerMode              String?
+  strategyUsed             String?
+  httpStatus               Int?
+  protectionType           String?
+  discoveredCount          Int                      @default(0)
+  fetchedCount             Int                      @default(0)
+  normalizedCount          Int                      @default(0)
+  validatedCount           Int                      @default(0)
+  importedCount            Int                      @default(0)
+  updatedCount             Int                      @default(0)
+  unchangedCount           Int                      @default(0)
+  failedCount              Int                      @default(0)
+  urlsDiscovered           Int                      @default(0)
+  urlsProcessed            Int                      @default(0)
+  duplicateUrlsRemoved     Int                      @default(0)
+  urlsSkipped              Int                      @default(0)
+  rawRecordCount           Int                      @default(0)
+  validationFailureCount   Int                      @default(0)
+  rejectedCount            Int                      @default(0)
+  diagnosticsPayload       Json?
+  discoveryPayload         Json?
+  normalizationPayload     Json?
+  upsertPayload            Json?
+  errorMessage             String?
+  startedAt                DateTime?
+  completedAt              DateTime?
+  durationMs               Int?
+  connectorConfiguration   ConnectorConfiguration   @relation(fields: [connectorConfigurationId], references: [id], onDelete: Cascade)
+  brandSource              BrandSource              @relation(fields: [brandSourceId], references: [id], onDelete: Cascade)
+  scraperSource            ScraperSource?           @relation(fields: [scraperSourceId], references: [id], onDelete: SetNull)
+  scraperRun               ScraperRun?              @relation(fields: [scraperRunId], references: [id], onDelete: SetNull)
+  importJob                ImportJob?               @relation(fields: [importJobId], references: [id], onDelete: SetNull)
+  productResults           ImportProductResult[]
+  createdAt                DateTime                 @default(now())
+  updatedAt                DateTime                 @updatedAt
+
+  @@index([connectorConfigurationId])
+  @@index([brandSourceId])
+  @@index([scraperSourceId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model ImportProductResult {
+  id                  String                   @id @default(cuid())
+  importJobId         String?
+  scraperRunId        String?
+  connectorRunId      String?
+  productId           String?
+  status              ImportProductResultStatus
+  failureReason       ImportFailureReason?
+  stage               String?
+  productName         String?
+  brand               String?
+  category            String?
+  sourceUrl           String?
+  imageUrl            String?
+  currentPrice        Decimal?                 @db.Decimal(10, 2)
+  oldPrice            Decimal?                 @db.Decimal(10, 2)
+  existingContentHash String?
+  newContentHash      String?
+  metadata            Json?
+  importJob           ImportJob?               @relation(fields: [importJobId], references: [id], onDelete: SetNull)
+  scraperRun          ScraperRun?              @relation(fields: [scraperRunId], references: [id], onDelete: SetNull)
+  connectorRun        ConnectorRun?            @relation(fields: [connectorRunId], references: [id], onDelete: SetNull)
+  product             Product?                 @relation(fields: [productId], references: [id], onDelete: SetNull)
+  createdAt           DateTime                 @default(now())
+  updatedAt           DateTime                 @updatedAt
+
+  @@index([importJobId])
+  @@index([scraperRunId])
+  @@index([connectorRunId])
+  @@index([productId])
+  @@index([status])
+  @@index([failureReason])
+  @@index([createdAt])
+}
+
+model SyncRun {
+  id              String        @id @default(cuid())
+  sourceId        String
+  startedAt       DateTime?
+  completedAt     DateTime?
+  status          SyncRunStatus @default(PENDING)
+  productsChecked Int           @default(0)
+  productsChanged Int           @default(0)
+  source          ScraperSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([sourceId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model Alert {
+  id         String        @id @default(cuid())
+  type       AlertType
+  severity   AlertSeverity
+  title      String
+  message    String
+  isRead     Boolean       @default(false)
+  createdAt  DateTime      @default(now())
+
+  @@index([type])
+  @@index([severity])
+  @@index([isRead])
+  @@index([createdAt])
+}
+
+model Review {
+  id           String       @id @default(cuid())
+  productId    String
+  userId       String?
+  rating       Int
+  title        String?
+  comment      String
+  reviewerName String?
+  isVerified   Boolean      @default(false)
+  isFeatured   Boolean      @default(false)
+  status       ReviewStatus @default(PENDING)
+  product      Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user         User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@index([productId])
+  @@index([userId])
+  @@index([status])
+}
+
+model Notification {
+  id           String             @id @default(cuid())
+  userId       String
+  eventId      String?
+  orderId      String?
+  paymentId    String?
+  priceAlertId String?
+  channelCode  NotificationChannelCode @default(IN_APP)
+  category     NotificationCategory    @default(SYSTEM)
+  priority     NotificationPriority    @default(MEDIUM)
+  type         NotificationType
+  status       NotificationStatus @default(UNREAD)
+  title        String
+  message      String
+  entityType   String?
+  entityId     String?
+  data         Json?
+  readAt       DateTime?
+  archivedAt   DateTime?
+  user         User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event        NotificationEvent? @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  order        Order?             @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  payment      Payment?           @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+  priceAlert   PriceAlert?        @relation(fields: [priceAlertId], references: [id], onDelete: SetNull)
+  deliveries   NotificationDelivery[]
+  audits       NotificationAudit[]
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  @@index([userId, status])
+  @@index([type])
+  @@index([eventId])
+  @@index([category, createdAt])
+  @@index([entityType, entityId])
+}
+
+model NotificationPreference {
+  id                    String   @id @default(cuid())
+  userId                String   @unique
+  orderNotifications    Boolean  @default(true)
+  paymentNotifications  Boolean  @default(true)
+  shippingNotifications Boolean  @default(true)
+  marketingEmails       Boolean  @default(false)
+  systemNotifications   Boolean  @default(true)
+  channelSettings       Json?
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+}
+
+model NotificationChannel {
+  code                NotificationChannelCode @id
+  displayName         String
+  isActive            Boolean                 @default(true)
+  queueName           String
+  supportsOpenTracking Boolean                @default(false)
+  supportsRetries     Boolean                 @default(true)
+  settings            Json?
+  templates           NotificationTemplate[]
+  deliveries          NotificationDelivery[]
+  createdAt           DateTime                @default(now())
+  updatedAt           DateTime                @updatedAt
+}
+
+model NotificationEvent {
+  id                String                  @id @default(cuid())
+  eventKey          String                  @unique
+  eventName         String
+  eventSource       NotificationEventSource
+  category          NotificationCategory
+  priority          NotificationPriority    @default(MEDIUM)
+  actorUserId       String?
+  targetUserId      String?
+  orderId           String?
+  paymentId         String?
+  procurementTaskId String?
+  entityType        String?
+  entityId          String?
+  title             String?
+  message           String?
+  metadata          Json?
+  occurredAt        DateTime                @default(now())
+  actorUser         User?                   @relation("NotificationEventActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  targetUser        User?                   @relation("NotificationEventTarget", fields: [targetUserId], references: [id], onDelete: SetNull)
+  order             Order?                  @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  payment           Payment?                @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+  procurementTask   ProcurementTask?        @relation(fields: [procurementTaskId], references: [id], onDelete: SetNull)
+  notifications     Notification[]
+  deliveries        NotificationDelivery[]
+  audits            NotificationAudit[]
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+
+  @@index([targetUserId, occurredAt])
+  @@index([eventSource, occurredAt])
+  @@index([category, occurredAt])
+  @@index([orderId])
+  @@index([paymentId])
+  @@index([procurementTaskId])
+}
+
+model NotificationTemplate {
+  id            String                  @id @default(cuid())
+  key           String
+  name          String
+  channelCode   NotificationChannelCode
+  category      NotificationCategory
+  subjectTemplate String
+  htmlTemplate  String
+  textTemplate  String
+  variablesSchema Json?
+  samplePayload Json?
+  description   String?
+  version       Int                     @default(1)
+  isActive      Boolean                 @default(true)
+  createdByUserId String?
+  channel       NotificationChannel     @relation(fields: [channelCode], references: [code], onDelete: Restrict)
+  createdByUser User?                   @relation("NotificationTemplateCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  versions      NotificationTemplateVersion[]
+  createdAt     DateTime                @default(now())
+  updatedAt     DateTime                @updatedAt
+
+  @@unique([key, channelCode])
+  @@index([category, isActive])
+}
+
+model NotificationTemplateVersion {
+  id              String                  @id @default(cuid())
+  templateId      String
+  version         Int
+  subjectTemplate String
+  htmlTemplate    String
+  textTemplate    String
+  samplePayload   Json?
+  variablesSchema Json?
+  createdByUserId String?
+  changeNotes     String?
+  template        NotificationTemplate    @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  createdByUser   User?                   @relation("NotificationTemplateVersionCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  createdAt       DateTime                @default(now())
+
+  @@unique([templateId, version])
+  @@index([templateId, createdAt])
+}
+
+model NotificationDelivery {
+  id                String                    @id @default(cuid())
+  eventId           String
+  notificationId    String?
+  channelCode       NotificationChannelCode
+  state             NotificationDeliveryState @default(PENDING)
+  recipient         String?
+  provider          String?
+  providerMessageId String?
+  renderedSubject   String?
+  renderedBody      String?
+  providerResponse  Json?
+  failureReason     String?
+  retryCount        Int                       @default(0)
+  openTimestamp     DateTime?
+  queuedAt          DateTime?
+  sentAt            DateTime?
+  deliveredAt       DateTime?
+  openedAt          DateTime?
+  failedAt          DateTime?
+  skippedAt         DateTime?
+  metadata          Json?
+  event             NotificationEvent        @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  notification      Notification?            @relation(fields: [notificationId], references: [id], onDelete: SetNull)
+  channel           NotificationChannel      @relation(fields: [channelCode], references: [code], onDelete: Restrict)
+  audits            NotificationAudit[]
+  createdAt         DateTime                 @default(now())
+  updatedAt         DateTime                 @updatedAt
+
+  @@index([eventId, channelCode])
+  @@index([notificationId])
+  @@index([state, createdAt])
+}
+
+model NotificationAudit {
+  id            String            @id @default(cuid())
+  eventId       String?
+  notificationId String?
+  deliveryId    String?
+  actorUserId   String?
+  action        String
+  eventSource   NotificationEventSource?
+  metadata      Json?
+  event         NotificationEvent? @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  notification  Notification?    @relation(fields: [notificationId], references: [id], onDelete: SetNull)
+  delivery      NotificationDelivery? @relation(fields: [deliveryId], references: [id], onDelete: SetNull)
+  actorUser     User?            @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+  createdAt     DateTime         @default(now())
+
+  @@index([eventId])
+  @@index([notificationId])
+  @@index([deliveryId])
+  @@index([actorUserId])
+  @@index([action, createdAt])
+}
+
+model AuditLog {
+  id          String         @id @default(cuid())
+  actorUserId String?
+  actorType   AuditActorType @default(USER)
+  action      String
+  entityType  String
+  entityId    String?
+  importJobId String?
+  scraperRunId String?
+  ipAddress   String?
+  userAgent   String?
+  metadata    Json?
+  actorUser   User?          @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+  importJob   ImportJob?     @relation(fields: [importJobId], references: [id], onDelete: SetNull)
+  scraperRun  ScraperRun?    @relation(fields: [scraperRunId], references: [id], onDelete: SetNull)
+  createdAt   DateTime       @default(now())
+
+  @@index([actorUserId])
+  @@index([scraperRunId])
+  @@index([entityType, entityId])
+  @@index([action])
+  @@index([createdAt])
+}
+
+model Setting {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       Json
+  description String?
+  isPublic    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}

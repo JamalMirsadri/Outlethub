@@ -1,0 +1,302 @@
+import { RoleCode } from "@prisma/client";
+import { Router } from "express";
+
+import { attachOptionalAuth, requireAuth } from "../../middleware/auth.middleware.js";
+import { requireRoles } from "../../middleware/roles.middleware.js";
+import { validateBody, validateParams } from "../../middleware/validate.middleware.js";
+import { asyncHandler } from "../../utils/async-handler.js";
+import { commerceController } from "./commerce.controller.js";
+import {
+  addCartItemSchema,
+  createOrderSchema,
+  createPricingRuleSchema,
+  entityIdParamsSchema,
+  mergeGuestCartSchema,
+  previewProfitSchema,
+  refundOrderSchema,
+  reviewPaymentSchema,
+  updateProcurementTaskSchema,
+  updatePreferredCurrencySchema,
+  updateAdminOrderSchema,
+  updateBusinessSettingsSchema,
+  updateCartCountrySchema,
+  updateCartItemSchema,
+  updateOrderStatusSchema,
+  updatePricingRuleSchema,
+  updateProductPricingOverrideSchema,
+  updateTrackingSchema,
+  uploadPaymentReceiptSchema,
+  upsertBankAccountSchema,
+  upsertSourceSchema,
+  upsertCustomerAddressSchema,
+  upsertExchangeRateSchema,
+  upsertShippingMethodSchema,
+} from "./commerce.schemas.js";
+
+export const commerceRouter = Router();
+
+commerceRouter.use(attachOptionalAuth);
+
+commerceRouter.get("/cart", asyncHandler(commerceController.getCart.bind(commerceController)));
+commerceRouter.post(
+  "/cart/items",
+  validateBody(addCartItemSchema),
+  asyncHandler(commerceController.addCartItem.bind(commerceController)),
+);
+commerceRouter.patch(
+  "/cart/items/:id",
+  validateParams(entityIdParamsSchema),
+  validateBody(updateCartItemSchema),
+  asyncHandler(commerceController.updateCartItem.bind(commerceController)),
+);
+commerceRouter.delete(
+  "/cart/items/:id",
+  validateParams(entityIdParamsSchema),
+  asyncHandler(commerceController.removeCartItem.bind(commerceController)),
+);
+commerceRouter.delete("/cart/clear", asyncHandler(commerceController.clearCart.bind(commerceController)));
+commerceRouter.patch(
+  "/cart/country",
+  validateBody(updateCartCountrySchema),
+  asyncHandler(commerceController.updateCartCountry.bind(commerceController)),
+);
+commerceRouter.post(
+  "/cart/merge",
+  requireAuth,
+  validateBody(mergeGuestCartSchema),
+  asyncHandler(commerceController.mergeGuestCart.bind(commerceController)),
+);
+commerceRouter.get("/currencies/context", asyncHandler(commerceController.getCurrencyContext.bind(commerceController)));
+commerceRouter.patch(
+  "/currencies/preference",
+  requireAuth,
+  validateBody(updatePreferredCurrencySchema),
+  asyncHandler(commerceController.updatePreferredCurrency.bind(commerceController)),
+);
+
+commerceRouter.post(
+  "/checkout/preview-profit",
+  requireAuth,
+  requireRoles(RoleCode.SUPER_ADMIN, RoleCode.ADMIN),
+  validateBody(previewProfitSchema),
+  asyncHandler(commerceController.previewProfit.bind(commerceController)),
+);
+
+commerceRouter.get("/addresses", requireAuth, asyncHandler(commerceController.listAddresses.bind(commerceController)));
+commerceRouter.post(
+  "/addresses",
+  requireAuth,
+  validateBody(upsertCustomerAddressSchema),
+  asyncHandler(commerceController.upsertAddress.bind(commerceController)),
+);
+commerceRouter.delete(
+  "/addresses/:id",
+  requireAuth,
+  validateParams(entityIdParamsSchema),
+  asyncHandler(commerceController.deleteAddress.bind(commerceController)),
+);
+
+commerceRouter.get(
+  "/checkout",
+  requireAuth,
+  asyncHandler(commerceController.getCheckoutSummary.bind(commerceController)),
+);
+commerceRouter.post(
+  "/checkout/orders",
+  requireAuth,
+  validateBody(createOrderSchema),
+  asyncHandler(commerceController.createOrder.bind(commerceController)),
+);
+
+commerceRouter.get("/orders", requireAuth, asyncHandler(commerceController.listCustomerOrders.bind(commerceController)));
+commerceRouter.get("/payments", requireAuth, asyncHandler(commerceController.listCustomerPayments.bind(commerceController)));
+commerceRouter.post(
+  "/payments/:id/receipt",
+  requireAuth,
+  validateParams(entityIdParamsSchema),
+  validateBody(uploadPaymentReceiptSchema),
+  asyncHandler(commerceController.uploadPaymentReceipt.bind(commerceController)),
+);
+commerceRouter.get(
+  "/account/orders",
+  requireAuth,
+  asyncHandler(commerceController.listCustomerOrders.bind(commerceController)),
+);
+
+commerceRouter.use(
+  [
+    "/admin/pricing",
+    "/admin/orders",
+    "/admin/shipping",
+    "/admin/settings/business",
+    "/admin/analytics/commerce",
+    "/admin/sources",
+    "/admin/procurement",
+    "/admin/payments",
+    "/admin/bank-accounts",
+    "/admin/exchange-rates",
+  ],
+  requireAuth,
+  requireRoles(RoleCode.SUPER_ADMIN, RoleCode.ADMIN),
+);
+
+commerceRouter.get(
+  "/admin/pricing",
+  asyncHandler(commerceController.getCommerceSettings.bind(commerceController)),
+);
+commerceRouter.patch(
+  "/admin/pricing/business",
+  validateBody(updateBusinessSettingsSchema),
+  asyncHandler(commerceController.updateBusinessSettings.bind(commerceController)),
+);
+commerceRouter.post(
+  "/admin/pricing/rules",
+  validateBody(createPricingRuleSchema),
+  asyncHandler(commerceController.createPricingRule.bind(commerceController)),
+);
+commerceRouter.patch(
+  "/admin/pricing/rules/:id",
+  validateParams(entityIdParamsSchema),
+  validateBody(updatePricingRuleSchema),
+  asyncHandler(commerceController.updatePricingRule.bind(commerceController)),
+);
+commerceRouter.delete(
+  "/admin/pricing/rules/:id",
+  validateParams(entityIdParamsSchema),
+  asyncHandler(commerceController.deletePricingRule.bind(commerceController)),
+);
+commerceRouter.get(
+  "/admin/orders",
+  asyncHandler(commerceController.listAdminOrders.bind(commerceController)),
+);
+commerceRouter.patch(
+  "/admin/orders/:id/status",
+  validateParams(entityIdParamsSchema),
+  validateBody(updateOrderStatusSchema),
+  asyncHandler(commerceController.updateOrderStatus.bind(commerceController)),
+);
+commerceRouter.patch(
+  "/admin/orders/:id/tracking",
+  validateParams(entityIdParamsSchema),
+  validateBody(updateTrackingSchema),
+  asyncHandler(commerceController.updateTrackingNumber.bind(commerceController)),
+);
+commerceRouter.patch(
+  "/admin/orders/:id",
+  validateParams(entityIdParamsSchema),
+  validateBody(updateAdminOrderSchema),
+  asyncHandler(commerceController.updateAdminOrder.bind(commerceController)),
+);
+commerceRouter.post(
+  "/admin/orders/:id/refund",
+  validateParams(entityIdParamsSchema),
+  validateBody(refundOrderSchema),
+  asyncHandler(commerceController.refundOrder.bind(commerceController)),
+);
+commerceRouter.get(
+  "/admin/procurement",
+  asyncHandler(commerceController.getProcurementDashboard.bind(commerceController)),
+);
+commerceRouter.patch(
+  "/admin/procurement/tasks/:id",
+  validateParams(entityIdParamsSchema),
+  validateBody(updateProcurementTaskSchema),
+  asyncHandler(commerceController.updateProcurementTask.bind(commerceController)),
+);
+commerceRouter.get(
+  "/admin/payments",
+  asyncHandler(commerceController.getAdminPayments.bind(commerceController)),
+);
+commerceRouter.get(
+  "/admin/payments/review",
+  asyncHandler(commerceController.getPaymentReviewQueue.bind(commerceController)),
+);
+commerceRouter.patch(
+  "/admin/payments/:id/review",
+  validateParams(entityIdParamsSchema),
+  validateBody(reviewPaymentSchema),
+  asyncHandler(commerceController.reviewPayment.bind(commerceController)),
+);
+commerceRouter.patch(
+  "/admin/payments/:id/complete",
+  validateParams(entityIdParamsSchema),
+  asyncHandler(commerceController.completePayment.bind(commerceController)),
+);
+commerceRouter.get(
+  "/admin/bank-accounts",
+  asyncHandler(commerceController.listBankAccounts.bind(commerceController)),
+);
+commerceRouter.post(
+  "/admin/bank-accounts",
+  validateBody(upsertBankAccountSchema),
+  asyncHandler(commerceController.upsertBankAccount.bind(commerceController)),
+);
+commerceRouter.patch(
+  "/admin/bank-accounts/:id",
+  validateParams(entityIdParamsSchema),
+  validateBody(upsertBankAccountSchema),
+  asyncHandler(commerceController.upsertBankAccount.bind(commerceController)),
+);
+commerceRouter.delete(
+  "/admin/bank-accounts/:id",
+  validateParams(entityIdParamsSchema),
+  asyncHandler(commerceController.deleteBankAccount.bind(commerceController)),
+);
+commerceRouter.get(
+  "/admin/exchange-rates",
+  asyncHandler(commerceController.listExchangeRates.bind(commerceController)),
+);
+commerceRouter.post(
+  "/admin/exchange-rates",
+  validateBody(upsertExchangeRateSchema),
+  asyncHandler(commerceController.upsertExchangeRate.bind(commerceController)),
+);
+commerceRouter.patch(
+  "/admin/exchange-rates/:id",
+  validateParams(entityIdParamsSchema),
+  validateBody(upsertExchangeRateSchema),
+  asyncHandler(commerceController.upsertExchangeRate.bind(commerceController)),
+);
+commerceRouter.post(
+  "/admin/shipping/methods",
+  validateBody(upsertShippingMethodSchema),
+  asyncHandler(commerceController.upsertShippingMethod.bind(commerceController)),
+);
+commerceRouter.delete(
+  "/admin/shipping/methods/:id",
+  validateParams(entityIdParamsSchema),
+  asyncHandler(commerceController.deleteShippingMethod.bind(commerceController)),
+);
+commerceRouter.get(
+  "/admin/settings/business",
+  asyncHandler(commerceController.getCommerceSettings.bind(commerceController)),
+);
+commerceRouter.get(
+  "/admin/analytics/commerce",
+  asyncHandler(commerceController.getRevenueAnalytics.bind(commerceController)),
+);
+commerceRouter.get(
+  "/admin/sources",
+  asyncHandler(commerceController.listSources.bind(commerceController)),
+);
+commerceRouter.post(
+  "/admin/sources",
+  validateBody(upsertSourceSchema),
+  asyncHandler(commerceController.upsertSource.bind(commerceController)),
+);
+commerceRouter.delete(
+  "/admin/sources/:id",
+  validateParams(entityIdParamsSchema),
+  asyncHandler(commerceController.deleteSource.bind(commerceController)),
+);
+commerceRouter.get(
+  "/admin/products/:id/source-info",
+  validateParams(entityIdParamsSchema),
+  asyncHandler(commerceController.getProductCommerceDetail.bind(commerceController)),
+);
+commerceRouter.patch(
+  "/admin/products/:id/pricing-override",
+  validateParams(entityIdParamsSchema),
+  validateBody(updateProductPricingOverrideSchema),
+  asyncHandler(commerceController.updateProductPricingOverride.bind(commerceController)),
+);
