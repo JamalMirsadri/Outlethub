@@ -181,7 +181,7 @@ export const publicProductListQuerySchema = z.object({
   minDiscount: z.coerce.number().int().min(0).max(100).optional(),
   featured: z.coerce.boolean().optional(),
   sort: z
-    .enum(["newest", "price_low", "price_high", "discount", "featured"])
+    .enum(["newest", "price_low", "price_high", "discount", "featured", "views", "purchases"])
     .optional()
     .default("newest"),
 });

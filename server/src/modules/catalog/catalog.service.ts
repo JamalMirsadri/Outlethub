@@ -1141,6 +1141,10 @@ export class CatalogService {
             ? [{ discountPercent: "desc" }, { createdAt: "desc" }]
             : query.sort === "featured"
               ? [{ isFeatured: "desc" }, { createdAt: "desc" }]
+              : query.sort === "views"
+                ? [{ views: "desc" }, { createdAt: "desc" }]
+                : query.sort === "purchases"
+                  ? [{ purchases: "desc" }, { createdAt: "desc" }]
               : [{ createdAt: "desc" }];
 
     const [items, total] = await Promise.all([
@@ -1191,26 +1195,43 @@ export class CatalogService {
       throw new ApiError(404, "Product not found.");
     }
 
-    const relatedProducts = await prisma.product.findMany({
-      where: {
-        id: { not: product.id },
-        brandId: product.brandId,
-        status: ProductStatus.ACTIVE,
-        deletedAt: null,
-      },
-      include: {
-        brand: true,
-        category: true,
-        images: { orderBy: { sortOrder: "asc" } },
-        variants: { orderBy: [{ size: "asc" }, { color: "asc" }] },
-        priceHistory: { orderBy: { capturedAt: "desc" }, take: 5 },
-      },
-      orderBy: { createdAt: "desc" },
-      take: 5,
-    });
+    const [viewedProduct, relatedProducts] = await Promise.all([
+      prisma.product.update({
+        where: { id: product.id },
+        data: {
+          views: {
+            increment: 1,
+          },
+        },
+        include: {
+          brand: true,
+          category: true,
+          images: { orderBy: { sortOrder: "asc" } },
+          variants: { orderBy: [{ size: "asc" }, { color: "asc" }] },
+          priceHistory: { orderBy: { capturedAt: "desc" }, take: 20 },
+        },
+      }),
+      prisma.product.findMany({
+        where: {
+          id: { not: product.id },
+          brandId: product.brandId,
+          status: ProductStatus.ACTIVE,
+          deletedAt: null,
+        },
+        include: {
+          brand: true,
+          category: true,
+          images: { orderBy: { sortOrder: "asc" } },
+          variants: { orderBy: [{ size: "asc" }, { color: "asc" }] },
+          priceHistory: { orderBy: { capturedAt: "desc" }, take: 5 },
+        },
+        orderBy: { createdAt: "desc" },
+        take: 5,
+      }),
+    ]);
 
     return {
-      product: mapProductResponse(product),
+      product: mapProductResponse(viewedProduct),
       relatedProducts: relatedProducts.map(mapProductResponse),
     };
   }
@@ -1235,7 +1256,23 @@ export class CatalogService {
       throw new ApiError(404, "Product not found.");
     }
 
-    return mapProductResponse(product);
+    const viewedProduct = await prisma.product.update({
+      where: { id: product.id },
+      data: {
+        views: {
+          increment: 1,
+        },
+      },
+      include: {
+        brand: true,
+        category: true,
+        images: { orderBy: { sortOrder: "asc" } },
+        variants: { orderBy: [{ size: "asc" }, { color: "asc" }] },
+        priceHistory: { orderBy: { capturedAt: "desc" }, take: 20 },
+      },
+    });
+
+    return mapProductResponse(viewedProduct);
   }
 
   public async getCatalogFilters() {

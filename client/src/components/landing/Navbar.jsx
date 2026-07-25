@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Search, ShoppingBag, Heart, User, Sun, Moon, Menu, X } from "lucide-react";
 import { useTheme } from "@/components/ThemeProvider";
 import { useCart } from "@/contexts/CartContext";
+import { http } from "@/services/http";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function Navbar() {
@@ -10,12 +11,38 @@ export default function Navbar() {
   const { itemCount } = useCart();
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [categories, setCategories] = useState([]);
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  useEffect(() => {
+    http("/products/meta/filters")
+      .then((response) => {
+        setCategories(Array.isArray(response.categories) ? response.categories : []);
+      })
+      .catch(() => {});
+  }, []);
+
+  const menuCategories = (() => {
+    const rootCategories = categories.filter((category) => !category.parentId);
+    const source = rootCategories.length > 0 ? rootCategories : categories;
+    return source.slice(0, 5);
+  })();
+
+  const mobileMenuItems = [
+    { label: "SHOP ALL", to: "/shop" },
+    ...menuCategories.map((category) => ({
+      label: category.name.toUpperCase(),
+      to: `/shop?category=${encodeURIComponent(category.slug)}`,
+    })),
+    { label: "CART", to: "/cart" },
+    { label: "MY ACCOUNT", to: "/dashboard" },
+    { label: "WISHLIST", to: "/dashboard/wishlist" },
+  ];
 
   return (
     <>
@@ -39,15 +66,15 @@ export default function Navbar() {
               <Link to="/shop" className="text-sm font-medium tracking-wide hover:text-[hsl(var(--accent))] transition-colors">
                 SHOP
               </Link>
-              <Link to="/shop?gender=women" className="text-sm font-medium tracking-wide hover:text-[hsl(var(--accent))] transition-colors">
-                WOMEN
-              </Link>
-              <Link to="/shop?gender=men" className="text-sm font-medium tracking-wide hover:text-[hsl(var(--accent))] transition-colors">
-                MEN
-              </Link>
-              <Link to="/shop?is_trending=true" className="text-sm font-medium tracking-wide hover:text-[hsl(var(--accent))] transition-colors">
-                TRENDING
-              </Link>
+              {menuCategories.map((category) => (
+                <Link
+                  key={category.id}
+                  to={`/shop?category=${encodeURIComponent(category.slug)}`}
+                  className="text-sm font-medium tracking-wide hover:text-[hsl(var(--accent))] transition-colors"
+                >
+                  {category.name.toUpperCase()}
+                </Link>
+              ))}
             </div>
 
             <div className="flex items-center gap-3">
@@ -97,15 +124,7 @@ export default function Navbar() {
                 </button>
               </div>
               <div className="flex flex-col gap-6">
-                {[
-                  { label: "SHOP ALL", to: "/shop" },
-                  { label: "WOMEN", to: "/shop?gender=women" },
-                  { label: "MEN", to: "/shop?gender=men" },
-                  { label: "TRENDING", to: "/shop?is_trending=true" },
-                  { label: "CART", to: "/cart" },
-                  { label: "MY ACCOUNT", to: "/dashboard" },
-                  { label: "WISHLIST", to: "/dashboard/wishlist" },
-                ].map((item, i) => (
+                {mobileMenuItems.map((item, i) => (
                   <motion.div
                     key={item.label}
                     initial={{ opacity: 0, x: -20 }}

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
 import { http } from "@/services/http";
 import { Search, SlidersHorizontal, X, ChevronDown } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -25,13 +26,14 @@ const COLORS = [
 const PAGE_SIZE = 12;
 
 export default function Shop() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [products, setProducts] = useState([]);
   const [brands, setBrands] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [selectedBrands, setSelectedBrands] = useState([]);
-  const [selectedCategory, setSelectedCategory] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState(searchParams.get("category") ?? "");
   const [selectedSizes, setSelectedSizes] = useState([]);
   const [selectedColors, setSelectedColors] = useState([]);
   const [sortBy, setSortBy] = useState("newest");
@@ -48,6 +50,27 @@ export default function Shop() {
       })
       .catch(() => {})
   }, []);
+
+  useEffect(() => {
+    const categoryFromUrl = searchParams.get("category") ?? "";
+    if (categoryFromUrl !== selectedCategory) {
+      setSelectedCategory(categoryFromUrl);
+    }
+  }, [searchParams, selectedCategory]);
+
+  useEffect(() => {
+    const nextParams = new URLSearchParams(searchParams);
+
+    if (selectedCategory) {
+      nextParams.set("category", selectedCategory);
+    } else {
+      nextParams.delete("category");
+    }
+
+    if (nextParams.toString() !== searchParams.toString()) {
+      setSearchParams(nextParams, { replace: true });
+    }
+  }, [searchParams, selectedCategory, setSearchParams]);
 
   useEffect(() => {
     setLoading(true);
@@ -278,4 +301,3 @@ export default function Shop() {
     </div>
   );
 }
-
