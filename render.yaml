@@ -19,9 +19,7 @@ services:
       - key: CLIENT_URL
         sync: false
       - key: DATABASE_URL
-        fromDatabase:
-          name: outlethub-db
-          property: connectionString
+        sync: false
       - key: REDIS_URL
         fromService:
           type: keyvalue
@@ -76,9 +74,10 @@ services:
       - key: SERVICE_MODE
         value: worker
       - key: DATABASE_URL
-        fromDatabase:
-          name: outlethub-db
-          property: connectionString
+        fromService:
+          type: web
+          name: outlethub-api
+          envVarKey: DATABASE_URL
       - key: REDIS_URL
         fromService:
           type: keyvalue
@@ -167,9 +166,3 @@ services:
     name: outlethub-redis
     plan: free
     maxmemoryPolicy: noeviction
-
-databases:
-  - name: outlethub-db
-    plan: free
-    databaseName: outlethub
-    user: outlethub
