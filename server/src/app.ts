@@ -1,13 +1,18 @@
+import { existsSync } from "node:fs";
+
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import express from "express";
 import helmet from "helmet";
 import morgan from "morgan";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { env } from "./config/env.js";
 import { errorMiddleware, notFoundMiddleware } from "./middleware/error.middleware.js";
 import { apiRouter } from "./routes/index.js";
+
+const currentDir = dirname(fileURLToPath(import.meta.url));
 
 function buildAllowedOrigins() {
   const configuredOrigin = env.CLIENT_URL;
@@ -40,6 +45,9 @@ function buildAllowedOrigins() {
 export function createApp() {
   const app = express();
   const allowedOrigins = buildAllowedOrigins();
+  const clientDistDir = resolve(currentDir, "../../client/dist");
+  const clientIndexPath = resolve(clientDistDir, "index.html");
+  const hasClientBundle = existsSync(clientIndexPath);
 
   app.use(
     cors({
@@ -61,6 +69,24 @@ export function createApp() {
   app.use("/uploads", express.static(resolve(process.cwd(), "uploads")));
 
   app.use("/api/v1", apiRouter);
+
+  if (hasClientBundle) {
+    app.use(express.static(clientDistDir));
+    app.get("*", (request, response, next) => {
+      if (
+        request.path.startsWith("/api/") ||
+        request.path.startsWith("/uploads/") ||
+        request.path.includes(".") ||
+        !request.accepts("html")
+      ) {
+        next();
+        return;
+      }
+
+      response.sendFile(clientIndexPath);
+    });
+  }
+
   app.use(notFoundMiddleware);
   app.use(errorMiddleware);
 

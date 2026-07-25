@@ -5,7 +5,7 @@ services:
     plan: free
     region: oregon
     branch: main
-    buildCommand: npm install && npm run build:server
+    buildCommand: npm install && npm run build
     preDeployCommand: npm run prepare:runtime
     startCommand: npm run start
     healthCheckPath: /api/v1/health
