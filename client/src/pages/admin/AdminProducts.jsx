@@ -926,14 +926,15 @@ export default function AdminProducts() {
                 <th className="text-left px-4 py-3 font-medium text-xs tracking-widest text-muted-foreground">PRODUCT</th>
                 <th className="text-left px-4 py-3 font-medium text-xs tracking-widest text-muted-foreground hidden md:table-cell">BRAND</th>
                 <th className="text-left px-4 py-3 font-medium text-xs tracking-widest text-muted-foreground hidden lg:table-cell">PRICE</th>
-                <th className="text-left px-4 py-3 font-medium text-xs tracking-widest text-muted-foreground hidden lg:table-cell">UPDATED / MONITORED</th>
+                <th className="text-left px-4 py-3 font-medium text-xs tracking-widest text-muted-foreground hidden lg:table-cell">SOURCE URL</th>
+                <th className="text-left px-4 py-3 font-medium text-xs tracking-widest text-muted-foreground hidden lg:table-cell">PRODUCT URL</th>
                 <th className="text-left px-4 py-3 font-medium text-xs tracking-widest text-muted-foreground">STATUS</th>
                 <th className="text-right px-4 py-3"></th>
               </tr>
             </thead>
             <tbody>
               {filtered.map(p => {
-                const monitoringMeta = getMonitoringMeta(p);
+                const storefrontUrl = `/products/${p.slug || p.id}`;
 
                 return (
                 <tr key={p.id} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors">
@@ -944,9 +945,6 @@ export default function AdminProducts() {
                       </div>
                       <div className="min-w-0">
                         <span className="font-medium truncate block max-w-[200px]">{p.title}</span>
-                        <div className="mt-1 text-[11px] text-muted-foreground lg:hidden">
-                          Updated: {monitoringMeta.updatedAtLabel} | Monitored: {monitoringMeta.monitoredAtLabel}
-                        </div>
                       </div>
                     </div>
                   </td>
@@ -956,15 +954,30 @@ export default function AdminProducts() {
                     <span className="text-muted-foreground line-through ml-2 text-xs">${p.original_price?.toFixed(2)}</span>
                   </td>
                   <td className="px-4 py-3 hidden lg:table-cell">
-                    <div className="space-y-2 min-w-[220px]">
-                      <Badge variant="secondary" className={monitoringMeta.className}>
-                        {monitoringMeta.label}
-                      </Badge>
-                      <div className="space-y-1 text-xs text-muted-foreground">
-                        <div>Last update: {monitoringMeta.updatedAtLabel}</div>
-                        <div>Last monitored: {monitoringMeta.monitoredAtLabel}</div>
-                      </div>
-                    </div>
+                    {p.source_url ? (
+                      <a
+                        href={p.source_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="block max-w-[220px] truncate text-[11px] text-primary hover:underline"
+                        title={p.source_url}
+                      >
+                        {p.source_url}
+                      </a>
+                    ) : (
+                      <span className="text-[11px] text-muted-foreground">—</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 hidden lg:table-cell">
+                    <a
+                      href={storefrontUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="block max-w-[220px] truncate text-[11px] text-primary hover:underline"
+                      title={storefrontUrl}
+                    >
+                      {storefrontUrl}
+                    </a>
                   </td>
                   <td className="px-4 py-3">
                     <Badge variant="secondary" className={p.status === "active" ? "bg-[hsl(var(--accent))]/10 text-[hsl(var(--accent))]" : ""}>{p.status}</Badge>
