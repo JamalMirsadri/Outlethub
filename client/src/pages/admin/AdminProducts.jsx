@@ -9,7 +9,7 @@ import {
   updateProductMonitoringSettings,
 } from "@/api/monitoring";
 import { HttpError } from "@/services/http";
-import { Plus, Search, MoreHorizontal, Edit, Trash2, Eye, EyeOff, RefreshCw, Clock3 } from "lucide-react";
+import { Plus, Search, MoreHorizontal, Edit, Trash2, Eye, EyeOff, RefreshCw, Clock3, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -126,6 +126,20 @@ function wait(ms) {
   return new Promise((resolve) => {
     window.setTimeout(resolve, ms);
   });
+}
+
+function escapeCsvValue(value) {
+  const normalized = value == null ? "" : String(value);
+  return `"${normalized.replace(/"/g, '""')}"`;
+}
+
+function getStorefrontProductUrl(product) {
+  const productPath = `/products/${product?.slug || product?.id || ""}`;
+  if (typeof window === "undefined") {
+    return productPath;
+  }
+
+  return new URL(productPath, window.location.origin).toString();
 }
 
 function getMonitoringMeta(product) {
@@ -447,6 +461,28 @@ export default function AdminProducts() {
     if (statusFilter !== "all" && p.status !== statusFilter) return false;
     return true;
   });
+
+  const exportProductsMapping = () => {
+    const header = ["Product name", "Source URL", "My site"];
+    const rows = products.map((product) => [
+      product?.title ?? "",
+      product?.source_url ?? "",
+      getStorefrontProductUrl(product),
+    ]);
+    const csvContent = [header, ...rows]
+      .map((row) => row.map(escapeCsvValue).join(","))
+      .join("\r\n");
+    const blob = new Blob([`\uFEFF${csvContent}`], { type: "text/csv;charset=utf-8;" });
+    const objectUrl = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+
+    link.href = objectUrl;
+    link.download = "Mapping.csv";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(objectUrl);
+  };
 
   const openEdit = async (p) => {
     setEditing(p);
@@ -896,6 +932,10 @@ export default function AdminProducts() {
           >
             <Clock3 className="w-4 h-4 mr-2" />
             Monitoring Time
+          </Button>
+          <Button variant="outline" onClick={exportProductsMapping} className="rounded-full">
+            <Download className="w-4 h-4 mr-2" />
+            Export CSV
           </Button>
           <Button onClick={openNew} className="rounded-full"><Plus className="w-4 h-4 mr-1" /> Add Product</Button>
         </div>
