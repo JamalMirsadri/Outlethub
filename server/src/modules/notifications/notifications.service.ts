@@ -72,6 +72,10 @@ interface TemplatePreviewInput {
 
 let emailTransporter: Transporter | null = null;
 
+function shouldDeliverEmailInline() {
+  return !env.REDIS_URL || env.SERVICE_MODE === "web";
+}
+
 // #region debug-point A:notification-debug-bootstrap
 const DEBUG_SESSION_ID = "verification-email";
 
@@ -620,6 +624,11 @@ export class NotificationsService {
     };
 
     if (delivery.channelCode === "EMAIL") {
+      if (shouldDeliverEmailInline()) {
+        await this.processDelivery(delivery.id);
+        return;
+      }
+
       // #region debug-point A:enqueue-delivery-email
       reportDebugEvent({
         hypothesisId: "A",
