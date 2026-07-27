@@ -100,6 +100,7 @@ export class CurrencyService {
       baseCurrency: normalizeCurrencyCode(rate.baseCurrency),
       quoteCurrency: normalizeCurrencyCode(rate.quoteCurrency),
       rate: toNumber(rate.rate),
+      isActive: rate.isActive,
       updatedByUserId: rate.updatedByUserId,
       notes: rate.notes,
       updatedAt: rate.updatedAt,
