@@ -243,6 +243,14 @@ export default function Checkout() {
 
   const currency = summary.cart.currency || summary.businessSettings.defaultCurrency || "EUR";
   const displayCurrency = preferredCurrency || currency;
+  const productPriceBeforeMarginAndVat = summary.cart.items.reduce(
+    (sum, item) => sum + item.supplierCost * item.quantity,
+    0,
+  );
+  const websiteMarginAmount = summary.cart.items.reduce(
+    (sum, item) => sum + item.profitAmount * item.quantity,
+    0,
+  );
 
   return (
     <div className="min-h-screen bg-background">
@@ -540,9 +548,17 @@ export default function Checkout() {
                   <span className="text-muted-foreground">Subtotal</span>
                   <span>{formatCurrency(summary.cart.subtotalAmount, currency)}</span>
                 </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Product price before margin and VAT</span>
+                  <span>{formatCurrency(productPriceBeforeMarginAndVat, currency)}</span>
+                </div>
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
                   <span>Subtotal ({displayCurrency})</span>
                   <span>{formatCurrency(convertAmount(summary.cart.subtotalAmount, currency, displayCurrency), displayCurrency)}</span>
+                </div>
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span>Product price before margin and VAT ({displayCurrency})</span>
+                  <span>{formatCurrency(convertAmount(productPriceBeforeMarginAndVat, currency, displayCurrency), displayCurrency)}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">Shipping</span>
@@ -553,8 +569,8 @@ export default function Checkout() {
                   <span>{formatCurrency(convertAmount(summary.cart.shippingAmount, currency, displayCurrency), displayCurrency)}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Margin</span>
-                  <span>{formatCurrency(summary.cart.items.reduce((sum, item) => sum + item.profitAmount * item.quantity, 0), currency)}</span>
+                  <span className="text-muted-foreground">Website margin</span>
+                  <span>{formatCurrency(websiteMarginAmount, currency)}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">Handling</span>
@@ -581,8 +597,8 @@ export default function Checkout() {
                   <span>{formatCurrency(convertAmount(summary.cart.totalAmount, currency, displayCurrency), displayCurrency)}</span>
                 </div>
                 <div className="rounded-2xl bg-secondary/40 p-4 mt-4">
-                  <p className="text-xs text-muted-foreground mb-2">Profit snapshot</p>
-                  <p className="font-mono text-lg font-semibold">{formatCurrency(summary.cart.items.reduce((sum, item) => sum + item.profitAmount * item.quantity, 0), currency)}</p>
+                  <p className="text-xs text-muted-foreground mb-2">Website margin</p>
+                  <p className="font-mono text-lg font-semibold">{formatCurrency(websiteMarginAmount, currency)}</p>
                 </div>
               </div>
             </div>

@@ -164,13 +164,18 @@ export default function ProductDetail() {
   const originalPrice = Number(product.original_price ?? 0);
   const outletPrice = Number(product.outlet_price ?? product.supplier_price ?? product.final_price ?? 0);
   const finalPrice = Number(product.final_price ?? 0);
-  const pricingAdjustment = Math.max(0, Number(product.profit_amount ?? 0));
-  const taxAndVatAmount = Math.max(0, finalPrice - outletPrice - pricingAdjustment);
-  const hasRetailDiscount = originalPrice > 0 && finalPrice < originalPrice;
+  const hasRetailDiscount = originalPrice > 0 && outletPrice > 0 && outletPrice < originalPrice;
+  const displayedProductPrice = hasRetailDiscount
+    ? outletPrice
+    : originalPrice > 0
+      ? originalPrice
+      : outletPrice > 0
+        ? outletPrice
+        : finalPrice;
   const discount = hasRetailDiscount
-    ? product.discount_percent || Math.max(0, Math.round((1 - finalPrice / originalPrice) * 100))
+    ? product.discount_percent || Math.max(0, Math.round((1 - outletPrice / originalPrice) * 100))
     : 0;
-  const savings = hasRetailDiscount ? originalPrice - finalPrice : 0;
+  const savings = hasRetailDiscount ? originalPrice - outletPrice : 0;
   const images = product.images?.length ? product.images : [PRODUCT_PLACEHOLDER_IMAGE];
   const currency = product.currency || "EUR";
   const displayCurrency = preferredCurrency || currency;
@@ -382,7 +387,7 @@ export default function ProductDetail() {
             {/* Pricing */}
             <div className="flex items-end gap-3 mb-2">
               <span className="font-mono text-3xl font-bold text-[hsl(var(--accent))]">
-                {formatCurrency(convertAmount(finalPrice, currency, displayCurrency), displayCurrency)}
+                {formatCurrency(convertAmount(displayedProductPrice, currency, displayCurrency), displayCurrency)}
               </span>
               {hasRetailDiscount ? (
                 <>
@@ -391,49 +396,38 @@ export default function ProductDetail() {
                   </span>
                   <Badge className="bg-[hsl(var(--accent))] text-black font-mono">-{discount}%</Badge>
                 </>
-              ) : (
-                <Badge variant="secondary" className="font-mono">Pricing Rules Applied</Badge>
-              )}
+              ) : null}
             </div>
             <div className="mb-6 space-y-2">
               <p className="text-sm text-muted-foreground">
                 Original retail price: {formatCurrency(convertAmount(originalPrice, currency, displayCurrency), displayCurrency)}
               </p>
-              <p className="text-sm text-muted-foreground">
-                Outlet source price: {formatCurrency(convertAmount(outletPrice, currency, displayCurrency), displayCurrency)}
-              </p>
               {hasRetailDiscount ? (
-                <p className="text-sm text-[hsl(var(--accent))] font-medium">
-                  You save {formatCurrency(convertAmount(savings, currency, displayCurrency), displayCurrency)} vs original retail price
-                </p>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  Final customer price is higher than the outlet source price because your pricing rules add margin, shipping, handling, and VAT.
-                </p>
-              )}
+                <>
+                  <p className="text-sm text-muted-foreground">
+                    Outlet price: {formatCurrency(convertAmount(outletPrice, currency, displayCurrency), displayCurrency)}
+                  </p>
+                  <p className="text-sm text-[hsl(var(--accent))] font-medium">
+                    You save {formatCurrency(convertAmount(savings, currency, displayCurrency), displayCurrency)} vs original retail price
+                  </p>
+                </>
+              ) : null}
             </div>
             <div className="rounded-xl bg-secondary/40 p-4 mb-6">
-              <p className="text-xs text-muted-foreground">Price Breakdown</p>
-              <div className="mt-3 space-y-2 text-sm">
+              <div className="space-y-2 text-sm">
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">Original Retail Price</span>
                   <span>{formatCurrency(convertAmount(originalPrice, currency, displayCurrency), displayCurrency)}</span>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Outlet Source Price</span>
-                  <span>{formatCurrency(convertAmount(outletPrice, currency, displayCurrency), displayCurrency)}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Margin, Shipping, Handling</span>
-                  <span>{formatCurrency(convertAmount(pricingAdjustment, currency, displayCurrency), displayCurrency)}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">VAT</span>
-                  <span>{formatCurrency(convertAmount(taxAndVatAmount, currency, displayCurrency), displayCurrency)}</span>
-                </div>
+                {hasRetailDiscount ? (
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Outlet Price</span>
+                    <span>{formatCurrency(convertAmount(outletPrice, currency, displayCurrency), displayCurrency)}</span>
+                  </div>
+                ) : null}
                 <div className="flex items-center justify-between border-t border-border pt-2 font-medium">
-                  <span className="text-foreground">Final Customer Price</span>
-                  <span>{formatCurrency(convertAmount(finalPrice, currency, displayCurrency), displayCurrency)}</span>
+                  <span className="text-foreground">Displayed Price</span>
+                  <span>{formatCurrency(convertAmount(displayedProductPrice, currency, displayCurrency), displayCurrency)}</span>
                 </div>
               </div>
             </div>

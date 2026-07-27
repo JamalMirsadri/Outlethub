@@ -81,6 +81,14 @@ export default function Cart() {
 
   const currency = cart.currency || "EUR";
   const displayCurrency = preferredCurrency || currency;
+  const productPriceBeforeMarginAndVat = cart.items.reduce(
+    (sum, item) => sum + item.supplierCost * item.quantity,
+    0,
+  );
+  const websiteMarginAmount = cart.items.reduce(
+    (sum, item) => sum + item.profitAmount * item.quantity,
+    0,
+  );
 
   return (
     <div className="min-h-screen bg-background">
@@ -265,9 +273,21 @@ export default function Cart() {
                   <span className="text-muted-foreground">Items ({cart.itemCount})</span>
                   <span>{formatCurrency(cart.subtotalAmount, currency)}</span>
                 </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Product price before margin and VAT</span>
+                  <span>{formatCurrency(productPriceBeforeMarginAndVat, currency)}</span>
+                </div>
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
                   <span>Items ({displayCurrency})</span>
                   <span>{formatCurrency(convertAmount(cart.subtotalAmount, currency, displayCurrency), displayCurrency)}</span>
+                </div>
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span>Product price before margin and VAT ({displayCurrency})</span>
+                  <span>{formatCurrency(convertAmount(productPriceBeforeMarginAndVat, currency, displayCurrency), displayCurrency)}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Website margin</span>
+                  <span>{formatCurrency(websiteMarginAmount, currency)}</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Shipping</span>
