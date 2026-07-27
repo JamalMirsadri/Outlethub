@@ -113,7 +113,7 @@ export default function AdminPayments() {
               {dashboard.items.map((payment) => {
                 const latestTransition = getLatestTransition(payment);
                 const showTomanAmounts = shouldShowTomanAmounts({
-                  displayCurrency: payment.displayCurrency,
+                  displayCurrency: payment.order?.displayCurrency ?? payment.displayCurrency,
                 });
 
                 return (

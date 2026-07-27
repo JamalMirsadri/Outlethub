@@ -333,13 +333,44 @@ export default function AdminOrders() {
                 <h3 className="font-semibold mb-4">Items</h3>
                 <div className="space-y-3">
                   {selectedOrder.items.map((item) => (
-                    <div key={item.id} className="flex items-center justify-between gap-4 rounded-xl bg-secondary/30 p-3">
-                      <div>
+                    <div key={item.id} className="flex flex-col gap-4 rounded-xl bg-secondary/30 p-4 lg:flex-row lg:items-start lg:justify-between">
+                      <div className="min-w-0">
                         <p className="font-medium">{item.title}</p>
                         <p className="text-sm text-muted-foreground mt-1">{item.brandName || "Unknown brand"} · Qty {item.quantity}</p>
+                        <div className="mt-3 grid gap-2 text-xs text-muted-foreground sm:grid-cols-2">
+                          <p>Size: {item.size || "N/A"}</p>
+                          <p>Color: {item.color || "N/A"}</p>
+                          <p>Source Store: {item.sourceStore || "N/A"}</p>
+                          <p>Currency: {item.currency || selectedOrder.currency}</p>
+                        </div>
+                        {item.sourceUrl ? (
+                          <a
+                            href={item.sourceUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="mt-3 inline-flex text-xs text-[hsl(var(--accent))] hover:underline break-all"
+                          >
+                            {item.sourceUrl}
+                          </a>
+                        ) : (
+                          <p className="mt-3 text-xs text-muted-foreground">Source address: N/A</p>
+                        )}
                       </div>
                       <div className="text-right">
                         <p className="font-mono">{formatCurrency(item.totalPrice, selectedOrder.currency)}</p>
+                        {showTomanAmounts ? (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {formatCurrency(item.totalPrice * (selectedOrder.exchangeRateSnapshot?.rate ?? 1), "TOMAN")}
+                          </p>
+                        ) : null}
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Unit {formatCurrency(item.unitPrice, selectedOrder.currency)}
+                        </p>
+                        {showTomanAmounts ? (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Unit {formatCurrency(item.unitPrice * (selectedOrder.exchangeRateSnapshot?.rate ?? 1), "TOMAN")}
+                          </p>
+                        ) : null}
                         <p className="text-xs text-muted-foreground mt-1">Profit {formatCurrency(item.profitAmount, selectedOrder.currency)}</p>
                       </div>
                     </div>

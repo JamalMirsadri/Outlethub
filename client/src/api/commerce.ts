@@ -375,6 +375,7 @@ export interface PaymentRecord {
     status: OrderStatus;
     totalAmount: number;
     currency: string;
+    displayCurrency: string;
   } | null;
   transactions: Array<{
     id: string;

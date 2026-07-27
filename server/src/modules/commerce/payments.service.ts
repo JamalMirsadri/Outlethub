@@ -128,6 +128,15 @@ function normalizeCurrencyCode(currency?: string | null) {
   return (currency ?? "").trim().toUpperCase();
 }
 
+function getExchangeRateSnapshotRate(snapshot: Prisma.JsonValue | null | undefined) {
+  if (!snapshot || typeof snapshot !== "object" || Array.isArray(snapshot)) {
+    return 0;
+  }
+
+  const maybeRate = snapshot.rate;
+  return typeof maybeRate === "number" ? maybeRate : 0;
+}
+
 async function uploadPaymentReceipt(input: {
   dataUrl: string;
   paymentId: string;
@@ -285,6 +294,9 @@ function mapPayment(payment: Prisma.PaymentGetPayload<{
     };
   };
 }>) {
+  const effectiveDisplayCurrency = payment.displayCurrency || payment.order?.displayCurrency || payment.currency;
+  const effectiveExchangeRate = toNumber(payment.exchangeRate) || getExchangeRateSnapshotRate(payment.order?.exchangeRateSnapshot) || 1;
+
   return {
     id: payment.id,
     orderId: payment.orderId,
@@ -295,9 +307,9 @@ function mapPayment(payment: Prisma.PaymentGetPayload<{
     statusLabel: paymentStatusLabel(payment.status),
     kind: payment.kind,
     currency: payment.currency,
-    displayCurrency: payment.displayCurrency,
+    displayCurrency: effectiveDisplayCurrency,
     amount: toNumber(payment.amount),
-    exchangeRate: toNumber(payment.exchangeRate),
+    exchangeRate: effectiveExchangeRate,
     paymentReference: payment.paymentReference,
     receiptUrl: payment.receiptUrl,
     receiptFileName: payment.receiptFileName,
@@ -318,6 +330,7 @@ function mapPayment(payment: Prisma.PaymentGetPayload<{
           status: payment.order.status,
           totalAmount: toNumber(payment.order.totalAmount),
           currency: payment.order.currency,
+          displayCurrency: payment.order.displayCurrency,
         }
       : null,
     transactions: payment.transactions.map((transaction) => ({
@@ -990,10 +1003,11 @@ export class PaymentsService {
     for (const payment of payments) {
       const key = payment.provider;
       const summary = revenueByProvider.get(key) ?? { eur: 0, toman: 0, count: 0 };
+      const effectiveDisplayCurrency = payment.displayCurrency || payment.order?.displayCurrency || payment.currency;
       if (payment.status === "PAID" || payment.status === "SUCCEEDED") {
         summary.eur += toNumber(payment.amount);
         const rate = toNumber(payment.exchangeRate) || 1;
-        summary.toman += payment.displayCurrency === "TOMAN" ? toNumber(payment.amount) * rate : 0;
+        summary.toman += effectiveDisplayCurrency === "TOMAN" ? toNumber(payment.amount) * rate : 0;
       }
       summary.count += 1;
       revenueByProvider.set(key, summary);
@@ -1003,10 +1017,11 @@ export class PaymentsService {
       (totals, payment) => {
         const amount = toNumber(payment.amount);
         const rate = toNumber(payment.exchangeRate) || 1;
+        const effectiveDisplayCurrency = payment.displayCurrency || payment.order?.displayCurrency || payment.currency;
 
         if (payment.status === "PAID" || payment.status === "SUCCEEDED") {
           totals.revenueEur += amount;
-          if (payment.displayCurrency === "TOMAN") {
+          if (effectiveDisplayCurrency === "TOMAN") {
             totals.revenueToman += amount * rate;
           }
           totals.successfulPayments += 1;

@@ -47,7 +47,7 @@ export default function AdminPaymentReview() {
         items.map((payment) => (
           (() => {
             const showTomanAmounts = shouldShowTomanAmounts({
-              displayCurrency: payment.displayCurrency,
+              displayCurrency: payment.order?.displayCurrency ?? payment.displayCurrency,
             });
 
             return (
