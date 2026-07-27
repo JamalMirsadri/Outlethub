@@ -39,6 +39,55 @@ type CartWithRelations = Prisma.CartGetPayload<{
 }>;
 
 export class CartService {
+  private async syncCartItemPricing(cartId: string, countryCode?: string | null) {
+    const items = await prisma.cartItem.findMany({
+      where: {
+        cartId,
+      },
+      include: {
+        product: {
+          include: {
+            brand: true,
+            images: {
+              orderBy: { sortOrder: "asc" },
+              take: 1,
+            },
+          },
+        },
+      },
+    });
+
+    for (const item of items) {
+      const pricing = await pricingService.calculateProductPricing(
+        {
+          id: item.product.id,
+          brandId: item.product.brandId,
+          categoryId: item.product.categoryId,
+          supplierPrice: item.product.outletPrice ?? item.product.supplierPrice ?? item.product.price,
+          fallbackPrice: item.product.outletPrice ?? item.product.supplierPrice ?? item.product.price,
+          currency: item.product.currency,
+          useCustomPricing: item.product.useCustomPricing,
+          customPrice: item.product.customPrice,
+        },
+        countryCode,
+      );
+
+      await prisma.cartItem.update({
+        where: { id: item.id },
+        data: {
+          supplierCost: pricing.supplierPrice,
+          customerPaid: pricing.customerPrice,
+          profitAmount: pricing.profitAmount,
+          snapshotTitle: item.product.name,
+          snapshotBrand: item.product.brand.name,
+          snapshotImageUrl: item.product.images[0]?.imageUrl ?? null,
+          snapshotSourceUrl: item.product.sourceUrl,
+          currency: pricing.currency,
+        },
+      });
+    }
+  }
+
   private async getDefaultCartMetadata(countryCode?: string | null) {
     const settings = await pricingService.getBusinessSettings();
     return {
@@ -223,18 +272,32 @@ export class CartService {
       throw new ApiError(404, "Cart not found.");
     }
 
+    await this.syncCartItemPricing(cart.id, cart.countryCode);
+
+    const refreshedCart = await prisma.cart.findUnique({
+      where: { id: cartId },
+      include: {
+        items: true,
+        shippingMethod: true,
+      },
+    });
+
+    if (!refreshedCart) {
+      throw new ApiError(404, "Cart not found.");
+    }
+
     const totals = await pricingService.calculateCartTotals({
-      items: cart.items.map((item) => ({
+      items: refreshedCart.items.map((item) => ({
         quantity: item.quantity,
         customerPaid: item.customerPaid,
         unitWeightKg: 1,
       })),
-      countryCode: cart.countryCode,
-      shippingMethodId: cart.shippingMethodId,
+      countryCode: refreshedCart.countryCode,
+      shippingMethodId: refreshedCart.shippingMethodId,
     });
 
     return prisma.cart.update({
-      where: { id: cart.id },
+      where: { id: refreshedCart.id },
       data: {
         currency: totals.currency,
         subtotalAmount: totals.subtotalAmount,
@@ -254,8 +317,9 @@ export class CartService {
     createIfMissing?: boolean;
   }) {
     const resolved = await this.resolveCart(input);
+    const recalculatedCart = resolved.cart ? await this.recalculateCart(resolved.cart.id) : null;
     return {
-      cart: this.mapCart(resolved.cart),
+      cart: this.mapCart(recalculatedCart),
       guestToken: resolved.guestToken,
     };
   }
