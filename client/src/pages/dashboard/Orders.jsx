@@ -3,7 +3,7 @@ import { listAccountOrders } from "@/api/commerce";
 import { Package } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useCurrency } from "@/contexts/CurrencyContext";
-import { formatCurrency } from "@/lib/currency";
+import { formatCurrency, shouldShowTomanAmounts } from "@/lib/currency";
 import moment from "moment";
 
 const STATUS_STYLES = {
@@ -43,6 +43,16 @@ export default function Orders() {
       ) : (
         <div className="space-y-3">
           {orders.map(order => (
+            (() => {
+              const showTomanAmounts = shouldShowTomanAmounts({
+                countryCode: order.customerAddress?.countryCode,
+                displayCurrency: order.displayCurrency,
+              });
+              const displayAmount = showTomanAmounts
+                ? formatCurrency(convertAmount(order.totalAmount, order.currency, "TOMAN"), "TOMAN")
+                : formatCurrency(convertAmount(order.totalAmount, order.currency, preferredCurrency), preferredCurrency);
+
+              return (
             <div key={order.id} className="p-4 lg:p-6 border border-border rounded-xl hover:border-muted-foreground/30 transition-colors">
               <div className="flex flex-col sm:flex-row justify-between gap-3">
                 <div>
@@ -57,7 +67,7 @@ export default function Orders() {
                 <div className="text-right">
                   <p className="font-mono font-semibold">{formatCurrency(order.totalAmount, order.currency)}</p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    {formatCurrency(convertAmount(order.totalAmount, order.currency, preferredCurrency), preferredCurrency)}
+                    {displayAmount}
                   </p>
                   {order.trackingNumber && <p className="text-xs text-muted-foreground mt-1">Track: {order.trackingNumber}</p>}
                   {order.estimatedDeliveryDate ? <p className="text-xs text-muted-foreground mt-1">ETA: {moment(order.estimatedDeliveryDate).format("MMM D, YYYY")}</p> : null}
@@ -86,6 +96,8 @@ export default function Orders() {
                 </div>
               ) : null}
             </div>
+              );
+            })()
           ))}
         </div>
       )}

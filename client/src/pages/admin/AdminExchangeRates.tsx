@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { toast } from "@/components/ui/use-toast";
+import { normalizeCurrencyCode } from "@/lib/currency";
 
 const EMPTY_FORM = {
   baseCurrency: "EUR",
@@ -21,6 +23,7 @@ export default function AdminExchangeRates() {
   const [items, setItems] = useState<ExchangeRateRecord[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
+  const [saving, setSaving] = useState(false);
 
   const load = async () => setItems(await listExchangeRates());
 
@@ -29,17 +32,29 @@ export default function AdminExchangeRates() {
   }, []);
 
   const save = async () => {
-    await upsertExchangeRate({
-      id: editingId ?? undefined,
-      baseCurrency: form.baseCurrency,
-      quoteCurrency: form.quoteCurrency,
-      rate: Number(form.rate),
-      notes: form.notes || null,
-      isActive: true,
-    });
-    setEditingId(null);
-    setForm(EMPTY_FORM);
-    await load();
+    setSaving(true);
+    try {
+      await upsertExchangeRate({
+        id: editingId ?? undefined,
+        baseCurrency: normalizeCurrencyCode(form.baseCurrency),
+        quoteCurrency: normalizeCurrencyCode(form.quoteCurrency),
+        rate: Number(form.rate),
+        notes: form.notes || null,
+        isActive: true,
+      });
+      setEditingId(null);
+      setForm(EMPTY_FORM);
+      await load();
+      toast({ title: editingId ? "FX rate updated" : "FX rate saved" });
+    } catch (error) {
+      toast({
+        title: "FX rate save failed",
+        description: error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -53,11 +68,11 @@ export default function AdminExchangeRates() {
         <div className="grid gap-4 md:grid-cols-3">
           <div>
             <Label className="text-xs">Base Currency</Label>
-            <Input className="mt-1" value={form.baseCurrency} onChange={(event) => setForm((current) => ({ ...current, baseCurrency: event.target.value }))} />
+            <Input className="mt-1" value={form.baseCurrency} onChange={(event) => setForm((current) => ({ ...current, baseCurrency: normalizeCurrencyCode(event.target.value) }))} />
           </div>
           <div>
             <Label className="text-xs">Quote Currency</Label>
-            <Input className="mt-1" value={form.quoteCurrency} onChange={(event) => setForm((current) => ({ ...current, quoteCurrency: event.target.value }))} />
+            <Input className="mt-1" value={form.quoteCurrency} onChange={(event) => setForm((current) => ({ ...current, quoteCurrency: normalizeCurrencyCode(event.target.value) }))} />
           </div>
           <div>
             <Label className="text-xs">Rate</Label>
@@ -69,7 +84,7 @@ export default function AdminExchangeRates() {
           </div>
         </div>
         <div className="mt-4 flex gap-3">
-          <Button onClick={() => void save()}>{editingId ? "Update Rate" : "Save Rate"}</Button>
+          <Button onClick={() => void save()} disabled={saving}>{saving ? "Saving..." : editingId ? "Update Rate" : "Save Rate"}</Button>
           {editingId ? <Button variant="outline" onClick={() => { setEditingId(null); setForm(EMPTY_FORM); }}>Cancel</Button> : null}
         </div>
       </div>

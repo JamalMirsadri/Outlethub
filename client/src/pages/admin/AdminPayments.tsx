@@ -4,7 +4,7 @@ import { CreditCard, Receipt, RefreshCcw, Wallet } from "lucide-react";
 import { completePayment, getAdminPayments, type PaymentRecord, type PaymentsAdminDashboardResponse } from "@/api/commerce";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { formatCurrency } from "@/lib/currency";
+import { formatCurrency, shouldShowTomanAmounts } from "@/lib/currency";
 
 const STATUS_STYLES: Record<string, string> = {
   PAYMENT_PENDING_REVIEW: "bg-amber-500/10 text-amber-500",
@@ -112,6 +112,9 @@ export default function AdminPayments() {
             <tbody>
               {dashboard.items.map((payment) => {
                 const latestTransition = getLatestTransition(payment);
+                const showTomanAmounts = shouldShowTomanAmounts({
+                  displayCurrency: payment.displayCurrency,
+                });
 
                 return (
                   <tr key={payment.id} className="border-b border-border last:border-b-0">
@@ -137,7 +140,11 @@ export default function AdminPayments() {
                     </td>
                     <td className="px-4 py-3">
                       <div>{formatCurrency(payment.amount, payment.currency)}</div>
-                      <div className="text-xs text-muted-foreground">{payment.displayCurrency}</div>
+                      {showTomanAmounts ? (
+                        <div className="text-xs text-muted-foreground">{formatCurrency(payment.amount * payment.exchangeRate, "TOMAN")}</div>
+                      ) : (
+                        <div className="text-xs text-muted-foreground">{payment.displayCurrency}</div>
+                      )}
                       {latestTransition?.notes ? (
                         <div className="mt-1 text-xs text-muted-foreground">{latestTransition.notes}</div>
                       ) : null}

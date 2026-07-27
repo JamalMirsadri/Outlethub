@@ -4,7 +4,7 @@ import { getPaymentReviewQueue, reviewPayment, type PaymentRecord } from "@/api/
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { formatCurrency } from "@/lib/currency";
+import { formatCurrency, shouldShowTomanAmounts } from "@/lib/currency";
 
 export default function AdminPaymentReview() {
   const [items, setItems] = useState<PaymentRecord[]>([]);
@@ -45,6 +45,12 @@ export default function AdminPaymentReview() {
         </div>
       ) : (
         items.map((payment) => (
+          (() => {
+            const showTomanAmounts = shouldShowTomanAmounts({
+              displayCurrency: payment.displayCurrency,
+            });
+
+            return (
           <div key={payment.id} className="rounded-xl border border-border bg-card p-6">
             <div className="grid gap-4 lg:grid-cols-[1fr,320px]">
               <div className="space-y-3">
@@ -57,6 +63,9 @@ export default function AdminPaymentReview() {
                   <div className="rounded-xl bg-secondary/40 p-4">
                     <p className="text-xs text-muted-foreground">Amount</p>
                     <p className="mt-2 font-semibold">{formatCurrency(payment.amount, payment.currency)}</p>
+                    {showTomanAmounts ? (
+                      <p className="mt-1 text-xs text-muted-foreground">{formatCurrency(payment.amount * payment.exchangeRate, "TOMAN")}</p>
+                    ) : null}
                   </div>
                   <div className="rounded-xl bg-secondary/40 p-4">
                     <p className="text-xs text-muted-foreground">Reference</p>
@@ -91,6 +100,8 @@ export default function AdminPaymentReview() {
               </div>
             </div>
           </div>
+            );
+          })()
         ))
       )}
     </div>

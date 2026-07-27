@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/use-toast";
-import { formatCurrency } from "@/lib/currency";
+import { formatCurrency, shouldShowTomanAmounts } from "@/lib/currency";
 import moment from "moment";
 
 const STATUSES = ["all", "PENDING", "PAYMENT_APPROVED", "PAID", "PROCESSING", "PURCHASED_FROM_SUPPLIER", "SHIPPED", "DELIVERED", "CANCELLED", "REFUNDED"];
@@ -153,12 +153,23 @@ export default function AdminOrders() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map(o => (
+              {filtered.map(o => {
+                const showTomanAmounts = shouldShowTomanAmounts({
+                  countryCode: o.customerAddress?.countryCode,
+                  displayCurrency: o.displayCurrency,
+                });
+
+                return (
                 <tr key={o.id} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors">
                   <td className="px-4 py-3 font-mono font-medium">{o.orderNumber}</td>
                   <td className="px-4 py-3 text-muted-foreground hidden md:table-cell">{o.customerEmail}</td>
                   <td className="px-4 py-3 text-muted-foreground hidden lg:table-cell">{moment(o.createdAt).format("MMM D, YYYY")}</td>
-                  <td className="px-4 py-3 font-mono">{formatCurrency(o.totalAmount, o.currency)}</td>
+                  <td className="px-4 py-3 font-mono">
+                    <div>{formatCurrency(o.totalAmount, o.currency)}</div>
+                    {showTomanAmounts ? (
+                      <div className="text-xs text-muted-foreground">{formatCurrency(o.totalAmount * (o.exchangeRateSnapshot?.rate ?? 1), "TOMAN")}</div>
+                    ) : null}
+                  </td>
                   <td className="px-4 py-3 font-mono hidden xl:table-cell">{formatCurrency(o.profitAmount, o.currency)}</td>
                   <td className="px-4 py-3">
                     <Select value={o.status} onValueChange={v => saveOrderDetails(o.id, { status: v }, "Order status updated")}>
@@ -177,7 +188,8 @@ export default function AdminOrders() {
                     </Button>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -189,6 +201,13 @@ export default function AdminOrders() {
             <DialogTitle className="font-display">Order Detail</DialogTitle>
           </DialogHeader>
           {selectedOrder ? (
+            (() => {
+              const showTomanAmounts = shouldShowTomanAmounts({
+                countryCode: selectedOrder.customerAddress?.countryCode,
+                displayCurrency: selectedOrder.displayCurrency,
+              });
+
+              return (
             <div className="space-y-6">
               <div className="grid gap-4 md:grid-cols-3">
                 <div className="rounded-xl border border-border p-4">
@@ -200,7 +219,11 @@ export default function AdminOrders() {
                   <p className="text-xs text-muted-foreground mb-2">Revenue</p>
                   <p className="font-semibold">{formatCurrency(selectedOrder.totalAmount, selectedOrder.currency)}</p>
                   <p className="text-sm text-muted-foreground mt-1">Profit {formatCurrency(selectedOrder.profitAmount, selectedOrder.currency)}</p>
-                  {selectedOrder.displayCurrency && selectedOrder.displayCurrency !== selectedOrder.currency ? (
+                  {showTomanAmounts ? (
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Toman {formatCurrency(selectedOrder.totalAmount * (selectedOrder.exchangeRateSnapshot?.rate ?? 1), "TOMAN")}
+                    </p>
+                  ) : selectedOrder.displayCurrency && selectedOrder.displayCurrency !== selectedOrder.currency ? (
                     <p className="text-sm text-muted-foreground mt-1">
                       Display {formatCurrency(
                         selectedOrder.exchangeRateSnapshot?.convertedAmount
@@ -217,7 +240,11 @@ export default function AdminOrders() {
                   <p className="text-sm text-muted-foreground mt-1">
                     {selectedOrder.shippingMethod?.deliveryEstimate || `${selectedOrder.shippingMethod?.minDeliveryDays ?? 0}-${selectedOrder.shippingMethod?.maxDeliveryDays ?? 0} days`}
                   </p>
-                  {selectedOrder.displayCurrency ? (
+                  {showTomanAmounts ? (
+                    <p className="text-sm text-muted-foreground mt-1">
+                      FX 1 {selectedOrder.currency} {"->"} {selectedOrder.exchangeRateSnapshot?.rate ?? 1} TOMAN
+                    </p>
+                  ) : selectedOrder.displayCurrency ? (
                     <p className="text-sm text-muted-foreground mt-1">
                       FX 1 {selectedOrder.currency} {"->"} {selectedOrder.exchangeRateSnapshot?.rate ?? 1} {selectedOrder.displayCurrency}
                     </p>
@@ -320,6 +347,8 @@ export default function AdminOrders() {
                 </div>
               </div>
             </div>
+              );
+            })()
           ) : null}
         </DialogContent>
       </Dialog>

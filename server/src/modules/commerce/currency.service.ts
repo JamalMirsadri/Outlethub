@@ -9,6 +9,10 @@ const REQUIRED_DISPLAY_CURRENCIES = [
   { code: "TOMAN", name: "Iranian Toman", symbol: "TOMAN", isDefault: false },
 ];
 
+function normalizeCurrencyCode(currency?: string | null) {
+  return (currency ?? "").trim().toUpperCase();
+}
+
 function toNumber(value: Prisma.Decimal | null | undefined): number {
   if (!value) {
     return 0;
@@ -93,8 +97,8 @@ export class CurrencyService {
 
     return rates.map((rate) => ({
       id: rate.id,
-      baseCurrency: rate.baseCurrency,
-      quoteCurrency: rate.quoteCurrency,
+      baseCurrency: normalizeCurrencyCode(rate.baseCurrency),
+      quoteCurrency: normalizeCurrencyCode(rate.quoteCurrency),
       rate: toNumber(rate.rate),
       updatedByUserId: rate.updatedByUserId,
       notes: rate.notes,
@@ -127,15 +131,22 @@ export class CurrencyService {
   }
 
   public async getExchangeRate(baseCurrency: string, quoteCurrency: string) {
-    if (baseCurrency === quoteCurrency) {
+    const normalizedBaseCurrency = normalizeCurrencyCode(baseCurrency);
+    const normalizedQuoteCurrency = normalizeCurrencyCode(quoteCurrency);
+
+    if (normalizedBaseCurrency === normalizedQuoteCurrency) {
       return 1;
     }
 
-    const rate = await prisma.exchangeRate.findUnique({
+    const rate = await prisma.exchangeRate.findFirst({
       where: {
-        baseCurrency_quoteCurrency: {
-          baseCurrency,
-          quoteCurrency,
+        baseCurrency: {
+          equals: normalizedBaseCurrency,
+          mode: "insensitive",
+        },
+        quoteCurrency: {
+          equals: normalizedQuoteCurrency,
+          mode: "insensitive",
         },
       },
       select: {
@@ -145,7 +156,7 @@ export class CurrencyService {
     });
 
     if (!rate || !rate.isActive) {
-      throw new ApiError(400, `Exchange rate ${baseCurrency} -> ${quoteCurrency} is not configured.`);
+      throw new ApiError(400, `Exchange rate ${normalizedBaseCurrency} -> ${normalizedQuoteCurrency} is not configured.`);
     }
 
     return toNumber(rate.rate);
@@ -157,10 +168,12 @@ export class CurrencyService {
     toCurrency: string;
   }): Promise<CurrencyConversionResult> {
     const rate = await this.getExchangeRate(input.fromCurrency, input.toCurrency);
+    const normalizedFromCurrency = normalizeCurrencyCode(input.fromCurrency);
+    const normalizedToCurrency = normalizeCurrencyCode(input.toCurrency);
 
     return {
-      fromCurrency: input.fromCurrency,
-      toCurrency: input.toCurrency,
+      fromCurrency: normalizedFromCurrency,
+      toCurrency: normalizedToCurrency,
       rate,
       originalAmount: input.amount,
       convertedAmount: Number((input.amount * rate).toFixed(2)),

@@ -10,7 +10,7 @@ import { Separator } from "@/components/ui/separator";
 import { toast } from "@/components/ui/use-toast";
 import { useCart } from "@/contexts/CartContext";
 import { useCurrency } from "@/contexts/CurrencyContext";
-import { formatCurrency } from "@/lib/currency";
+import { formatCurrency, shouldShowTomanAmounts } from "@/lib/currency";
 
 const COUNTRY_OPTIONS = [
   { code: "PT", label: "Portugal" },
@@ -80,7 +80,8 @@ export default function Cart() {
   };
 
   const currency = cart.currency || "EUR";
-  const displayCurrency = preferredCurrency || currency;
+  const showTomanAmounts = shouldShowTomanAmounts({ countryCode: cart.countryCode });
+  const displayCurrency = showTomanAmounts ? "TOMAN" : preferredCurrency || currency;
   const productPriceBeforeMarginAndVat = cart.items.reduce(
     (sum, item) => sum + item.supplierCost * item.quantity,
     0,
@@ -119,7 +120,7 @@ export default function Cart() {
           </div>
           <div className="w-full md:w-56">
             <p className="text-xs font-semibold tracking-widest text-muted-foreground mb-3">Display currency</p>
-            <Select value={displayCurrency} onValueChange={(value) => void setPreferredCurrency(value)}>
+            <Select value={displayCurrency} onValueChange={(value) => void setPreferredCurrency(value)} disabled={showTomanAmounts}>
               <SelectTrigger className="h-11">
                 <SelectValue placeholder="Select currency" />
               </SelectTrigger>
@@ -208,6 +209,11 @@ export default function Cart() {
                             <p className="text-xs text-muted-foreground mt-1">
                               Final {formatCurrency(convertAmount(item.customerPaid, currency, displayCurrency), displayCurrency)}
                             </p>
+                            {showTomanAmounts ? (
+                              <p className="text-xs text-muted-foreground mt-1">
+                                EUR {formatCurrency(item.customerPaid, currency)}
+                              </p>
+                            ) : null}
                             {item.sourceUrl ? (
                               <a
                                 href={item.sourceUrl}
@@ -289,22 +295,52 @@ export default function Cart() {
                   <span className="text-muted-foreground">Website margin</span>
                   <span>{formatCurrency(websiteMarginAmount, currency)}</span>
                 </div>
+                {showTomanAmounts ? (
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>Website margin ({displayCurrency})</span>
+                    <span>{formatCurrency(convertAmount(websiteMarginAmount, currency, displayCurrency), displayCurrency)}</span>
+                  </div>
+                ) : null}
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Shipping</span>
                   <span>{formatCurrency(cart.shippingAmount, currency)}</span>
                 </div>
+                {showTomanAmounts ? (
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>Shipping ({displayCurrency})</span>
+                    <span>{formatCurrency(convertAmount(cart.shippingAmount, currency, displayCurrency), displayCurrency)}</span>
+                  </div>
+                ) : null}
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Handling</span>
                   <span>{formatCurrency(cart.handlingAmount, currency)}</span>
                 </div>
+                {showTomanAmounts ? (
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>Handling ({displayCurrency})</span>
+                    <span>{formatCurrency(convertAmount(cart.handlingAmount, currency, displayCurrency), displayCurrency)}</span>
+                  </div>
+                ) : null}
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Payment fee</span>
                   <span>{formatCurrency(cart.paymentFeeAmount, currency)}</span>
                 </div>
+                {showTomanAmounts ? (
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>Payment fee ({displayCurrency})</span>
+                    <span>{formatCurrency(convertAmount(cart.paymentFeeAmount, currency, displayCurrency), displayCurrency)}</span>
+                  </div>
+                ) : null}
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">VAT</span>
                   <span>{formatCurrency(cart.taxAmount, currency)}</span>
                 </div>
+                {showTomanAmounts ? (
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>VAT ({displayCurrency})</span>
+                    <span>{formatCurrency(convertAmount(cart.taxAmount, currency, displayCurrency), displayCurrency)}</span>
+                  </div>
+                ) : null}
                 <Separator />
                 <div className="flex items-center justify-between">
                   <span className="font-semibold">Total</span>
@@ -314,6 +350,12 @@ export default function Cart() {
                   <span className="text-muted-foreground">Total ({displayCurrency})</span>
                   <span>{formatCurrency(convertAmount(cart.totalAmount, currency, displayCurrency), displayCurrency)}</span>
                 </div>
+                {showTomanAmounts ? (
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>Exchange Rate</span>
+                    <span>1 {currency} {"->"} {convertAmount(1, currency, displayCurrency)} {displayCurrency}</span>
+                  </div>
+                ) : null}
                 <p className="text-xs text-muted-foreground">
                   Currency conversion and payment selection continue in checkout.
                 </p>

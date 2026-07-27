@@ -124,6 +124,10 @@ function decodeDataUrl(dataUrl: string) {
   };
 }
 
+function normalizeCurrencyCode(currency?: string | null) {
+  return (currency ?? "").trim().toUpperCase();
+}
+
 async function uploadPaymentReceipt(input: {
   dataUrl: string;
   paymentId: string;
@@ -156,7 +160,7 @@ async function uploadPaymentReceipt(input: {
     await mkdir(uploadsRoot, { recursive: true });
     await writeFile(receiptAbsolutePath, buffer);
 
-    const receiptUrl = `http://127.0.0.1:${env.PORT}/uploads/${receiptRelativePath}`;
+    const receiptUrl = `/uploads/${receiptRelativePath}`;
 
     // #region debug-point B:receipt-upload-local-fallback
     reportDebugEvent({
@@ -1204,8 +1208,8 @@ export class PaymentsService {
 
     return rates.map((rate) => ({
       id: rate.id,
-      baseCurrency: rate.baseCurrency,
-      quoteCurrency: rate.quoteCurrency,
+      baseCurrency: normalizeCurrencyCode(rate.baseCurrency),
+      quoteCurrency: normalizeCurrencyCode(rate.quoteCurrency),
       rate: toNumber(rate.rate),
       isActive: rate.isActive,
       updatedByUserId: rate.updatedByUserId,
@@ -1223,12 +1227,14 @@ export class PaymentsService {
     isActive?: boolean;
     notes?: string | null;
   }) {
+    const normalizedBaseCurrency = normalizeCurrencyCode(input.baseCurrency);
+    const normalizedQuoteCurrency = normalizeCurrencyCode(input.quoteCurrency);
     const exchangeRate = input.id
       ? await prisma.exchangeRate.update({
           where: { id: input.id },
           data: {
-            baseCurrency: input.baseCurrency,
-            quoteCurrency: input.quoteCurrency,
+            baseCurrency: normalizedBaseCurrency,
+            quoteCurrency: normalizedQuoteCurrency,
             rate: new Prisma.Decimal(input.rate),
             isActive: input.isActive ?? true,
             updatedByUserId: adminUserId,
@@ -1238,8 +1244,8 @@ export class PaymentsService {
       : await prisma.exchangeRate.upsert({
           where: {
             baseCurrency_quoteCurrency: {
-              baseCurrency: input.baseCurrency,
-              quoteCurrency: input.quoteCurrency,
+              baseCurrency: normalizedBaseCurrency,
+              quoteCurrency: normalizedQuoteCurrency,
             },
           },
           update: {
@@ -1249,8 +1255,8 @@ export class PaymentsService {
             notes: input.notes ?? null,
           },
           create: {
-            baseCurrency: input.baseCurrency,
-            quoteCurrency: input.quoteCurrency,
+            baseCurrency: normalizedBaseCurrency,
+            quoteCurrency: normalizedQuoteCurrency,
             rate: new Prisma.Decimal(input.rate),
             isActive: input.isActive ?? true,
             updatedByUserId: adminUserId,

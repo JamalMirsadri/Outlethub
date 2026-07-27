@@ -7,8 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { toast } from "@/components/ui/use-toast";
 import { useCurrency } from "@/contexts/CurrencyContext";
-import { formatCurrency } from "@/lib/currency";
+import { formatCurrency, shouldShowTomanAmounts } from "@/lib/currency";
 
 const STATUS_STYLES = {
   PAYMENT_PENDING_REVIEW: "bg-amber-500/10 text-amber-500",
@@ -83,6 +84,17 @@ export default function PaymentsPage() {
         notes: notesById[payment.id] || null,
       });
       await loadPayments();
+      setFileById((current) => ({ ...current, [payment.id]: null }));
+      toast({
+        title: "Receipt uploaded",
+        description: "Your receipt is now waiting for admin review.",
+      });
+    } catch (error) {
+      toast({
+        title: "Receipt upload failed",
+        description: error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setSavingId(null);
     }
@@ -106,6 +118,14 @@ export default function PaymentsPage() {
 
                 return (
                   <>
+              {(() => {
+                const showTomanAmount = shouldShowTomanAmounts({
+                  countryCode: payment.order?.shippingAddress?.countryCode,
+                  displayCurrency: payment.displayCurrency,
+                });
+                const tomanAmount = convertAmount(payment.amount, payment.currency, "TOMAN");
+
+                return (
               <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                 <div>
                   <div className="flex items-center gap-3">
@@ -116,7 +136,8 @@ export default function PaymentsPage() {
                   </div>
                   <p className="text-sm text-muted-foreground mt-2">{payment.providerLabel} · {payment.paymentReference ?? "Reference pending"}</p>
                   <p className="text-sm text-muted-foreground mt-1">
-                    {formatCurrency(payment.amount, payment.currency)} · {formatCurrency(convertAmount(payment.amount, payment.currency, preferredCurrency), preferredCurrency)}
+                    {formatCurrency(payment.amount, payment.currency)}
+                    {showTomanAmount ? ` · ${formatCurrency(tomanAmount, "TOMAN")}` : ` · ${formatCurrency(convertAmount(payment.amount, payment.currency, preferredCurrency), preferredCurrency)}`}
                   </p>
                   {payment.receiptUrl ? (
                     <a href={payment.receiptUrl} target="_blank" rel="noreferrer" className="inline-flex mt-2 text-sm text-[hsl(var(--accent))] hover:underline">
@@ -157,6 +178,8 @@ export default function PaymentsPage() {
                   </div>
                 ) : null}
               </div>
+                );
+              })()}
                   </>
                 );
               })()}

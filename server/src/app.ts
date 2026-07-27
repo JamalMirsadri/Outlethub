@@ -165,7 +165,7 @@ export function createApp() {
     }),
   );
   app.use(morgan("dev"));
-  app.use(express.json());
+  app.use(express.json({ limit: "15mb" }));
   app.use(cookieParser());
   app.use("/uploads", express.static(resolve(process.cwd(), "uploads")));
 

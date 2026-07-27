@@ -19,7 +19,7 @@ import { toast } from "@/components/ui/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
 import { useCurrency } from "@/contexts/CurrencyContext";
-import { formatCurrency } from "@/lib/currency";
+import { formatCurrency, shouldShowTomanAmounts } from "@/lib/currency";
 
 const STEP_TITLES = [
   "Cart Review",
@@ -116,6 +116,9 @@ export default function Checkout() {
     () => availableShippingMethods.find((method) => method.id === selectedShippingMethodId) ?? null,
     [availableShippingMethods, selectedShippingMethodId],
   );
+  const isIranDelivery = shouldShowTomanAmounts({
+    countryCode: selectedShippingAddress?.countryCode ?? summary?.cart?.countryCode,
+  });
 
   const persistShippingSelection = async (countryCode, shippingMethodId) => {
     await updateCartCountry({
@@ -187,7 +190,7 @@ export default function Checkout() {
         billingAddressId: selectedBillingAddressId ?? selectedShippingAddressId,
         shippingMethodId: selectedShippingMethodId,
         paymentProvider,
-        displayCurrency: preferredCurrency,
+        displayCurrency: isIranDelivery ? "TOMAN" : preferredCurrency,
         paymentMethodLabel,
         notes: customerNotes || null,
       });
@@ -242,7 +245,7 @@ export default function Checkout() {
   }
 
   const currency = summary.cart.currency || summary.businessSettings.defaultCurrency || "EUR";
-  const displayCurrency = preferredCurrency || currency;
+  const displayCurrency = isIranDelivery ? "TOMAN" : preferredCurrency || currency;
   const productPriceBeforeMarginAndVat = summary.cart.items.reduce(
     (sum, item) => sum + item.supplierCost * item.quantity,
     0,
@@ -433,7 +436,7 @@ export default function Checkout() {
                 <div className="mb-5 grid gap-4 md:grid-cols-2">
                   <div>
                     <Label className="text-xs">Display Currency</Label>
-                    <Select value={displayCurrency} onValueChange={(value) => void setPreferredCurrency(value)}>
+                    <Select value={displayCurrency} onValueChange={(value) => void setPreferredCurrency(value)} disabled={isIranDelivery}>
                       <SelectTrigger className="mt-1">
                         <SelectValue />
                       </SelectTrigger>
@@ -443,6 +446,11 @@ export default function Checkout() {
                         ))}
                       </SelectContent>
                     </Select>
+                    {isIranDelivery ? (
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        Iran delivery uses the saved EUR to TOMAN FX rate.
+                      </p>
+                    ) : null}
                   </div>
                 </div>
                 <div className="grid gap-3">
@@ -572,18 +580,42 @@ export default function Checkout() {
                   <span className="text-muted-foreground">Website margin</span>
                   <span>{formatCurrency(websiteMarginAmount, currency)}</span>
                 </div>
+                {isIranDelivery ? (
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>Website margin ({displayCurrency})</span>
+                    <span>{formatCurrency(convertAmount(websiteMarginAmount, currency, displayCurrency), displayCurrency)}</span>
+                  </div>
+                ) : null}
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">Handling</span>
                   <span>{formatCurrency(summary.cart.handlingAmount, currency)}</span>
                 </div>
+                {isIranDelivery ? (
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>Handling ({displayCurrency})</span>
+                    <span>{formatCurrency(convertAmount(summary.cart.handlingAmount, currency, displayCurrency), displayCurrency)}</span>
+                  </div>
+                ) : null}
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">Payment fee</span>
                   <span>{formatCurrency(summary.cart.paymentFeeAmount, currency)}</span>
                 </div>
+                {isIranDelivery ? (
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>Payment fee ({displayCurrency})</span>
+                    <span>{formatCurrency(convertAmount(summary.cart.paymentFeeAmount, currency, displayCurrency), displayCurrency)}</span>
+                  </div>
+                ) : null}
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">VAT</span>
                   <span>{formatCurrency(summary.cart.taxAmount, currency)}</span>
                 </div>
+                {isIranDelivery ? (
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>VAT ({displayCurrency})</span>
+                    <span>{formatCurrency(convertAmount(summary.cart.taxAmount, currency, displayCurrency), displayCurrency)}</span>
+                  </div>
+                ) : null}
                 <div className="flex items-center justify-between font-semibold text-base pt-3 border-t border-border">
                   <span>Total</span>
                   <span>{formatCurrency(summary.cart.totalAmount, currency)}</span>
