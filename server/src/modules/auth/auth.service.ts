@@ -369,20 +369,41 @@ export class AuthService {
       // #endregion debug-point A:register-user-created
 
       await this.issueEmailVerification(user.id, user.email);
-      await notificationsService.publishEvent({
-        eventKey: `registration:${user.id}`,
-        eventName: "REGISTRATION",
-        eventSource: "AUTH",
-        actorUserId: user.id,
-        targetUserId: user.id,
-        entityType: "user",
-        entityId: user.id,
-        title: "Registration completed",
-        message: "Your OutletHub account is ready.",
-        metadata: {
-          customerName: user.fullName ?? user.email,
-        },
-      });
+      try {
+        await notificationsService.publishEvent({
+          eventKey: `registration:${user.id}`,
+          eventName: "REGISTRATION",
+          eventSource: "AUTH",
+          actorUserId: user.id,
+          targetUserId: user.id,
+          entityType: "user",
+          entityId: user.id,
+          title: "Registration completed",
+          message: "Your OutletHub account is ready.",
+          metadata: {
+            customerName: user.fullName ?? user.email,
+          },
+        });
+      } catch (notificationError) {
+        // #region debug-point E:register-notification-error
+        reportDebugEvent({
+          hypothesisId: "E",
+          message: "[DEBUG] Auth register registration notification failed but signup continues",
+          data: {
+            email: normalizedEmail,
+            userId: user.id,
+            error:
+              notificationError instanceof Error
+                ? {
+                    name: notificationError.name,
+                    message: notificationError.message,
+                    stack: notificationError.stack,
+                  }
+                : { value: String(notificationError) },
+          },
+        });
+        // #endregion debug-point E:register-notification-error
+      }
       const tokens = await this.issueAuthTokens(user.id, user.email, user.role.code);
 
       // #region debug-point A:register-success

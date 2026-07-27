@@ -121,7 +121,7 @@ export const EVENT_DEFINITIONS: Record<NotificationEventName, EventDefinition> =
     category: "SYSTEM",
     priority: "MEDIUM",
     notificationType: "SYSTEM",
-    customerChannels: ["EMAIL", "IN_APP"],
+    customerChannels: ["IN_APP"],
     adminChannels: [],
   },
   EMAIL_VERIFICATION: {
