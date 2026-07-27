@@ -95,6 +95,55 @@ export default function Orders() {
                   {order.shipmentNotes ? <p className="mt-1">Shipment Notes: {order.shipmentNotes}</p> : null}
                 </div>
               ) : null}
+              {order.customerAddress ? (
+                <div className="mt-4 rounded-lg bg-secondary/20 px-4 py-3">
+                  <p className="text-xs font-medium text-muted-foreground">Delivery Address</p>
+                  <p className="mt-2 text-sm">{order.customerAddress.fullName}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {order.customerAddress.addressLine1}
+                    {order.customerAddress.addressLine2 ? `, ${order.customerAddress.addressLine2}` : ""}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {order.customerAddress.city}, {order.customerAddress.postalCode}, {order.customerAddress.countryCode}
+                  </p>
+                  {order.customerAddress.phone ? <p className="text-xs text-muted-foreground mt-1">{order.customerAddress.phone}</p> : null}
+                </div>
+              ) : null}
+              {order.items?.length ? (
+                <div className="mt-4 space-y-3">
+                  {order.items.map((item) => (
+                    <div key={item.id} className="rounded-lg bg-secondary/20 p-4">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="flex gap-3 min-w-0">
+                          {item.imageUrl ? (
+                            <img src={item.imageUrl} alt={item.title} className="h-16 w-16 rounded-lg object-cover border border-border shrink-0" />
+                          ) : null}
+                          <div className="min-w-0">
+                            <p className="font-medium">{item.title}</p>
+                            <p className="text-xs text-muted-foreground mt-1">{item.brandName || "Unknown brand"} · Qty {item.quantity}</p>
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              <span className="rounded-full bg-background px-3 py-1 text-[11px] text-muted-foreground">Size: {item.size || "Not captured"}</span>
+                              <span className="rounded-full bg-background px-3 py-1 text-[11px] text-muted-foreground">Color: {item.color || "Not captured"}</span>
+                            </div>
+                            {item.sourceUrl ? (
+                              <a href={item.sourceUrl} target="_blank" rel="noreferrer" className="mt-2 inline-flex text-xs text-[hsl(var(--accent))] hover:underline break-all">
+                                Source address
+                              </a>
+                            ) : null}
+                          </div>
+                        </div>
+                        <div className="text-left sm:text-right">
+                          <p className="font-mono">{formatCurrency(item.totalPrice, order.currency)}</p>
+                          {showTomanAmounts ? (
+                            <p className="text-xs text-muted-foreground mt-1">{formatCurrency(convertAmount(item.totalPrice, order.currency, "TOMAN"), "TOMAN")}</p>
+                          ) : null}
+                          <p className="text-xs text-muted-foreground mt-1">Unit {formatCurrency(item.unitPrice, order.currency)}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
             </div>
               );
             })()

@@ -121,6 +121,16 @@ export default function AdminPayments() {
                     <td className="px-4 py-3">
                       <div className="font-medium">{payment.order?.orderNumber ?? "No order"}</div>
                       <div className="text-xs text-muted-foreground">{payment.order?.customerEmail ?? "No customer"}</div>
+                      {payment.order?.customerAddress ? (
+                        <div className="mt-1 text-xs text-muted-foreground">
+                          {payment.order.customerAddress.fullName} · {payment.order.customerAddress.countryCode}
+                        </div>
+                      ) : null}
+                      {payment.order?.items?.[0] ? (
+                        <div className="mt-1 text-xs text-muted-foreground">
+                          {payment.order.items[0].title} · Size {payment.order.items[0].size || "N/A"} · Color {payment.order.items[0].color || "N/A"}
+                        </div>
+                      ) : null}
                       <div className="text-xs text-muted-foreground">{payment.paymentReference ?? "No reference"}</div>
                     </td>
                     <td className="px-4 py-3">{payment.providerLabel}</td>

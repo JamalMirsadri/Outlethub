@@ -81,6 +81,38 @@ export default function AdminPaymentReview() {
                     Open Receipt
                   </a>
                 ) : null}
+                {payment.order?.customerAddress ? (
+                  <div className="rounded-xl bg-secondary/40 p-4 text-xs text-muted-foreground">
+                    <p className="font-medium text-foreground">Delivery Address</p>
+                    <p className="mt-2">{payment.order.customerAddress.fullName}</p>
+                    <p className="mt-1">
+                      {payment.order.customerAddress.addressLine1}
+                      {payment.order.customerAddress.addressLine2 ? `, ${payment.order.customerAddress.addressLine2}` : ""}
+                    </p>
+                    <p className="mt-1">
+                      {payment.order.customerAddress.city}, {payment.order.customerAddress.postalCode}, {payment.order.customerAddress.countryCode}
+                    </p>
+                  </div>
+                ) : null}
+                {payment.order?.items?.length ? (
+                  <div className="space-y-2">
+                    {payment.order.items.map((item) => (
+                      <div key={item.id} className="rounded-xl bg-secondary/40 p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="font-medium">{item.title}</p>
+                            <p className="mt-1 text-xs text-muted-foreground">{item.brandName || "Unknown brand"} · Qty {item.quantity}</p>
+                            <p className="mt-1 text-xs text-muted-foreground">Size: {item.size || "Not captured"} · Color: {item.color || "Not captured"}</p>
+                          </div>
+                          <div className="text-right text-xs">
+                            <p>{formatCurrency(item.totalPrice, payment.currency)}</p>
+                            {showTomanAmounts ? <p className="mt-1 text-muted-foreground">{formatCurrency(item.totalPrice * payment.exchangeRate, "TOMAN")}</p> : null}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
                 <div>
                   <Label className="text-xs">Internal Notes</Label>
                   <Textarea

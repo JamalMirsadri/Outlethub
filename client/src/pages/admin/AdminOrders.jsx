@@ -266,6 +266,23 @@ export default function AdminOrders() {
                 </div>
               </div>
 
+              {selectedOrder.customerAddress ? (
+                <div className="rounded-xl border border-border p-4">
+                  <p className="text-xs text-muted-foreground mb-2">Delivery Address</p>
+                  <p className="font-semibold">{selectedOrder.customerAddress.fullName}</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {selectedOrder.customerAddress.addressLine1}
+                    {selectedOrder.customerAddress.addressLine2 ? `, ${selectedOrder.customerAddress.addressLine2}` : ""}
+                  </p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {selectedOrder.customerAddress.city}, {selectedOrder.customerAddress.postalCode}, {selectedOrder.customerAddress.countryCode}
+                  </p>
+                  {selectedOrder.customerAddress.phone ? (
+                    <p className="text-sm text-muted-foreground mt-1">{selectedOrder.customerAddress.phone}</p>
+                  ) : null}
+                </div>
+              ) : null}
+
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
                   <Label className="text-xs">Status</Label>

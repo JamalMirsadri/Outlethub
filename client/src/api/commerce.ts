@@ -376,6 +376,27 @@ export interface PaymentRecord {
     totalAmount: number;
     currency: string;
     displayCurrency: string;
+    customerAddress: {
+      fullName: string;
+      phone: string | null;
+      countryCode: string;
+      city: string;
+      postalCode: string;
+      addressLine1: string;
+      addressLine2: string | null;
+    } | null;
+    items: Array<{
+      id: string;
+      title: string;
+      brandName: string | null;
+      size: string | null;
+      color: string | null;
+      quantity: number;
+      unitPrice: number;
+      totalPrice: number;
+      imageUrl: string | null;
+      sourceUrl: string | null;
+    }>;
   } | null;
   transactions: Array<{
     id: string;

@@ -206,6 +206,14 @@ export default function Cart() {
                             <p className="text-sm text-muted-foreground mt-2">
                               Supplier cost {formatCurrency(item.supplierCost, currency)}
                             </p>
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              <span className="rounded-full bg-secondary px-3 py-1 text-[11px] text-muted-foreground">
+                                Size: {item.size || "Not selected"}
+                              </span>
+                              <span className="rounded-full bg-secondary px-3 py-1 text-[11px] text-muted-foreground">
+                                Color: {item.color || "Not selected"}
+                              </span>
+                            </div>
                             <p className="text-xs text-muted-foreground mt-1">
                               Final {formatCurrency(convertAmount(item.customerPaid, currency, displayCurrency), displayCurrency)}
                             </p>

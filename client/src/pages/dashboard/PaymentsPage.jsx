@@ -144,6 +144,41 @@ export default function PaymentsPage() {
                       View uploaded receipt
                     </a>
                   ) : null}
+                  {payment.order?.customerAddress ? (
+                    <div className="mt-4 rounded-lg bg-secondary/30 px-4 py-3 text-xs text-muted-foreground">
+                      <p className="font-medium text-foreground">Delivery Address</p>
+                      <p className="mt-2">{payment.order.customerAddress.fullName}</p>
+                      <p className="mt-1">
+                        {payment.order.customerAddress.addressLine1}
+                        {payment.order.customerAddress.addressLine2 ? `, ${payment.order.customerAddress.addressLine2}` : ""}
+                      </p>
+                      <p className="mt-1">
+                        {payment.order.customerAddress.city}, {payment.order.customerAddress.postalCode}, {payment.order.customerAddress.countryCode}
+                      </p>
+                    </div>
+                  ) : null}
+                  {payment.order?.items?.length ? (
+                    <div className="mt-4 space-y-3">
+                      {payment.order.items.map((item) => (
+                        <div key={item.id} className="rounded-lg bg-secondary/30 p-3">
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className="font-medium">{item.title}</p>
+                              <p className="mt-1 text-xs text-muted-foreground">{item.brandName || "Unknown brand"} · Qty {item.quantity}</p>
+                              <div className="mt-2 flex flex-wrap gap-2">
+                                <span className="rounded-full bg-background px-3 py-1 text-[11px] text-muted-foreground">Size: {item.size || "Not captured"}</span>
+                                <span className="rounded-full bg-background px-3 py-1 text-[11px] text-muted-foreground">Color: {item.color || "Not captured"}</span>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-sm font-medium">{formatCurrency(item.totalPrice, payment.currency)}</p>
+                              {showTomanAmount ? <p className="mt-1 text-xs text-muted-foreground">{formatCurrency(item.totalPrice * payment.exchangeRate, "TOMAN")}</p> : null}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
                   <div className="mt-4 grid gap-2 md:grid-cols-4">
                     {timeline.map((step) => (
                       <div key={step.label} className="rounded-lg bg-secondary/40 p-3">

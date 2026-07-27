@@ -137,6 +137,11 @@ function getExchangeRateSnapshotRate(snapshot: Prisma.JsonValue | null | undefin
   return typeof maybeRate === "number" ? maybeRate : 0;
 }
 
+const paymentOrderInclude = {
+  customerAddress: true,
+  items: true,
+} as const;
+
 async function uploadPaymentReceipt(input: {
   dataUrl: string;
   paymentId: string;
@@ -283,7 +288,9 @@ async function publishPaymentEvent(input: {
 
 function mapPayment(payment: Prisma.PaymentGetPayload<{
   include: {
-    order: true;
+    order: {
+      include: typeof paymentOrderInclude;
+    };
     providerConfiguration: true;
     transactions: true;
     refunds: true;
@@ -331,6 +338,29 @@ function mapPayment(payment: Prisma.PaymentGetPayload<{
           totalAmount: toNumber(payment.order.totalAmount),
           currency: payment.order.currency,
           displayCurrency: payment.order.displayCurrency,
+          customerAddress: payment.order.customerAddress
+            ? {
+                fullName: payment.order.customerAddress.fullName,
+                phone: payment.order.customerAddress.phone,
+                countryCode: payment.order.customerAddress.countryCode,
+                city: payment.order.customerAddress.city,
+                postalCode: payment.order.customerAddress.postalCode,
+                addressLine1: payment.order.customerAddress.addressLine1,
+                addressLine2: payment.order.customerAddress.addressLine2,
+              }
+            : null,
+          items: payment.order.items.map((item) => ({
+            id: item.id,
+            title: item.title,
+            brandName: item.brandName,
+            size: item.size,
+            color: item.color,
+            quantity: item.quantity,
+            unitPrice: toNumber(item.unitPrice),
+            totalPrice: toNumber(item.totalPrice),
+            imageUrl: item.imageUrl,
+            sourceUrl: item.sourceUrl,
+          })),
         }
       : null,
     transactions: payment.transactions.map((transaction) => ({
@@ -547,7 +577,9 @@ export class PaymentsService {
         },
       },
       include: {
-        order: true,
+        order: {
+          include: paymentOrderInclude,
+        },
         providerConfiguration: true,
         transactions: true,
         refunds: true,
@@ -568,7 +600,9 @@ export class PaymentsService {
         userId,
       },
       include: {
-        order: true,
+        order: {
+          include: paymentOrderInclude,
+        },
         providerConfiguration: true,
         transactions: {
           orderBy: { createdAt: "desc" },
@@ -615,7 +649,9 @@ export class PaymentsService {
         userId,
       },
       include: {
-        order: true,
+        order: {
+          include: paymentOrderInclude,
+        },
       },
     });
 
@@ -673,7 +709,9 @@ export class PaymentsService {
         },
       },
       include: {
-        order: true,
+        order: {
+          include: paymentOrderInclude,
+        },
         providerConfiguration: true,
         transactions: {
           orderBy: { createdAt: "desc" },
@@ -748,7 +786,9 @@ export class PaymentsService {
     const payment = await prisma.payment.findUnique({
       where: { id: paymentId },
       include: {
-        order: true,
+        order: {
+          include: paymentOrderInclude,
+        },
       },
     });
 
@@ -822,7 +862,9 @@ export class PaymentsService {
         },
       },
       include: {
-        order: true,
+        order: {
+          include: paymentOrderInclude,
+        },
         providerConfiguration: true,
         transactions: {
           orderBy: { createdAt: "desc" },
@@ -880,7 +922,9 @@ export class PaymentsService {
     const payment = await prisma.payment.findUnique({
       where: { id: paymentId },
       include: {
-        order: true,
+        order: {
+          include: paymentOrderInclude,
+        },
       },
     });
 
@@ -935,7 +979,9 @@ export class PaymentsService {
         },
       },
       include: {
-        order: true,
+        order: {
+          include: paymentOrderInclude,
+        },
         providerConfiguration: true,
         transactions: {
           orderBy: { createdAt: "desc" },
@@ -981,7 +1027,9 @@ export class PaymentsService {
     const [payments, providers] = await Promise.all([
       prisma.payment.findMany({
         include: {
-          order: true,
+          order: {
+            include: paymentOrderInclude,
+          },
           providerConfiguration: true,
           transactions: true,
           refunds: true,
@@ -1082,7 +1130,9 @@ export class PaymentsService {
         status: PaymentStatus.PAYMENT_PENDING_REVIEW,
       },
       include: {
-        order: true,
+        order: {
+          include: paymentOrderInclude,
+        },
         providerConfiguration: true,
         transactions: {
           orderBy: { createdAt: "desc" },
