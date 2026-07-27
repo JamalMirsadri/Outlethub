@@ -485,7 +485,11 @@ export class OrdersService {
         id: cartResult.cart.id!,
       },
       include: {
-        items: true,
+        items: {
+          include: {
+            variant: true,
+          },
+        },
       },
     });
 
@@ -624,6 +628,8 @@ export class OrdersService {
             productId: item.productId,
             title: item.snapshotTitle,
             brandName: item.snapshotBrand,
+            size: item.variant?.size ?? null,
+            color: item.variant?.color ?? null,
             quantity: item.quantity,
             supplierCost: item.supplierCost,
             customerPaid: item.customerPaid,
