@@ -769,27 +769,27 @@ export class PaymentsService {
     });
     // #endregion debug-point B:upload-receipt-updated
 
-    await publishPaymentEvent({
+    void publishPaymentEvent({
       eventKey: `receipt-uploaded:${updated.id}:${updated.receiptUploadedAt?.toISOString() ?? Date.now()}`,
       eventName: "RECEIPT_UPLOADED",
       actorUserId: userId,
       payment: updated,
       message: `Receipt uploaded for ${updated.order?.orderNumber ?? updated.id}`,
-    });
-    await publishPaymentEvent({
+    }).catch(() => undefined);
+    void publishPaymentEvent({
       eventKey: `new-receipt-upload:${updated.id}:${updated.receiptUploadedAt?.toISOString() ?? Date.now()}`,
       eventName: "NEW_RECEIPT_UPLOAD",
       actorUserId: userId,
       payment: updated,
       message: `New receipt upload for ${updated.order?.orderNumber ?? updated.id}`,
-    });
-    await publishPaymentEvent({
+    }).catch(() => undefined);
+    void publishPaymentEvent({
       eventKey: `payment-waiting-review:${updated.id}:${updated.reviewRequestedAt?.toISOString() ?? Date.now()}`,
       eventName: "PAYMENT_WAITING_REVIEW",
       actorUserId: userId,
       payment: updated,
       message: `Payment waiting review for ${updated.order?.orderNumber ?? updated.id}`,
-    });
+    }).catch(() => undefined);
 
     return mapPayment(updated);
   }
