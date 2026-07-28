@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 
 const DEAL_STATS = [
@@ -101,110 +101,35 @@ export default function HeroSection({ heroImage }) {
 
   return (
     <section className="relative overflow-hidden pt-28 lg:pt-36 pb-16 lg:pb-20">
-      <div className="absolute inset-x-0 top-0 h-[520px] bg-[radial-gradient(circle_at_top_right,hsl(var(--accent)/0.12),transparent_42%)]" />
+      <div className="absolute inset-x-0 top-0 h-[420px] bg-[radial-gradient(circle_at_top,hsl(var(--accent)/0.10),transparent_45%)]" />
       <div className="luxe-shell relative">
-        <div className="grid gap-8 lg:grid-cols-[0.86fr_1.14fr] lg:items-stretch">
-          <div className="luxe-panel relative overflow-hidden px-7 py-8 lg:px-10 lg:py-12">
-            <motion.div
-              key={`eyebrow-${activeSlide}`}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
-              className="mb-5 flex items-center gap-2"
-            >
-              <Sparkles className="h-4 w-4 text-[hsl(var(--accent))]" />
-              <span className="luxe-eyebrow">{currentSlide.eyebrow}</span>
-            </motion.div>
-
-            <motion.p
-              key={`discount-${activeSlide}`}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.55, delay: 0.05, ease: [0.16, 1, 0.3, 1] }}
-              className="mb-4 text-xs font-semibold uppercase tracking-[0.2em] text-[hsl(var(--accent))]"
-            >
-              {currentSlide.discount}
-            </motion.p>
-
-            <motion.h1
-              key={`title-${activeSlide}`}
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.65, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
-              className="luxe-heading mb-6 text-5xl leading-[0.94] sm:text-6xl lg:text-[84px]"
-            >
-              {currentSlide.titleTop}
-              <br />
-              <span className="text-[hsl(var(--accent))]">{currentSlide.titleAccent}</span>
-            </motion.h1>
-
-            <motion.p
-              key={`desc-${activeSlide}`}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.55, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
-              className="max-w-xl text-base leading-8 text-muted-foreground lg:text-lg"
-            >
-              {currentSlide.description}
-            </motion.p>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.55, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
-              className="mt-10 flex flex-wrap gap-3"
-            >
-              <Button asChild size="lg" className="h-12 px-7 text-xs font-semibold uppercase tracking-[0.22em]">
-                <Link to="/shop">{currentSlide.primaryLabel}</Link>
-              </Button>
-              <Button asChild variant="outline" size="lg" className="h-12 px-7 text-xs font-semibold uppercase tracking-[0.22em]">
-                <Link to="/shop?sort=newest">{currentSlide.secondaryLabel}</Link>
-              </Button>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.55, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
-              className="mt-12 grid grid-cols-3 gap-3"
-            >
-              {DEAL_STATS.map((stat) => (
-                <div key={stat.label} className="rounded-[22px] border border-border/70 bg-background/65 px-4 py-5">
-                  <AnimatedCounter end={stat.end} suffix={stat.suffix} />
-                  <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                    {stat.label}
-                  </p>
-                </div>
-              ))}
-            </motion.div>
-          </div>
-
-          <motion.div
-            initial={{ opacity: 0, x: 24 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.75, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
-            className="relative overflow-hidden rounded-[34px] border border-border/70 bg-[#eef0e1]"
-          >
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+          className="relative overflow-hidden rounded-[30px] border border-border/70 bg-[#f6f6ec] shadow-[0_22px_60px_hsl(var(--foreground)/0.08)]"
+        >
+          <div className="relative min-h-[520px] lg:min-h-[560px]">
             <AnimatePresence mode="wait">
               <motion.div
                 key={`slide-${activeSlide}`}
-                initial={{ opacity: 0.2, scale: 1.04 }}
+                initial={{ opacity: 0.2, scale: 1.02 }}
                 animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0.2, scale: 0.98 }}
-                transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+                exit={{ opacity: 0.2 }}
+                transition={{ duration: 0.75, ease: [0.16, 1, 0.3, 1] }}
                 className="absolute inset-0"
               >
                 <img
                   src={heroImage}
                   alt="Luxury fashion"
-                  className="h-full min-h-[560px] w-full object-cover"
+                  className="h-full min-h-[520px] w-full object-cover lg:min-h-[560px]"
                 />
+                <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(16,21,31,0.68)_0%,rgba(16,21,31,0.28)_42%,rgba(16,21,31,0.12)_100%)]" />
                 <div className={`absolute inset-0 bg-gradient-to-r ${currentSlide.toneClass}`} />
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.22),transparent_35%),radial-gradient(circle_at_bottom,rgba(15,24,48,0.24),transparent_42%)]" />
               </motion.div>
             </AnimatePresence>
 
-            <div className="absolute left-5 top-5 flex gap-2">
+            <div className="absolute left-6 top-6 flex gap-2">
               <button
                 type="button"
                 onClick={showPreviousSlide}
@@ -223,7 +148,38 @@ export default function HeroSection({ heroImage }) {
               </button>
             </div>
 
-            <div className="absolute bottom-7 left-7 flex gap-2">
+            <div className="absolute inset-y-0 left-0 flex w-full max-w-[420px] items-center">
+              <div className="px-8 py-10 text-white lg:px-12">
+                <motion.div
+                  key={`copy-${activeSlide}`}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+                >
+                  <p className="mb-3 text-xs font-semibold uppercase tracking-[0.22em] text-white/80">
+                    {currentSlide.eyebrow}
+                  </p>
+                  <h1 className="mb-4 max-w-[320px] font-display text-4xl font-semibold leading-[1.02] lg:text-6xl">
+                    {currentSlide.titleTop}
+                    <br />
+                    {currentSlide.titleAccent}
+                  </h1>
+                  <p className="max-w-[340px] text-sm leading-7 text-white/84 lg:text-base">
+                    {currentSlide.description}
+                  </p>
+                  <div className="mt-7 flex flex-wrap gap-3">
+                    <Button asChild size="lg" className="h-11 bg-[hsl(var(--accent))] px-6 text-xs font-semibold uppercase tracking-[0.2em] text-[hsl(var(--accent-foreground))] hover:bg-[hsl(var(--accent))/0.9]">
+                      <Link to="/shop">{currentSlide.primaryLabel}</Link>
+                    </Button>
+                    <Button asChild variant="outline" size="lg" className="h-11 border-white/50 bg-white/10 px-6 text-xs font-semibold uppercase tracking-[0.2em] text-white hover:bg-white/20">
+                      <Link to="/shop?sort=newest">{currentSlide.secondaryLabel}</Link>
+                    </Button>
+                  </div>
+                </motion.div>
+              </div>
+            </div>
+
+            <div className="absolute bottom-6 left-8 flex gap-2">
               {HERO_SLIDES.map((_, index) => (
                 <button
                   key={`indicator-${index}`}
@@ -235,7 +191,7 @@ export default function HeroSection({ heroImage }) {
               ))}
             </div>
 
-            <div className="absolute bottom-7 right-7 w-full max-w-[280px] rounded-[26px] border border-white/40 bg-white/78 p-6 shadow-[0_20px_40px_rgba(42,32,24,0.12)] backdrop-blur">
+            <div className="absolute bottom-7 right-7 hidden w-full max-w-[300px] rounded-[26px] border border-white/40 bg-white/82 p-6 shadow-[0_20px_40px_rgba(42,32,24,0.12)] backdrop-blur md:block">
               <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-[hsl(var(--accent))]">
                 {currentSlide.cardEyebrow}
               </p>
@@ -251,7 +207,18 @@ export default function HeroSection({ heroImage }) {
                 </Link>
               </Button>
             </div>
-          </motion.div>
+          </div>
+        </motion.div>
+
+        <div className="mt-8 grid gap-4 md:grid-cols-3">
+          {DEAL_STATS.map((stat) => (
+            <div key={stat.label} className="luxe-panel px-5 py-6 text-center">
+              <AnimatedCounter end={stat.end} suffix={stat.suffix} />
+              <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                {stat.label}
+              </p>
+            </div>
+          ))}
         </div>
       </div>
       <div className="luxe-shell mt-8">
