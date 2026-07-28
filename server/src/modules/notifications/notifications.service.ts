@@ -76,52 +76,6 @@ function shouldDeliverEmailInline() {
   return !env.REDIS_URL || env.SERVICE_MODE === "web";
 }
 
-// #region debug-point A:checkout-order-stall
-const CHECKOUT_DEBUG_SESSION_ID = "checkout-order-stall";
-
-function resolveCheckoutDebugServerUrl() {
-  if (process.env.DEBUG_SERVER_URL) {
-    return process.env.DEBUG_SERVER_URL;
-  }
-
-  const debugEnvPath = resolve(process.cwd(), ".dbg", `${CHECKOUT_DEBUG_SESSION_ID}.env`);
-  if (!existsSync(debugEnvPath)) {
-    return null;
-  }
-
-  const debugEnvContent = readFileSync(debugEnvPath, "utf8");
-  return (
-    debugEnvContent
-      .split(/\r?\n/)
-      .find((line) => line.startsWith("DEBUG_SERVER_URL="))
-      ?.slice("DEBUG_SERVER_URL=".length)
-      .trim() || null
-  );
-}
-
-function reportCheckoutOrderDebugEvent(payload: Record<string, unknown>) {
-  const debugServerUrl = resolveCheckoutDebugServerUrl();
-
-  if (!debugServerUrl) {
-    return;
-  }
-
-  void fetch(debugServerUrl, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      sessionId: CHECKOUT_DEBUG_SESSION_ID,
-      runId: process.env.DEBUG_RUN_ID ?? "pre-fix",
-      source: "server:notifications-service",
-      ts: Date.now(),
-      ...payload,
-    }),
-  }).catch(() => undefined);
-}
-// #endregion
-
 // #region debug-point A:notification-debug-bootstrap
 const DEBUG_SESSION_ID = "verification-email";
 
@@ -670,19 +624,6 @@ export class NotificationsService {
     };
 
     if (delivery.channelCode === "EMAIL") {
-      // #region debug-point E:checkout-order-enqueue-email
-      reportCheckoutOrderDebugEvent({
-        hypothesisId: "E",
-        location: "notifications.service.ts:enqueueDelivery:EMAIL",
-        msg: "[DEBUG] enqueueDelivery handling email channel",
-        data: {
-          deliveryId: delivery.id,
-          shouldDeliverInline: shouldDeliverEmailInline(),
-          redisConfigured: Boolean(env.REDIS_URL),
-          serviceMode: env.SERVICE_MODE,
-        },
-      });
-      // #endregion
       if (shouldDeliverEmailInline()) {
         await this.processDelivery(delivery.id);
         return;
@@ -704,72 +645,18 @@ export class NotificationsService {
     }
 
     if (delivery.channelCode === "IN_APP") {
-      // #region debug-point E:checkout-order-enqueue-inapp
-      reportCheckoutOrderDebugEvent({
-        hypothesisId: "E",
-        location: "notifications.service.ts:enqueueDelivery:IN_APP",
-        msg: "[DEBUG] enqueueDelivery queueing in-app delivery",
-        data: {
-          deliveryId: delivery.id,
-          redisConfigured: Boolean(env.REDIS_URL),
-          serviceMode: env.SERVICE_MODE,
-        },
-      });
-      // #endregion
       await notificationInAppQueue.add("deliver-in-app-notification", { deliveryId: delivery.id }, options);
-      // #region debug-point E:checkout-order-enqueue-inapp-done
-      reportCheckoutOrderDebugEvent({
-        hypothesisId: "E",
-        location: "notifications.service.ts:enqueueDelivery:IN_APP:done",
-        msg: "[DEBUG] enqueueDelivery completed in-app queue add",
-        data: {
-          deliveryId: delivery.id,
-        },
-      });
-      // #endregion
       return;
     }
 
-    // #region debug-point E:checkout-order-enqueue-admin
-    reportCheckoutOrderDebugEvent({
-      hypothesisId: "E",
-      location: "notifications.service.ts:enqueueDelivery:ADMIN_OPERATIONAL",
-      msg: "[DEBUG] enqueueDelivery queueing admin operational delivery",
-      data: {
-        deliveryId: delivery.id,
-        redisConfigured: Boolean(env.REDIS_URL),
-        serviceMode: env.SERVICE_MODE,
-      },
-    });
-    // #endregion
     await notificationAdminOperationalQueue.add(
       "deliver-admin-operational-notification",
       { deliveryId: delivery.id },
       options,
     );
-    // #region debug-point E:checkout-order-enqueue-admin-done
-    reportCheckoutOrderDebugEvent({
-      hypothesisId: "E",
-      location: "notifications.service.ts:enqueueDelivery:ADMIN_OPERATIONAL:done",
-      msg: "[DEBUG] enqueueDelivery completed admin operational queue add",
-      data: {
-        deliveryId: delivery.id,
-      },
-    });
-    // #endregion
   }
 
   public async processDelivery(deliveryId: string): Promise<void> {
-    // #region debug-point E:checkout-order-process-delivery-start
-    reportCheckoutOrderDebugEvent({
-      hypothesisId: "E",
-      location: "notifications.service.ts:processDelivery:start",
-      msg: "[DEBUG] processDelivery started",
-      data: {
-        deliveryId,
-      },
-    });
-    // #endregion
     // #region debug-point B:process-delivery-entry
     reportDebugEvent({
       hypothesisId: "B",
@@ -963,18 +850,6 @@ export class NotificationsService {
         },
       });
       // #endregion
-      // #region debug-point E:checkout-order-process-delivery-success
-      reportCheckoutOrderDebugEvent({
-        hypothesisId: "E",
-        location: "notifications.service.ts:processDelivery:email-success",
-        msg: "[DEBUG] processDelivery email completed successfully",
-        data: {
-          deliveryId: delivery.id,
-          recipient,
-          messageId: result.messageId,
-        },
-      });
-      // #endregion
       return;
     }
 
@@ -1002,17 +877,6 @@ export class NotificationsService {
         },
       },
     });
-    // #region debug-point E:checkout-order-process-delivery-non-email-success
-    reportCheckoutOrderDebugEvent({
-      hypothesisId: "E",
-      location: "notifications.service.ts:processDelivery:non-email-success",
-      msg: "[DEBUG] processDelivery non-email completed successfully",
-      data: {
-        deliveryId: delivery.id,
-        channelCode: delivery.channelCode,
-      },
-    });
-    // #endregion
   }
 
   public async failDelivery(
