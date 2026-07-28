@@ -142,6 +142,34 @@ const paymentOrderInclude = {
   items: true,
 } as const;
 
+async function incrementProductPurchasesForOrderItems(
+  transaction: Prisma.TransactionClient,
+  items: Array<{ productId: string | null; quantity: number }>,
+) {
+  const purchaseTotals = new Map<string, number>();
+
+  for (const item of items) {
+    if (!item.productId || item.quantity <= 0) {
+      continue;
+    }
+
+    purchaseTotals.set(item.productId, (purchaseTotals.get(item.productId) ?? 0) + item.quantity);
+  }
+
+  await Promise.all(
+    Array.from(purchaseTotals.entries()).map(([productId, quantity]) =>
+      transaction.product.update({
+        where: { id: productId },
+        data: {
+          purchases: {
+            increment: quantity,
+          },
+        },
+      }),
+    ),
+  );
+}
+
 async function uploadPaymentReceipt(input: {
   dataUrl: string;
   paymentId: string;
@@ -941,72 +969,80 @@ export class PaymentsService {
     }
 
     const processedAt = new Date();
-    const completed = await prisma.payment.update({
-      where: { id: payment.id },
-      data: {
-        status: PaymentStatus.PAID,
-        processedAt,
-        transactions: {
-          create: {
-            orderId: payment.orderId,
-            providerConfigurationId: payment.providerConfigurationId,
-            provider: payment.provider,
-            kind: PaymentKind.CHARGE,
-            status: PaymentStatus.PAID,
-            currency: payment.currency,
-            amount: payment.amount,
-            exchangeRate: payment.exchangeRate,
-            externalReference: payment.paymentReference,
-            metadata: {
-              stage: "payment-completed",
-            },
-            paidAt: processedAt,
-          },
-        },
-        auditLogs: {
-          create: {
-            actorUserId: adminUserId,
-            action: "PAYMENT_COMPLETED",
-            fromStatus: payment.status,
-            toStatus: PaymentStatus.PAID,
-            notes: payment.internalNotes ?? "Payment completed after approval.",
-            metadata: {
-              approvedAt: payment.approvedAt,
-              paymentMethod: payment.provider,
-              approvalNotes: payment.internalNotes ?? null,
-            },
-          },
-        },
-      },
-      include: {
-        order: {
-          include: paymentOrderInclude,
-        },
-        providerConfiguration: true,
-        transactions: {
-          orderBy: { createdAt: "desc" },
-        },
-        refunds: {
-          orderBy: { createdAt: "desc" },
-        },
-        auditLogs: {
-          orderBy: { createdAt: "desc" },
-          include: {
-            actorUser: true,
-          },
-        },
-      },
-    });
-
-    if (payment.orderId) {
-      await prisma.order.update({
-        where: { id: payment.orderId },
+    const completed = await prisma.$transaction(async (transaction) => {
+      const updatedPayment = await transaction.payment.update({
+        where: { id: payment.id },
         data: {
-          status: "PAID",
-          paidAt: processedAt,
+          status: PaymentStatus.PAID,
+          processedAt,
+          transactions: {
+            create: {
+              orderId: payment.orderId,
+              providerConfigurationId: payment.providerConfigurationId,
+              provider: payment.provider,
+              kind: PaymentKind.CHARGE,
+              status: PaymentStatus.PAID,
+              currency: payment.currency,
+              amount: payment.amount,
+              exchangeRate: payment.exchangeRate,
+              externalReference: payment.paymentReference,
+              metadata: {
+                stage: "payment-completed",
+              },
+              paidAt: processedAt,
+            },
+          },
+          auditLogs: {
+            create: {
+              actorUserId: adminUserId,
+              action: "PAYMENT_COMPLETED",
+              fromStatus: payment.status,
+              toStatus: PaymentStatus.PAID,
+              notes: payment.internalNotes ?? "Payment completed after approval.",
+              metadata: {
+                approvedAt: payment.approvedAt,
+                paymentMethod: payment.provider,
+                approvalNotes: payment.internalNotes ?? null,
+              },
+            },
+          },
+        },
+        include: {
+          order: {
+            include: paymentOrderInclude,
+          },
+          providerConfiguration: true,
+          transactions: {
+            orderBy: { createdAt: "desc" },
+          },
+          refunds: {
+            orderBy: { createdAt: "desc" },
+          },
+          auditLogs: {
+            orderBy: { createdAt: "desc" },
+            include: {
+              actorUser: true,
+            },
+          },
         },
       });
 
+      if (payment.orderId && payment.order && !payment.order.paidAt) {
+        await transaction.order.update({
+          where: { id: payment.orderId },
+          data: {
+            status: "PAID",
+            paidAt: processedAt,
+          },
+        });
+
+        await incrementProductPurchasesForOrderItems(transaction, payment.order.items);
+      }
+
+      return updatedPayment;
+    });
+
+    if (payment.orderId) {
       await procurementService.createTasksForOrder(payment.orderId);
     }
 

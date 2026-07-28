@@ -24,6 +24,34 @@ function buildOrderNumber(): string {
   return `OH-${Date.now()}`;
 }
 
+async function incrementProductPurchasesForOrderItems(
+  transaction: Prisma.TransactionClient,
+  items: Array<{ productId: string | null; quantity: number }>,
+) {
+  const purchaseTotals = new Map<string, number>();
+
+  for (const item of items) {
+    if (!item.productId || item.quantity <= 0) {
+      continue;
+    }
+
+    purchaseTotals.set(item.productId, (purchaseTotals.get(item.productId) ?? 0) + item.quantity);
+  }
+
+  await Promise.all(
+    Array.from(purchaseTotals.entries()).map(([productId, quantity]) =>
+      transaction.product.update({
+        where: { id: productId },
+        data: {
+          purchases: {
+            increment: quantity,
+          },
+        },
+      }),
+    ),
+  );
+}
+
 function shouldGenerateProcurementTasks(status: OrderStatus) {
   return ["PAID", "PROCESSING", "PURCHASED_FROM_SUPPLIER", "SHIPPED", "DELIVERED"].includes(status);
 }
@@ -717,6 +745,16 @@ export class OrdersService {
   }
 
   public async updateOrderStatus(orderId: string, status: OrderStatus) {
+    const existingOrder = await prisma.order.findUnique({
+      where: { id: orderId },
+      include: orderInclude,
+    });
+
+    if (!existingOrder) {
+      throw new ApiError(404, "Order not found.");
+    }
+
+    const shouldCountPurchases = status === "PAID" && !existingOrder.paidAt;
     const timestampFields: Prisma.OrderUpdateInput = {};
 
     if (status === "PAID") {
@@ -738,13 +776,21 @@ export class OrdersService {
       timestampFields.cancelledAt = new Date();
     }
 
-    const order = await prisma.order.update({
-      where: { id: orderId },
-      data: {
-        status,
-        ...timestampFields,
-      },
-      include: orderInclude,
+    const order = await prisma.$transaction(async (transaction) => {
+      const updatedOrder = await transaction.order.update({
+        where: { id: orderId },
+        data: {
+          status,
+          ...timestampFields,
+        },
+        include: orderInclude,
+      });
+
+      if (shouldCountPurchases) {
+        await incrementProductPurchasesForOrderItems(transaction, updatedOrder.items);
+      }
+
+      return updatedOrder;
     });
 
     if (shouldGenerateProcurementTasks(order.status)) {
@@ -825,6 +871,16 @@ export class OrdersService {
       internalNotes?: string | null;
     },
   ) {
+    const existingOrder = await prisma.order.findUnique({
+      where: { id: orderId },
+      include: orderInclude,
+    });
+
+    if (!existingOrder) {
+      throw new ApiError(404, "Order not found.");
+    }
+
+    const shouldCountPurchases = input.status === "PAID" && !existingOrder.paidAt;
     const timestampFields: Prisma.OrderUpdateInput = {};
 
     if (input.status === "PAID") {
@@ -846,49 +902,57 @@ export class OrdersService {
       timestampFields.cancelledAt = new Date();
     }
 
-    const order = await prisma.order.update({
-      where: { id: orderId },
-      data: {
-        status: input.status,
-        trackingNumber:
-          input.trackingNumber === null
-            ? null
-            : input.trackingNumber !== undefined
-              ? input.trackingNumber
-              : undefined,
-        carrier:
-          input.carrier === null
-            ? null
-            : input.carrier !== undefined
-              ? input.carrier
-              : undefined,
-        trackingUrl:
-          input.trackingUrl === null
-            ? null
-            : input.trackingUrl !== undefined
-              ? input.trackingUrl
-              : undefined,
-        estimatedDeliveryDate:
-          input.estimatedDeliveryDate === null
-            ? null
-            : input.estimatedDeliveryDate !== undefined
-              ? input.estimatedDeliveryDate
-              : undefined,
-        shipmentNotes:
-          input.shipmentNotes === null
-            ? null
-            : input.shipmentNotes !== undefined
-              ? input.shipmentNotes
-              : undefined,
-        internalNotes:
-          input.internalNotes === null
-            ? null
-            : input.internalNotes !== undefined
-              ? input.internalNotes
-              : undefined,
-        ...timestampFields,
-      },
-      include: orderInclude,
+    const order = await prisma.$transaction(async (transaction) => {
+      const updatedOrder = await transaction.order.update({
+        where: { id: orderId },
+        data: {
+          status: input.status,
+          trackingNumber:
+            input.trackingNumber === null
+              ? null
+              : input.trackingNumber !== undefined
+                ? input.trackingNumber
+                : undefined,
+          carrier:
+            input.carrier === null
+              ? null
+              : input.carrier !== undefined
+                ? input.carrier
+                : undefined,
+          trackingUrl:
+            input.trackingUrl === null
+              ? null
+              : input.trackingUrl !== undefined
+                ? input.trackingUrl
+                : undefined,
+          estimatedDeliveryDate:
+            input.estimatedDeliveryDate === null
+              ? null
+              : input.estimatedDeliveryDate !== undefined
+                ? input.estimatedDeliveryDate
+                : undefined,
+          shipmentNotes:
+            input.shipmentNotes === null
+              ? null
+              : input.shipmentNotes !== undefined
+                ? input.shipmentNotes
+                : undefined,
+          internalNotes:
+            input.internalNotes === null
+              ? null
+              : input.internalNotes !== undefined
+                ? input.internalNotes
+                : undefined,
+          ...timestampFields,
+        },
+        include: orderInclude,
+      });
+
+      if (shouldCountPurchases) {
+        await incrementProductPurchasesForOrderItems(transaction, updatedOrder.items);
+      }
+
+      return updatedOrder;
     });
 
     if (shouldGenerateProcurementTasks(order.status)) {
