@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, ArrowRight, CheckCircle2, CreditCard, MapPin, PackageCheck, Truck } from "lucide-react";
 
@@ -59,6 +59,7 @@ export default function Checkout() {
   const [customerNotes, setCustomerNotes] = useState("");
   const [showAddressForm, setShowAddressForm] = useState(false);
   const [addressForm, setAddressForm] = useState(EMPTY_ADDRESS_FORM);
+  const placingOrderRef = useRef(false);
 
   const loadSummary = async () => {
     const response = await getCheckoutSummary();
@@ -182,6 +183,11 @@ export default function Checkout() {
       return;
     }
 
+    if (placingOrderRef.current) {
+      return;
+    }
+
+    placingOrderRef.current = true;
     setPlacingOrder(true);
     try {
       const order = await createOrder({
@@ -194,7 +200,9 @@ export default function Checkout() {
         paymentMethodLabel,
         notes: customerNotes || null,
       });
-      await refreshCart();
+
+      await refreshCart().catch(() => undefined);
+
       toast({
         title: "Order placed",
         description: `Order ${order.orderNumber} is now pending.`,
@@ -207,6 +215,7 @@ export default function Checkout() {
         variant: "destructive",
       });
     } finally {
+      placingOrderRef.current = false;
       setPlacingOrder(false);
     }
   };

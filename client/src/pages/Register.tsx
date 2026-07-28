@@ -1,4 +1,4 @@
-import { useState, type ChangeEvent, type FormEvent } from "react";
+import { useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +19,9 @@ export default function Register() {
   const [loading, setLoading] = useState(false);
   const [showOtp, setShowOtp] = useState(false);
   const [otpCode, setOtpCode] = useState("");
+  const registerRequestRef = useRef(false);
+  const verifyRequestRef = useRef(false);
+  const resendRequestRef = useRef(false);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -27,6 +30,12 @@ export default function Register() {
       setError("Passwords do not match");
       return;
     }
+
+    if (registerRequestRef.current) {
+      return;
+    }
+
+    registerRequestRef.current = true;
     setLoading(true);
     try {
       await register({
@@ -38,12 +47,18 @@ export default function Register() {
     } catch (requestError: unknown) {
       setError(requestError instanceof Error ? requestError.message : "Registration failed");
     } finally {
+      registerRequestRef.current = false;
       setLoading(false);
     }
   };
 
   const handleVerify = async (): Promise<void> => {
     setError("");
+    if (verifyRequestRef.current) {
+      return;
+    }
+
+    verifyRequestRef.current = true;
     setLoading(true);
     try {
       await verifyEmail(otpCode);
@@ -52,12 +67,18 @@ export default function Register() {
     } catch (requestError: unknown) {
       setError(requestError instanceof Error ? requestError.message : "Invalid verification code");
     } finally {
+      verifyRequestRef.current = false;
       setLoading(false);
     }
   };
 
   const handleResend = async (): Promise<void> => {
     setError("");
+    if (resendRequestRef.current) {
+      return;
+    }
+
+    resendRequestRef.current = true;
     try {
       await resendVerification(email);
       toast({
@@ -66,6 +87,8 @@ export default function Register() {
       });
     } catch (requestError: unknown) {
       setError(requestError instanceof Error ? requestError.message : "Failed to resend code");
+    } finally {
+      resendRequestRef.current = false;
     }
   };
 
