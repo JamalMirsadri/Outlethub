@@ -101,6 +101,7 @@ export default function ProductDetail() {
     const normalizedVariants = Array.isArray(product.variants)
       ? product.variants
           .map((variant) => ({
+            id: variant?.id ?? null,
             size: typeof variant?.size === "string" ? variant.size.trim() : "",
             color: typeof variant?.color === "string" ? variant.color.trim() : "",
             stockQuantity: Number(variant?.stockQuantity ?? 0),
@@ -182,6 +183,7 @@ export default function ProductDetail() {
   const normalizedVariants = Array.isArray(product.variants)
     ? product.variants
         .map((variant) => ({
+          id: variant?.id ?? null,
           size: typeof variant?.size === "string" ? variant.size.trim() : "",
           color: typeof variant?.color === "string" ? variant.color.trim() : "",
           stockQuantity: Number(variant?.stockQuantity ?? 0),
@@ -212,17 +214,23 @@ export default function ProductDetail() {
       ? product.sizes.filter(Boolean)
       : [];
   const selectedVariant = normalizedVariants.find((variant) => {
-    if (!selectedSize) {
-      return false;
-    }
-
-    if (selectedColor) {
+    if (selectedColor && selectedSize) {
       return variant.color === selectedColor && variant.size === selectedSize;
     }
 
-    return variant.size === selectedSize;
+    if (selectedColor && !availableSizes.length) {
+      return variant.color === selectedColor;
+    }
+
+    if (selectedSize) {
+      return selectedColor ? variant.color === selectedColor && variant.size === selectedSize : variant.size === selectedSize;
+    }
+
+    return false;
   });
-  const selectedVariantStock = selectedVariant?.stockQuantity ?? (selectedSize ? 0 : product.stock);
+  const selectedVariantStock = normalizedVariants.length > 0
+    ? selectedVariant?.stockQuantity ?? 0
+    : product.stock;
   const priceHistory = product.price_history?.length
     ? product.price_history
         .slice()
@@ -275,6 +283,7 @@ export default function ProductDetail() {
     try {
       await addItem({
         productId: product.id,
+        variantId: selectedVariant?.id ?? null,
         quantity,
       });
       toast({

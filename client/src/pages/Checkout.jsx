@@ -304,10 +304,17 @@ export default function Checkout() {
                         <p className="font-medium">{item.title}</p>
                         <p className="text-sm text-muted-foreground mt-1">{item.brand}</p>
                         <p className="text-sm text-muted-foreground mt-1">Qty {item.quantity}</p>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          <span className="rounded-full bg-secondary px-3 py-1 text-[11px] text-muted-foreground">
+                            Size: {item.size || "Not selected"}
+                          </span>
+                          <span className="rounded-full bg-secondary px-3 py-1 text-[11px] text-muted-foreground">
+                            Color: {item.color || "Not selected"}
+                          </span>
+                        </div>
                       </div>
                       <div className="text-right">
                         <p className="font-mono font-semibold">{formatCurrency(item.customerPaid * item.quantity, currency)}</p>
-                        <p className="text-xs text-muted-foreground mt-1">Profit {formatCurrency(item.profitAmount * item.quantity, currency)}</p>
                       </div>
                     </div>
                   ))}
@@ -557,7 +564,7 @@ export default function Checkout() {
                   <span>{formatCurrency(summary.cart.subtotalAmount, currency)}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Product price before margin and VAT</span>
+                  <span className="text-muted-foreground">Product price before website fee and VAT</span>
                   <span>{formatCurrency(productPriceBeforeMarginAndVat, currency)}</span>
                 </div>
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
@@ -565,7 +572,7 @@ export default function Checkout() {
                   <span>{formatCurrency(convertAmount(summary.cart.subtotalAmount, currency, displayCurrency), displayCurrency)}</span>
                 </div>
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span>Product price before margin and VAT ({displayCurrency})</span>
+                  <span>Product price before website fee and VAT ({displayCurrency})</span>
                   <span>{formatCurrency(convertAmount(productPriceBeforeMarginAndVat, currency, displayCurrency), displayCurrency)}</span>
                 </div>
                 <div className="flex items-center justify-between">
@@ -577,12 +584,12 @@ export default function Checkout() {
                   <span>{formatCurrency(convertAmount(summary.cart.shippingAmount, currency, displayCurrency), displayCurrency)}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Website margin</span>
+                  <span className="text-muted-foreground">Website Fee</span>
                   <span>{formatCurrency(websiteMarginAmount, currency)}</span>
                 </div>
                 {isIranDelivery ? (
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span>Website margin ({displayCurrency})</span>
+                    <span>Website Fee ({displayCurrency})</span>
                     <span>{formatCurrency(convertAmount(websiteMarginAmount, currency, displayCurrency), displayCurrency)}</span>
                   </div>
                 ) : null}
@@ -629,7 +636,7 @@ export default function Checkout() {
                   <span>{formatCurrency(convertAmount(summary.cart.totalAmount, currency, displayCurrency), displayCurrency)}</span>
                 </div>
                 <div className="rounded-2xl bg-secondary/40 p-4 mt-4">
-                  <p className="text-xs text-muted-foreground mb-2">Website margin</p>
+                  <p className="text-xs text-muted-foreground mb-2">Website Fee</p>
                   <p className="font-mono text-lg font-semibold">{formatCurrency(websiteMarginAmount, currency)}</p>
                 </div>
               </div>

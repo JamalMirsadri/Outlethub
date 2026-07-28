@@ -235,9 +235,6 @@ export default function Cart() {
                           </div>
                           <div className="text-left sm:text-right">
                             <p className="font-semibold text-lg">{formatCurrency(item.customerPaid, currency)}</p>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              Profit {formatCurrency(item.profitAmount, currency)}
-                            </p>
                           </div>
                         </div>
                         <div className="mt-5 flex flex-wrap items-center justify-between gap-4">
@@ -288,7 +285,7 @@ export default function Cart() {
                   <span>{formatCurrency(cart.subtotalAmount, currency)}</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Product price before margin and VAT</span>
+                  <span className="text-muted-foreground">Product price before website fee and VAT</span>
                   <span>{formatCurrency(productPriceBeforeMarginAndVat, currency)}</span>
                 </div>
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
@@ -296,16 +293,16 @@ export default function Cart() {
                   <span>{formatCurrency(convertAmount(cart.subtotalAmount, currency, displayCurrency), displayCurrency)}</span>
                 </div>
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span>Product price before margin and VAT ({displayCurrency})</span>
+                  <span>Product price before website fee and VAT ({displayCurrency})</span>
                   <span>{formatCurrency(convertAmount(productPriceBeforeMarginAndVat, currency, displayCurrency), displayCurrency)}</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Website margin</span>
+                  <span className="text-muted-foreground">Website Fee</span>
                   <span>{formatCurrency(websiteMarginAmount, currency)}</span>
                 </div>
                 {showTomanAmounts ? (
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span>Website margin ({displayCurrency})</span>
+                    <span>Website Fee ({displayCurrency})</span>
                     <span>{formatCurrency(convertAmount(websiteMarginAmount, currency, displayCurrency), displayCurrency)}</span>
                   </div>
                 ) : null}

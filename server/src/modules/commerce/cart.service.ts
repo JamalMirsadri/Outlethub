@@ -375,6 +375,10 @@ export class CartService {
       if (!variant) {
         throw new ApiError(404, "Product variant not found.");
       }
+
+      if (variant.stockQuantity <= 0) {
+        throw new ApiError(409, "This selected size or color is currently out of stock.");
+      }
     }
 
     const pricing = await pricingService.calculateProductPricing({
