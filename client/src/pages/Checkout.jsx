@@ -42,6 +42,26 @@ const EMPTY_ADDRESS_FORM = {
   isDefaultBilling: true,
 };
 
+// #region debug-point A:checkout-order-stall
+const DEBUG_SERVER_URL = "http://127.0.0.1:7777/event";
+const DEBUG_SESSION_ID = "checkout-order-stall";
+
+function reportCheckoutDebugEvent(payload) {
+  fetch(DEBUG_SERVER_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      sessionId: DEBUG_SESSION_ID,
+      runId: "pre-fix",
+      ts: Date.now(),
+      ...payload,
+    }),
+  }).catch(() => undefined);
+}
+// #endregion
+
 export default function Checkout() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -189,6 +209,23 @@ export default function Checkout() {
 
     placingOrderRef.current = true;
     setPlacingOrder(true);
+    const traceId = `checkout-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    // #region debug-point A:place-order-start
+    reportCheckoutDebugEvent({
+      hypothesisId: "A",
+      traceId,
+      location: "client/src/pages/Checkout.jsx:placeOrder:start",
+      msg: "[DEBUG] Checkout placeOrder started",
+      data: {
+        selectedShippingAddressId,
+        selectedBillingAddressId: selectedBillingAddressId ?? selectedShippingAddressId,
+        selectedShippingMethodId,
+        paymentProvider,
+        displayCurrency: isIranDelivery ? "TOMAN" : preferredCurrency,
+        cartItemCount: summary?.cart?.items?.length ?? null,
+      },
+    });
+    // #endregion
     try {
       const order = await createOrder({
         customerEmail: user?.email ?? "customer@outlethub.local",
@@ -200,21 +237,84 @@ export default function Checkout() {
         paymentMethodLabel,
         notes: customerNotes || null,
       });
+      // #region debug-point B:place-order-api-success
+      reportCheckoutDebugEvent({
+        hypothesisId: "B",
+        traceId,
+        location: "client/src/pages/Checkout.jsx:placeOrder:createOrder",
+        msg: "[DEBUG] Checkout createOrder resolved",
+        data: {
+          orderId: order.id,
+          orderNumber: order.orderNumber,
+          paymentCount: order.payments?.length ?? null,
+          status: order.status,
+        },
+      });
+      // #endregion
 
+      // #region debug-point C:place-order-refresh-start
+      reportCheckoutDebugEvent({
+        hypothesisId: "C",
+        traceId,
+        location: "client/src/pages/Checkout.jsx:placeOrder:refreshCart:start",
+        msg: "[DEBUG] Checkout refreshCart starting after order creation",
+      });
+      // #endregion
       await refreshCart().catch(() => undefined);
+      // #region debug-point C:place-order-refresh-success
+      reportCheckoutDebugEvent({
+        hypothesisId: "C",
+        traceId,
+        location: "client/src/pages/Checkout.jsx:placeOrder:refreshCart:done",
+        msg: "[DEBUG] Checkout refreshCart completed after order creation",
+      });
+      // #endregion
 
       toast({
         title: "Order placed",
         description: `Order ${order.orderNumber} is now pending.`,
       });
+      // #region debug-point D:place-order-navigate
+      reportCheckoutDebugEvent({
+        hypothesisId: "D",
+        traceId,
+        location: "client/src/pages/Checkout.jsx:placeOrder:navigate",
+        msg: "[DEBUG] Checkout navigating to dashboard payments",
+        data: {
+          target: "/dashboard/payments",
+        },
+      });
+      // #endregion
       navigate("/dashboard/payments");
     } catch (error) {
+      // #region debug-point E:place-order-catch
+      reportCheckoutDebugEvent({
+        hypothesisId: "E",
+        traceId,
+        location: "client/src/pages/Checkout.jsx:placeOrder:catch",
+        msg: "[DEBUG] Checkout placeOrder caught error",
+        data: {
+          error: error instanceof Error ? { name: error.name, message: error.message, stack: error.stack } : { value: String(error) },
+        },
+      });
+      // #endregion
       toast({
         title: "Order placement failed",
         description: error instanceof Error ? error.message : "Please try again.",
         variant: "destructive",
       });
     } finally {
+      // #region debug-point A:place-order-finally
+      reportCheckoutDebugEvent({
+        hypothesisId: "A",
+        traceId,
+        location: "client/src/pages/Checkout.jsx:placeOrder:finally",
+        msg: "[DEBUG] Checkout placeOrder finally reached",
+        data: {
+          placingOrderBeforeReset: true,
+        },
+      });
+      // #endregion
       placingOrderRef.current = false;
       setPlacingOrder(false);
     }

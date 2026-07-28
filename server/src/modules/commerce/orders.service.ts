@@ -1,4 +1,6 @@
 import { PaymentKind, PaymentStatus, Prisma, type OrderStatus, type PaymentProvider } from "@prisma/client";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 
 import { prisma } from "../../config/prisma.js";
 import { ApiError } from "../../utils/api-error.js";
@@ -11,6 +13,52 @@ import { paymentsService } from "./payments.service.js";
 import { pricingService } from "./pricing.service.js";
 import { procurementService } from "./procurement.service.js";
 import { notificationsService } from "../notifications/notifications.service.js";
+
+// #region debug-point B:checkout-order-stall
+const DEBUG_SESSION_ID = "checkout-order-stall";
+
+function resolveDebugServerUrl() {
+  if (process.env.DEBUG_SERVER_URL) {
+    return process.env.DEBUG_SERVER_URL;
+  }
+
+  const debugEnvPath = resolve(process.cwd(), ".dbg", `${DEBUG_SESSION_ID}.env`);
+
+  try {
+    const content = readFileSync(debugEnvPath, "utf8");
+    return (
+      content
+        .split(/\r?\n/u)
+        .find((line) => line.startsWith("DEBUG_SERVER_URL="))
+        ?.slice("DEBUG_SERVER_URL=".length)
+        .trim() || null
+    );
+  } catch {
+    return null;
+  }
+}
+
+function reportDebugEvent(payload: Record<string, unknown>) {
+  const debugServerUrl = resolveDebugServerUrl();
+
+  if (!debugServerUrl) {
+    return;
+  }
+
+  void fetch(debugServerUrl, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      sessionId: DEBUG_SESSION_ID,
+      runId: process.env.DEBUG_RUN_ID ?? "pre-fix",
+      ts: Date.now(),
+      ...payload,
+    }),
+  }).catch(() => undefined);
+}
+// #endregion
 
 function toNumber(value: Prisma.Decimal | null | undefined): number {
   if (!value) {
@@ -477,6 +525,23 @@ export class OrdersService {
     paymentMethodLabel?: string | null;
     notes?: string | null;
   }) {
+    const traceId = `order-create-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    // #region debug-point B:create-order-start
+    reportDebugEvent({
+      hypothesisId: "B",
+      traceId,
+      location: "server/src/modules/commerce/orders.service.ts:createOrderFromCart:start",
+      msg: "[DEBUG] createOrderFromCart started",
+      data: {
+        userId: input.userId,
+        shippingAddressId: input.shippingAddressId,
+        billingAddressId: input.billingAddressId ?? input.shippingAddressId,
+        shippingMethodId: input.shippingMethodId ?? null,
+        paymentProvider: input.paymentProvider,
+        displayCurrency: input.displayCurrency ?? null,
+      },
+    });
+    // #endregion
     const [cartResult, shippingAddress, billingAddress, businessSettings] = await Promise.all([
       cartService.getCart({
         userId: input.userId,
@@ -507,6 +572,19 @@ export class OrdersService {
     if (!cartResult.cart.items.length) {
       throw new ApiError(400, "Cart is empty.");
     }
+    // #region debug-point B:create-order-cart-loaded
+    reportDebugEvent({
+      hypothesisId: "B",
+      traceId,
+      location: "server/src/modules/commerce/orders.service.ts:createOrderFromCart:cartLoaded",
+      msg: "[DEBUG] createOrderFromCart cart resolved",
+      data: {
+        cartId: cartResult.cart.id,
+        cartItemCount: cartResult.cart.items.length,
+        countryCode: shippingAddress.countryCode,
+      },
+    });
+    // #endregion
 
     const sourceCart = await prisma.cart.findUnique({
       where: {
@@ -541,6 +619,22 @@ export class OrdersService {
         `Minimum order value is ${businessSettings.defaultCurrency} ${totals.minimumOrderValue.toFixed(2)}.`,
       );
     }
+    // #region debug-point C:create-order-totals
+    reportDebugEvent({
+      hypothesisId: "C",
+      traceId,
+      location: "server/src/modules/commerce/orders.service.ts:createOrderFromCart:totals",
+      msg: "[DEBUG] createOrderFromCart totals calculated",
+      data: {
+        subtotalAmount: toNumber(totals.subtotalAmount),
+        shippingAmount: toNumber(totals.shippingAmount),
+        handlingAmount: toNumber(totals.handlingAmount),
+        paymentFeeAmount: toNumber(totals.paymentFeeAmount),
+        taxAmount: toNumber(totals.taxAmount),
+        totalAmount: toNumber(totals.totalAmount),
+      },
+    });
+    // #endregion
 
     const supplierSubtotal = sourceCart.items.reduce(
       (sum, item) => sum.plus(item.supplierCost.mul(item.quantity)),
@@ -675,6 +769,19 @@ export class OrdersService {
         ...orderInclude,
       },
     });
+    // #region debug-point C:create-order-created
+    reportDebugEvent({
+      hypothesisId: "C",
+      traceId,
+      location: "server/src/modules/commerce/orders.service.ts:createOrderFromCart:orderCreated",
+      msg: "[DEBUG] createOrderFromCart order persisted",
+      data: {
+        orderId: order.id,
+        orderNumber: order.orderNumber,
+        status: order.status,
+      },
+    });
+    // #endregion
 
     await paymentsService.initializeOrderPayment({
       userId: input.userId,
@@ -685,6 +792,18 @@ export class OrdersService {
       amount: order.totalAmount,
       paymentMethodLabel: input.paymentMethodLabel ?? null,
     });
+    // #region debug-point D:create-order-payment-init
+    reportDebugEvent({
+      hypothesisId: "D",
+      traceId,
+      location: "server/src/modules/commerce/orders.service.ts:createOrderFromCart:paymentInit",
+      msg: "[DEBUG] createOrderFromCart payment initialization completed",
+      data: {
+        orderId: order.id,
+        paymentProvider: input.paymentProvider,
+      },
+    });
+    // #endregion
 
     await prisma.cartItem.deleteMany({
       where: {
@@ -703,6 +822,17 @@ export class OrdersService {
         totalAmount: 0,
       },
     });
+    // #region debug-point D:create-order-cart-cleared
+    reportDebugEvent({
+      hypothesisId: "D",
+      traceId,
+      location: "server/src/modules/commerce/orders.service.ts:createOrderFromCart:cartCleared",
+      msg: "[DEBUG] createOrderFromCart cart cleared",
+      data: {
+        cartId: sourceCart.id,
+      },
+    });
+    // #endregion
 
     const persistedOrder = await prisma.order.findUnique({
       where: { id: order.id },
@@ -713,15 +843,54 @@ export class OrdersService {
       throw new ApiError(404, "Order not found after creation.");
     }
 
-    await publishOrderEvent({
+    void publishOrderEvent({
       eventKey: `order-created:${persistedOrder.id}`,
       eventName: "ORDER_CREATED",
       actorUserId: input.userId,
       targetUserId: persistedOrder.userId,
       order: persistedOrder,
       message: `Order ${persistedOrder.orderNumber} created`,
+    })
+      .then(() => {
+        // #region debug-point E:create-order-published
+        reportDebugEvent({
+          hypothesisId: "E",
+          traceId,
+          location: "server/src/modules/commerce/orders.service.ts:createOrderFromCart:publishOrderEvent",
+          msg: "[DEBUG] createOrderFromCart order event published",
+          data: {
+            orderId: persistedOrder.id,
+            orderNumber: persistedOrder.orderNumber,
+          },
+        });
+        // #endregion
+      })
+      .catch((error) => {
+        // #region debug-point E:create-order-publish-error
+        reportDebugEvent({
+          hypothesisId: "E",
+          traceId,
+          location: "server/src/modules/commerce/orders.service.ts:createOrderFromCart:publishOrderEvent:catch",
+          msg: "[DEBUG] createOrderFromCart order event failed after response handoff",
+          data: {
+            orderId: persistedOrder.id,
+            orderNumber: persistedOrder.orderNumber,
+            error: error instanceof Error ? { name: error.name, message: error.message, stack: error.stack } : { value: String(error) },
+          },
+        });
+        // #endregion
+      });
+    // #region debug-point E:create-order-return
+    reportDebugEvent({
+      hypothesisId: "E",
+      traceId,
+      location: "server/src/modules/commerce/orders.service.ts:createOrderFromCart:return",
+      msg: "[DEBUG] createOrderFromCart returning response",
+      data: {
+        orderId: persistedOrder.id,
+      },
     });
-
+    // #endregion
     return mapOrder(persistedOrder);
   }
 
