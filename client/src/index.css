@@ -6,24 +6,24 @@
 
 @layer base {
   :root {
-    --background: 38 33% 95%;
+    --background: 60 54% 95%;
     --foreground: 18 17% 17%;
-    --card: 40 43% 98%;
+    --card: 60 50% 98%;
     --card-foreground: 18 17% 17%;
-    --popover: 40 43% 98%;
+    --popover: 60 50% 98%;
     --popover-foreground: 18 17% 17%;
     --primary: 22 22% 20%;
     --primary-foreground: 42 57% 96%;
-    --secondary: 34 33% 91%;
+    --secondary: 57 45% 92%;
     --secondary-foreground: 18 17% 17%;
-    --muted: 35 26% 90%;
+    --muted: 58 34% 90%;
     --muted-foreground: 24 12% 43%;
     --accent: 35 52% 58%;
     --accent-foreground: 22 22% 18%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    --border: 32 25% 83%;
-    --input: 35 26% 90%;
+    --border: 49 28% 84%;
+    --input: 58 34% 90%;
     --ring: 35 52% 58%;
     --chart-1: 35 52% 58%;
     --chart-2: 20 32% 33%;
@@ -35,11 +35,11 @@
     --font-body: 'Inter', sans-serif;
     --font-display: 'Playfair Display', serif;
     --font-mono: 'JetBrains Mono', monospace;
-    --sidebar-background: 40 43% 98%;
+    --sidebar-background: 60 50% 98%;
     --sidebar-foreground: 18 17% 17%;
     --sidebar-primary: 22 22% 20%;
     --sidebar-primary-foreground: 42 57% 96%;
-    --sidebar-accent: 34 33% 91%;
+    --sidebar-accent: 57 45% 92%;
     --sidebar-accent-foreground: 18 17% 17%;
     --sidebar-border: 32 25% 83%;
     --sidebar-ring: 35 52% 58%;
@@ -88,7 +88,7 @@
   body {
     @apply bg-background text-foreground font-body antialiased;
     background-image:
-      radial-gradient(circle at top, hsl(var(--accent) / 0.12), transparent 24rem),
+      radial-gradient(circle at top, hsl(var(--accent) / 0.08), transparent 24rem),
       linear-gradient(180deg, hsl(var(--background)) 0%, hsl(var(--background)) 100%);
   }
 }
