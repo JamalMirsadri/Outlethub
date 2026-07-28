@@ -51,54 +51,81 @@ export default function Navbar() {
         animate={{ y: 0 }}
         transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
-          scrolled ? "glass border-b border-border/50 shadow-lg" : "bg-transparent"
+          scrolled ? "glass border-b border-border/60" : "bg-background/95 border-b border-border/40"
         }`}
       >
-        <div className="max-w-[1440px] mx-auto px-6 lg:px-10">
-          <div className="flex items-center justify-between h-16 lg:h-20">
-            <Link to="/" className="flex items-center gap-2">
-              <span className="font-display text-xl lg:text-2xl font-bold tracking-tight">
-                OUTLET<span className="text-[hsl(var(--accent))]">HUB</span>
+        <div className="border-b border-border/50 bg-[hsl(var(--secondary))/0.45]">
+          <div className="luxe-shell hidden lg:flex h-10 items-center justify-between text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+            <div className="flex items-center gap-5">
+              <span>Premium brands, outlet prices</span>
+              <span className="h-3.5 w-px bg-border" />
+              <span>Free shipping on qualifying orders</span>
+            </div>
+            <div className="flex items-center gap-4">
+              <Link to="/login" className="luxe-link">
+                Sign in / Register
+              </Link>
+              <Link to="/dashboard/wishlist" className="luxe-link">
+                Wishlist
+              </Link>
+            </div>
+          </div>
+        </div>
+
+        <div className="luxe-shell">
+          <div className="flex h-20 items-center justify-between gap-4">
+            <Link to="/" className="flex items-center gap-3">
+              <span className="flex flex-col">
+                <span className="font-display text-[30px] font-semibold leading-none tracking-[-0.05em] text-[hsl(var(--accent))]">
+                  OUTLET
+                </span>
+                <span className="text-[10px] font-semibold uppercase tracking-[0.34em] text-muted-foreground">
+                  Luxe Hub
+                </span>
               </span>
             </Link>
 
-            <div className="hidden lg:flex items-center gap-8">
-              <Link to="/shop" className="text-sm font-medium tracking-wide hover:text-[hsl(var(--accent))] transition-colors">
+            <div className="hidden flex-1 items-center justify-center gap-8 lg:flex">
+              <Link to="/shop" className="text-[12px] font-semibold tracking-[0.2em] text-foreground/80 hover:text-[hsl(var(--accent))] transition-colors">
                 SHOP
               </Link>
               {menuCategories.map((category) => (
                 <Link
                   key={category.id}
                   to={`/shop?category=${encodeURIComponent(category.slug)}`}
-                  className="text-sm font-medium tracking-wide hover:text-[hsl(var(--accent))] transition-colors"
+                  className="text-[12px] font-semibold tracking-[0.2em] text-foreground/80 hover:text-[hsl(var(--accent))] transition-colors"
                 >
                   {category.name.toUpperCase()}
                 </Link>
               ))}
             </div>
 
-            <div className="flex items-center gap-3">
-              <Link to="/shop" className="p-2 rounded-full hover:bg-secondary transition-colors">
-                <Search className="w-5 h-5" />
+            <div className="flex items-center gap-2 lg:gap-3">
+              <Link
+                to="/shop"
+                className="hidden h-11 w-[260px] items-center gap-3 rounded-full border border-border bg-card/75 px-4 text-sm text-muted-foreground shadow-sm transition hover:border-[hsl(var(--accent))/0.45] lg:flex"
+              >
+                <Search className="h-4 w-4" />
+                <span>Search for products, brands...</span>
               </Link>
-              <button onClick={toggleTheme} className="p-2 rounded-full hover:bg-secondary transition-colors">
+              <button onClick={toggleTheme} className="rounded-full border border-border bg-card/80 p-2.5 hover:border-[hsl(var(--accent))/0.55]">
                 {theme === "dark" ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
               </button>
-              <Link to="/dashboard/wishlist" className="p-2 rounded-full hover:bg-secondary transition-colors hidden sm:flex">
+              <Link to="/dashboard/wishlist" className="hidden rounded-full border border-border bg-card/80 p-2.5 hover:border-[hsl(var(--accent))/0.55] sm:flex">
                 <Heart className="w-5 h-5" />
               </Link>
-              <Link to="/dashboard" className="p-2 rounded-full hover:bg-secondary transition-colors hidden sm:flex">
+              <Link to="/dashboard" className="hidden rounded-full border border-border bg-card/80 p-2.5 hover:border-[hsl(var(--accent))/0.55] sm:flex">
                 <User className="w-5 h-5" />
               </Link>
-              <Link to="/cart" className="p-2 rounded-full hover:bg-secondary transition-colors relative">
+              <Link to="/cart" className="relative rounded-full border border-border bg-card/80 p-2.5 hover:border-[hsl(var(--accent))/0.55]">
                 <ShoppingBag className="w-5 h-5" />
                 {itemCount > 0 ? (
-                  <span className="absolute -right-1 -top-1 min-w-5 h-5 px-1 rounded-full bg-[hsl(var(--accent))] text-black text-[10px] font-semibold flex items-center justify-center">
+                  <span className="absolute -right-1 -top-1 min-w-5 h-5 px-1 rounded-full bg-[hsl(var(--accent))] text-[hsl(var(--accent-foreground))] text-[10px] font-semibold flex items-center justify-center">
                     {itemCount > 99 ? "99+" : itemCount}
                   </span>
                 ) : null}
               </Link>
-              <button onClick={() => setMobileOpen(true)} className="p-2 rounded-full hover:bg-secondary transition-colors lg:hidden">
+              <button onClick={() => setMobileOpen(true)} className="rounded-full border border-border bg-card/80 p-2.5 lg:hidden">
                 <Menu className="w-5 h-5" />
               </button>
             </div>
@@ -115,14 +142,23 @@ export default function Navbar() {
             className="fixed inset-0 z-[60] bg-background"
           >
             <div className="p-6">
-              <div className="flex justify-between items-center mb-12">
-                <span className="font-display text-xl font-bold">
-                  OUTLET<span className="text-[hsl(var(--accent))]">HUB</span>
+              <div className="mb-10 flex items-center justify-between">
+                <span className="flex flex-col">
+                  <span className="font-display text-3xl font-semibold tracking-[-0.05em] text-[hsl(var(--accent))]">OUTLET</span>
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.34em] text-muted-foreground">Luxe Hub</span>
                 </span>
-                <button onClick={() => setMobileOpen(false)}>
+                <button onClick={() => setMobileOpen(false)} className="rounded-full border border-border p-2.5">
                   <X className="w-6 h-6" />
                 </button>
               </div>
+              <Link
+                to="/shop"
+                onClick={() => setMobileOpen(false)}
+                className="mb-8 flex h-12 items-center gap-3 rounded-full border border-border bg-card px-4 text-sm text-muted-foreground"
+              >
+                <Search className="h-4 w-4" />
+                <span>Search the catalog</span>
+              </Link>
               <div className="flex flex-col gap-6">
                 {mobileMenuItems.map((item, i) => (
                   <motion.div
@@ -134,7 +170,7 @@ export default function Navbar() {
                     <Link
                       to={item.to}
                       onClick={() => setMobileOpen(false)}
-                      className="text-3xl font-display font-bold hover:text-[hsl(var(--accent))] transition-colors"
+                      className="text-3xl font-display font-semibold hover:text-[hsl(var(--accent))] transition-colors"
                     >
                       {item.label}
                     </Link>

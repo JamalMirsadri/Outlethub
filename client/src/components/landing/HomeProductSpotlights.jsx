@@ -13,13 +13,11 @@ function SectionHeader({ eyebrow, title, cta }) {
   return (
     <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between mb-10">
       <div>
-        <p className="text-xs font-semibold tracking-[0.2em] text-[hsl(var(--accent))] uppercase mb-3">
-          {eyebrow}
-        </p>
-        <h2 className="font-display text-3xl lg:text-5xl font-bold">{title}</h2>
+        <p className="luxe-eyebrow mb-3">{eyebrow}</p>
+        <h2 className="luxe-heading text-3xl lg:text-5xl">{title}</h2>
       </div>
       {cta ? (
-        <Button asChild variant="ghost" className="group w-fit">
+        <Button asChild variant="ghost" className="group w-fit rounded-full px-0">
           <Link to={cta.to} className="flex items-center gap-2 text-sm">
             {cta.label}
             <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
@@ -47,7 +45,7 @@ function ProductGridSkeleton() {
 
 function EmptyState({ title }) {
   return (
-    <div className="rounded-3xl border border-border bg-secondary/20 p-8 text-sm text-muted-foreground">
+    <div className="luxe-panel p-8 text-sm text-muted-foreground">
       {title}
     </div>
   );
@@ -59,8 +57,8 @@ export default function HomeProductSpotlights({ loading, featuredProduct, mostVi
 
   return (
     <>
-      <section className="py-20 lg:py-28">
-        <div className="max-w-[1440px] mx-auto px-6 lg:px-10">
+      <section className="py-18 lg:py-24">
+        <div className="luxe-shell">
           <SectionHeader
             eyebrow="Fresh Discovery"
             title="Random New Arrival"
@@ -81,20 +79,17 @@ export default function HomeProductSpotlights({ loading, featuredProduct, mostVi
               transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
               className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]"
             >
-              <Link
-                to={`/products/${featured.slug || featured.id}`}
-                className="group relative overflow-hidden rounded-[32px] border border-border bg-secondary/30"
-              >
+              <Link to={`/products/${featured.slug || featured.id}`} className="group luxe-panel relative overflow-hidden">
                 <img
                   src={featured.images?.[0] || PRODUCT_PLACEHOLDER_IMAGE}
                   alt={featured.title}
                   className="h-full w-full min-h-[360px] object-cover transition-transform duration-700 ease-out group-hover:scale-105"
                 />
-                <div className="absolute inset-0 bg-gradient-to-r from-background via-background/65 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-r from-background via-background/70 to-transparent" />
                 <div className="absolute inset-0 flex items-end p-8 lg:p-10">
                   <div className="max-w-xl">
                     <div className="mb-4 flex flex-wrap gap-2">
-                      <span className="rounded-full bg-[hsl(var(--accent))] px-3 py-1 text-xs font-semibold text-black">
+                      <span className="rounded-full bg-[hsl(var(--accent))] px-3 py-1 text-xs font-semibold text-[hsl(var(--accent-foreground))]">
                         RANDOM PICK
                       </span>
                       <span className="rounded-full bg-foreground px-3 py-1 text-xs font-semibold text-background">
@@ -104,7 +99,7 @@ export default function HomeProductSpotlights({ loading, featuredProduct, mostVi
                     <p className="text-xs font-semibold tracking-[0.2em] text-muted-foreground uppercase mb-3">
                       {featured.brand || "OutletHub"}
                     </p>
-                    <h3 className="font-display text-3xl lg:text-5xl font-bold mb-4">{featured.title}</h3>
+                    <h3 className="font-display text-3xl font-semibold lg:text-5xl mb-4">{featured.title}</h3>
                     <p className="text-sm lg:text-base text-muted-foreground max-w-lg mb-6 line-clamp-3">
                       {featured.description || "Freshly added to the catalog and ready to discover."}
                     </p>
@@ -127,7 +122,7 @@ export default function HomeProductSpotlights({ loading, featuredProduct, mostVi
                   </div>
                 </div>
               </Link>
-              <div className="rounded-[32px] border border-border bg-secondary/20 p-6 lg:p-8">
+              <div className="luxe-panel p-6 lg:p-8">
                 <div className="flex items-center gap-3 mb-6">
                   <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[hsl(var(--accent))]/10 text-[hsl(var(--accent))]">
                     <Sparkles className="w-5 h-5" />
@@ -138,7 +133,7 @@ export default function HomeProductSpotlights({ loading, featuredProduct, mostVi
                   </div>
                 </div>
                 <div className="space-y-5">
-                  <div className="rounded-2xl border border-border bg-background/40 p-4">
+                  <div className="rounded-[20px] border border-border bg-background/50 p-4">
                     <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground mb-2">Category</p>
                     <p className="text-sm font-medium">{featured.category || "Uncategorized"}</p>
                   </div>
@@ -157,8 +152,8 @@ export default function HomeProductSpotlights({ loading, featuredProduct, mostVi
         </div>
       </section>
 
-      <section className="py-20 bg-secondary/20">
-        <div className="max-w-[1440px] mx-auto px-6 lg:px-10">
+      <section className="py-18 bg-[hsl(var(--secondary))/0.4]">
+        <div className="luxe-shell">
           <SectionHeader
             eyebrow="Most Viewed"
             title="Products Shoppers Watch The Most"
@@ -178,8 +173,8 @@ export default function HomeProductSpotlights({ loading, featuredProduct, mostVi
         </div>
       </section>
 
-      <section className="py-20">
-        <div className="max-w-[1440px] mx-auto px-6 lg:px-10">
+      <section className="py-18">
+        <div className="luxe-shell">
           <SectionHeader
             eyebrow="Best Sellers"
             title="Products With The Most Sales"
@@ -206,7 +201,7 @@ export default function HomeProductSpotlights({ loading, featuredProduct, mostVi
       </section>
 
       <section className="pb-4">
-        <div className="max-w-[1440px] mx-auto px-6 lg:px-10">
+        <div className="luxe-shell">
           {!loading && mostViewedProducts.length > 0 ? (
             <div className="flex items-center gap-2 text-xs font-semibold tracking-[0.2em] text-muted-foreground uppercase">
               <Eye className="w-4 h-4 text-[hsl(var(--accent))]" />

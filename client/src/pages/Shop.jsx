@@ -122,12 +122,13 @@ export default function Shop() {
   return (
     <div className="min-h-screen">
       <Navbar />
-      <div className="pt-24 pb-16 max-w-[1440px] mx-auto px-6 lg:px-10">
+      <div className="luxe-shell pt-28 pb-16">
         {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+        <div className="luxe-panel mb-8 flex flex-col gap-4 px-6 py-7 md:flex-row md:items-end md:justify-between lg:px-8">
           <div>
-            <h1 className="font-display text-3xl lg:text-4xl font-bold">Shop</h1>
-            <p className="text-sm text-muted-foreground mt-1">{pagination.total || filtered.length} products</p>
+            <p className="luxe-eyebrow mb-3">Outlet Catalog</p>
+            <h1 className="luxe-heading text-3xl lg:text-5xl">Shop</h1>
+            <p className="mt-2 text-sm text-muted-foreground">{pagination.total || filtered.length} products</p>
           </div>
           <div className="flex items-center gap-3 w-full md:w-auto">
             <div className="relative flex-1 md:w-72">
@@ -136,7 +137,7 @@ export default function Shop() {
                 placeholder="Search products or brands..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pl-10 h-11 rounded-full bg-secondary border-0"
+                className="pl-10 h-11 rounded-full bg-background border-border/70"
               />
             </div>
             <Button variant="outline" size="icon" className="h-11 w-11 rounded-full relative lg:hidden" onClick={() => setShowFilters(!showFilters)}>
@@ -164,6 +165,8 @@ export default function Shop() {
               <h3 className="font-semibold text-sm tracking-wide lg:hidden">FILTERS</h3>
               <button onClick={() => setShowFilters(false)} className="lg:hidden"><X className="w-5 h-5" /></button>
             </div>
+
+            <div className="luxe-panel p-5 lg:sticky lg:top-28">
 
             {activeFilters > 0 && (
               <button onClick={clearFilters} className="text-xs text-[hsl(var(--accent))] font-semibold mb-6 hover:underline">
@@ -241,6 +244,7 @@ export default function Shop() {
             <Button className="w-full rounded-full lg:hidden" onClick={() => setShowFilters(false)}>
               Show {filtered.length} Results
             </Button>
+            </div>
           </aside>
 
           {/* Product Grid */}

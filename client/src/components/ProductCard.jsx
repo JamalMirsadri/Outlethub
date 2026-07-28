@@ -32,7 +32,8 @@ export default function ProductCard({ product, index = 0 }) {
       className="group relative"
     >
       <Link to={`/products/${normalizedProduct.slug || normalizedProduct.id}`} className="block">
-        <div className="relative aspect-[4/5] overflow-hidden rounded-lg bg-secondary">
+        <div className="relative overflow-hidden rounded-[24px] border border-border/70 bg-card shadow-[0_14px_36px_hsl(var(--foreground)/0.05)]">
+          <div className="relative aspect-[4/5] overflow-hidden bg-secondary/50">
           <img
             src={normalizedProduct.images?.[0] || PRODUCT_PLACEHOLDER_IMAGE}
             alt={normalizedProduct.title}
@@ -40,30 +41,30 @@ export default function ProductCard({ product, index = 0 }) {
           />
           <div className="absolute top-3 left-3 flex gap-2">
             {discount > 0 && (
-              <span className="px-2.5 py-1 text-xs font-mono font-semibold bg-[hsl(var(--accent))] text-black rounded-full">
+              <span className="rounded-full bg-[hsl(var(--accent))] px-2.5 py-1 text-xs font-mono font-semibold text-[hsl(var(--accent-foreground))]">
                 -{discount}%
               </span>
             )}
             {normalizedProduct.is_trending && (
-              <span className="px-2.5 py-1 text-xs font-semibold bg-foreground text-background rounded-full">
+              <span className="rounded-full bg-foreground px-2.5 py-1 text-xs font-semibold text-background">
                 TRENDING
               </span>
             )}
           </div>
           <button
             onClick={(e) => { e.preventDefault(); setLiked(!liked); }}
-            className="absolute top-3 right-3 p-2 rounded-full glass opacity-0 group-hover:opacity-100 transition-all duration-300 hover:scale-110"
+            className="absolute top-3 right-3 rounded-full border border-white/70 bg-white/85 p-2 opacity-0 transition-all duration-300 hover:scale-110 group-hover:opacity-100"
           >
             <Heart className={`w-4 h-4 ${liked ? "fill-red-500 text-red-500" : ""}`} />
           </button>
         </div>
-        <div className="mt-3 space-y-1">
-          <p className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
+        <div className="space-y-1.5 px-4 pb-4 pt-4">
+          <p className="text-[11px] font-semibold tracking-[0.2em] text-muted-foreground uppercase">
             {normalizedProduct.brand}
           </p>
-          <p className="text-sm font-medium truncate">{normalizedProduct.title}</p>
-          <div className="flex items-center gap-2">
-            <span className="font-mono text-sm font-semibold text-[hsl(var(--accent))]">
+          <p className="truncate text-sm font-medium lg:text-[15px]">{normalizedProduct.title}</p>
+          <div className="flex items-center gap-2 pt-1">
+            <span className="font-mono text-sm font-semibold text-foreground">
               {formatCurrency(convertAmount(normalizedProduct.final_price ?? 0, normalizedProduct.currency || "EUR", preferredCurrency), preferredCurrency)}
             </span>
             {hasRetailDiscount && (
@@ -75,6 +76,7 @@ export default function ProductCard({ product, index = 0 }) {
           <p className="text-xs text-muted-foreground">
             Outlet price {formatCurrency(convertAmount(normalizedProduct.outlet_price ?? normalizedProduct.final_price ?? 0, normalizedProduct.currency || "EUR", preferredCurrency), preferredCurrency)}
           </p>
+        </div>
         </div>
       </Link>
     </motion.div>

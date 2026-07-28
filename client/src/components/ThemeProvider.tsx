@@ -24,10 +24,10 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
   const [theme, setTheme] = useState<ThemeMode>(() => {
     if (typeof window !== "undefined") {
       const storedTheme = window.localStorage.getItem("outlethub-theme");
-      return storedTheme === "light" ? "light" : "dark";
+      return storedTheme === "dark" ? "dark" : "light";
     }
 
-    return "dark";
+    return "light";
   });
 
   useEffect(() => {

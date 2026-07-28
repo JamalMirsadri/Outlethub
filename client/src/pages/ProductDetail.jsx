@@ -319,7 +319,7 @@ export default function ProductDetail() {
   return (
     <div className="min-h-screen">
       <Navbar />
-      <div className="pt-24 pb-16 max-w-[1440px] mx-auto px-6 lg:px-10">
+      <div className="luxe-shell pt-28 pb-16">
         {/* Breadcrumb */}
         <Link to="/products" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors mb-8">
           <ChevronLeft className="w-4 h-4" /> Back to Shop
@@ -332,7 +332,7 @@ export default function ProductDetail() {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
           >
-            <div className="relative aspect-square rounded-xl overflow-hidden bg-secondary mb-4 border border-border">
+            <div className="relative mb-4 aspect-square overflow-hidden rounded-[28px] border border-border/70 bg-card shadow-[0_18px_45px_hsl(var(--foreground)/0.06)]">
               <button
                 type="button"
                 onClick={openGallery}
@@ -388,14 +388,14 @@ export default function ProductDetail() {
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.6, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
-            className="lg:sticky lg:top-28 lg:self-start"
+            className="luxe-panel lg:sticky lg:top-28 lg:self-start p-6 lg:p-8"
           >
             <p className="text-xs font-semibold tracking-[0.2em] text-muted-foreground uppercase mb-2">{product.brand}</p>
-            <h1 className="font-display text-2xl lg:text-4xl font-bold mb-4">{product.title}</h1>
+            <h1 className="font-display text-2xl lg:text-4xl font-semibold mb-4">{product.title}</h1>
 
             {/* Pricing */}
             <div className="flex items-end gap-3 mb-2">
-              <span className="font-mono text-3xl font-bold text-[hsl(var(--accent))]">
+              <span className="font-mono text-3xl font-bold text-foreground">
                 {formatCurrency(convertAmount(displayedProductPrice, currency, displayCurrency), displayCurrency)}
               </span>
               {hasRetailDiscount ? (
@@ -403,7 +403,7 @@ export default function ProductDetail() {
                   <span className="font-mono text-lg text-muted-foreground line-through">
                     {formatCurrency(convertAmount(originalPrice, currency, displayCurrency), displayCurrency)}
                   </span>
-                  <Badge className="bg-[hsl(var(--accent))] text-black font-mono">-{discount}%</Badge>
+                  <Badge className="bg-[hsl(var(--accent))] text-[hsl(var(--accent-foreground))] font-mono">-{discount}%</Badge>
                 </>
               ) : null}
             </div>
@@ -422,7 +422,7 @@ export default function ProductDetail() {
                 </>
               ) : null}
             </div>
-            <div className="rounded-xl bg-secondary/40 p-4 mb-6">
+            <div className="mb-6 rounded-[22px] border border-border/70 bg-background/60 p-4">
               <div className="space-y-2 text-sm">
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">Original Retail Price</span>
@@ -517,7 +517,7 @@ export default function ProductDetail() {
             </div>
 
             {/* Availability */}
-            <div className="p-4 rounded-xl bg-secondary/50 mb-6">
+            <div className="mb-6 rounded-[22px] border border-border/70 bg-background/60 p-4">
               <div className="flex items-center gap-2 text-sm">
                 <div className={`w-2 h-2 rounded-full ${(availableSizes.length > 0 ? selectedVariantStock : product.stock) > 0 ? "bg-[hsl(var(--accent))]" : "bg-destructive"}`} />
                 {(availableSizes.length > 0 ? selectedVariantStock : product.stock) > 0 ? (
@@ -541,7 +541,7 @@ export default function ProductDetail() {
                 { icon: Truck, label: "Free Shipping" },
                 { icon: RotateCcw, label: "30-Day Returns" },
               ].map(({ icon: Icon, label }) => (
-                <div key={label} className="text-center p-3 rounded-lg bg-secondary/50">
+                <div key={label} className="rounded-[18px] border border-border/70 bg-background/60 p-3 text-center">
                   <Icon className="w-4 h-4 mx-auto mb-1 text-muted-foreground" />
                   <p className="text-[10px] text-muted-foreground">{label}</p>
                 </div>
@@ -558,7 +558,7 @@ export default function ProductDetail() {
           className="mt-20"
         >
           <h2 className="font-display text-2xl font-bold mb-6">Price History</h2>
-          <div className="p-6 rounded-xl border border-border bg-card">
+          <div className="luxe-panel p-6">
             <ResponsiveContainer width="100%" height={200}>
               <LineChart data={priceHistory}>
                 <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 12 }} />

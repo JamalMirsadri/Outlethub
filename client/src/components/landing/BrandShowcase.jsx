@@ -14,24 +14,25 @@ const BRANDS = [
 
 export default function BrandShowcase() {
   return (
-    <section className="py-20 lg:py-32">
-      <div className="max-w-[1440px] mx-auto px-6 lg:px-10">
+    <section className="py-18 lg:py-24">
+      <div className="luxe-shell">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-          className="text-center mb-14"
+          className="mb-12 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"
         >
-          <p className="text-xs font-semibold tracking-[0.2em] text-muted-foreground uppercase mb-3">
-            Official Partners
+          <div>
+            <p className="luxe-eyebrow mb-3">Top Brands</p>
+            <h2 className="luxe-heading text-3xl lg:text-5xl">A curated luxury brand wall.</h2>
+          </div>
+          <p className="max-w-md text-sm leading-7 text-muted-foreground">
+            The layout echoes a premium fashion storefront while still using your own categories, products, and data.
           </p>
-          <h2 className="font-display text-3xl lg:text-5xl font-bold">
-            Shop by Brand
-          </h2>
         </motion.div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
           {BRANDS.map((brand, i) => (
             <motion.div
               key={brand.name}
@@ -39,14 +40,16 @@ export default function BrandShowcase() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: i * 0.05, ease: [0.16, 1, 0.3, 1] }}
-              className="group relative p-8 lg:p-10 rounded-xl border border-border bg-card hover:border-[hsl(var(--accent))/30] transition-all duration-500 cursor-pointer overflow-hidden"
+              className="group relative overflow-hidden rounded-[22px] border border-border/70 bg-card px-6 py-8 transition-all duration-500 hover:-translate-y-1 hover:border-[hsl(var(--accent))/0.35] hover:shadow-[0_16px_32px_hsl(var(--foreground)/0.06)] lg:px-8"
             >
-              <div className="absolute inset-0 bg-gradient-to-br from-[hsl(var(--accent))/5] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              <div className="absolute inset-0 bg-[linear-gradient(135deg,hsl(var(--accent))/0.12,transparent_55%)] opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
               <div className="relative text-center">
-                <h3 className="font-display text-lg lg:text-xl font-bold mb-2 group-hover:text-[hsl(var(--accent))] transition-colors">
+                <h3 className="font-display text-xl font-semibold transition-colors group-hover:text-[hsl(var(--accent))] lg:text-2xl">
                   {brand.name}
                 </h3>
-                <p className="text-xs font-mono text-muted-foreground">{brand.tagline}</p>
+                <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
+                  {brand.tagline}
+                </p>
               </div>
             </motion.div>
           ))}

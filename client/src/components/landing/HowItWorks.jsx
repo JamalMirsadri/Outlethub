@@ -10,8 +10,8 @@ const STEPS = [
 
 export default function HowItWorks() {
   return (
-    <section className="py-20 lg:py-32">
-      <div className="max-w-[1440px] mx-auto px-6 lg:px-10">
+    <section className="py-18 lg:py-24">
+      <div className="luxe-shell">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -19,10 +19,8 @@ export default function HowItWorks() {
           transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
           className="text-center mb-16"
         >
-          <p className="text-xs font-semibold tracking-[0.2em] text-muted-foreground uppercase mb-3">
-            Simple Process
-          </p>
-          <h2 className="font-display text-3xl lg:text-5xl font-bold">How It Works</h2>
+          <p className="luxe-eyebrow mb-3">Curated Process</p>
+          <h2 className="luxe-heading text-3xl lg:text-5xl">How It Works</h2>
         </motion.div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 lg:gap-12">
@@ -33,15 +31,15 @@ export default function HowItWorks() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.6, delay: i * 0.1, ease: [0.16, 1, 0.3, 1] }}
-              className="text-center"
+              className="luxe-panel px-6 py-8 text-center"
             >
-              <div className="relative mx-auto mb-6 w-16 h-16 rounded-2xl bg-secondary flex items-center justify-center">
+              <div className="relative mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-[20px] bg-secondary">
                 <step.icon className="w-7 h-7" />
-                <span className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-[hsl(var(--accent))] text-black text-xs font-mono font-bold flex items-center justify-center">
+                <span className="absolute -top-2 -right-2 flex h-6 w-6 items-center justify-center rounded-full bg-[hsl(var(--accent))] text-xs font-mono font-bold text-[hsl(var(--accent-foreground))]">
                   {i + 1}
                 </span>
               </div>
-              <h3 className="font-display text-xl font-bold mb-3">{step.title}</h3>
+              <h3 className="font-display text-xl font-semibold mb-3">{step.title}</h3>
               <p className="text-sm text-muted-foreground leading-relaxed max-w-xs mx-auto">
                 {step.description}
               </p>

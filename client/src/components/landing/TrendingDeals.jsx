@@ -7,22 +7,20 @@ import { Button } from "@/components/ui/button";
 
 export default function TrendingDeals({ products }) {
   return (
-    <section className="py-20 lg:py-32 bg-secondary/30">
-      <div className="max-w-[1440px] mx-auto px-6 lg:px-10">
+    <section className="py-18 lg:py-24">
+      <div className="luxe-shell">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-          className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-12"
+          className="mb-12 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-end"
         >
           <div>
-            <p className="text-xs font-semibold tracking-[0.2em] text-[hsl(var(--accent))] uppercase mb-3">
-              Don't Miss Out
-            </p>
-            <h2 className="font-display text-3xl lg:text-5xl font-bold">Trending Deals</h2>
+            <p className="luxe-eyebrow mb-3">Today&apos;s Top Deals</p>
+            <h2 className="luxe-heading text-3xl lg:text-5xl">Trending Deals</h2>
           </div>
-          <Button asChild variant="ghost" className="mt-4 sm:mt-0 group">
+          <Button asChild variant="ghost" className="group mt-4 rounded-full px-0 sm:mt-0">
             <Link to="/shop?is_trending=true" className="flex items-center gap-2 text-sm">
               View All <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </Link>

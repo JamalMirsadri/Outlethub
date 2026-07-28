@@ -94,11 +94,11 @@ export default function Cart() {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      <main className="pt-24 pb-16 max-w-[1440px] mx-auto px-6 lg:px-10">
+      <main className="luxe-shell pt-28 pb-16">
         <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between mb-10">
           <div>
-            <p className="text-xs font-semibold tracking-[0.2em] text-muted-foreground uppercase mb-2">Cart</p>
-            <h1 className="font-display text-3xl lg:text-5xl font-bold">Your bag</h1>
+            <p className="luxe-eyebrow mb-3">Cart</p>
+            <h1 className="luxe-heading text-3xl lg:text-5xl">Your bag</h1>
             <p className="text-sm text-muted-foreground mt-3">
               Verified against the persisted backend cart with shipping and VAT totals.
             </p>
@@ -137,13 +137,13 @@ export default function Cart() {
 
         {!cartReady || isLoadingCart ? (
           <div className="grid gap-6 lg:grid-cols-[1.5fr,0.9fr]">
-            <Card className="border-border/60">
+            <Card className="border-border/60 bg-card/85 shadow-[0_18px_45px_hsl(var(--foreground)/0.05)]">
               <CardContent className="p-6 space-y-4">
                 <div className="h-24 rounded-xl bg-secondary animate-pulse" />
                 <div className="h-24 rounded-xl bg-secondary animate-pulse" />
               </CardContent>
             </Card>
-            <Card className="border-border/60">
+            <Card className="border-border/60 bg-card/85 shadow-[0_18px_45px_hsl(var(--foreground)/0.05)]">
               <CardContent className="p-6 space-y-4">
                 <div className="h-6 rounded bg-secondary animate-pulse" />
                 <div className="h-6 rounded bg-secondary animate-pulse" />
@@ -152,7 +152,7 @@ export default function Cart() {
             </Card>
           </div>
         ) : cart.items.length === 0 ? (
-          <Card className="border-border/60 bg-card/70">
+          <Card className="border-border/60 bg-card/85 shadow-[0_18px_45px_hsl(var(--foreground)/0.05)]">
             <CardContent className="p-12 text-center">
               <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-secondary">
                 <ShoppingBag className="w-7 h-7" />
@@ -168,7 +168,7 @@ export default function Cart() {
           </Card>
         ) : (
           <div className="grid gap-6 lg:grid-cols-[1.5fr,0.9fr]">
-            <Card className="border-border/60 bg-card/70">
+            <Card className="border-border/60 bg-card/85 shadow-[0_18px_45px_hsl(var(--foreground)/0.05)]">
               <CardHeader className="flex flex-row items-center justify-between space-y-0">
                 <CardTitle className="text-xl">Cart items</CardTitle>
                 <Button variant="ghost" onClick={handleClearCart} disabled={isMutatingCart}>
@@ -275,7 +275,7 @@ export default function Cart() {
               </CardContent>
             </Card>
 
-            <Card className="border-border/60 bg-card/70 h-fit lg:sticky lg:top-28">
+            <Card className="h-fit border-border/60 bg-card/85 shadow-[0_18px_45px_hsl(var(--foreground)/0.05)] lg:sticky lg:top-28">
               <CardHeader>
                 <CardTitle className="text-xl">Order summary</CardTitle>
               </CardHeader>
