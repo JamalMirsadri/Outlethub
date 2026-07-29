@@ -6,78 +6,78 @@
 
 @layer base {
   :root {
-    --background: 60 54% 95%;
-    --foreground: 348 18% 16%;
-    --card: 42 60% 98%;
-    --card-foreground: 348 18% 16%;
-    --popover: 42 60% 98%;
-    --popover-foreground: 348 18% 16%;
-    --primary: 341 28% 24%;
-    --primary-foreground: 38 60% 97%;
-    --secondary: 28 48% 92%;
-    --secondary-foreground: 348 18% 16%;
-    --muted: 30 38% 90%;
-    --muted-foreground: 14 12% 39%;
-    --accent: 18 55% 54%;
-    --accent-foreground: 40 60% 98%;
+    --background: 224 42% 10%;
+    --foreground: 44 44% 92%;
+    --card: 224 33% 14%;
+    --card-foreground: 44 44% 92%;
+    --popover: 224 33% 14%;
+    --popover-foreground: 44 44% 92%;
+    --primary: 43 63% 61%;
+    --primary-foreground: 224 42% 10%;
+    --secondary: 224 26% 18%;
+    --secondary-foreground: 44 44% 92%;
+    --muted: 223 22% 19%;
+    --muted-foreground: 36 20% 73%;
+    --accent: 43 74% 60%;
+    --accent-foreground: 224 42% 10%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    --border: 25 30% 83%;
-    --input: 30 38% 90%;
-    --ring: 18 55% 54%;
-    --chart-1: 18 55% 54%;
-    --chart-2: 341 28% 24%;
-    --chart-3: 28 44% 62%;
-    --chart-4: 347 30% 67%;
-    --chart-5: 43 45% 66%;
+    --border: 223 18% 24%;
+    --input: 223 18% 24%;
+    --ring: 43 74% 60%;
+    --chart-1: 43 74% 60%;
+    --chart-2: 224 46% 30%;
+    --chart-3: 38 48% 54%;
+    --chart-4: 215 29% 46%;
+    --chart-5: 45 40% 72%;
     --radius: 1.1rem;
     --font-heading: 'Playfair Display', serif;
     --font-body: 'Inter', sans-serif;
     --font-display: 'Playfair Display', serif;
     --font-mono: 'JetBrains Mono', monospace;
-    --sidebar-background: 38 57% 98%;
-    --sidebar-foreground: 348 18% 16%;
-    --sidebar-primary: 341 28% 24%;
-    --sidebar-primary-foreground: 38 60% 97%;
-    --sidebar-accent: 28 48% 92%;
-    --sidebar-accent-foreground: 348 18% 16%;
-    --sidebar-border: 24 28% 84%;
-    --sidebar-ring: 18 55% 54%;
+    --sidebar-background: 224 34% 13%;
+    --sidebar-foreground: 44 44% 92%;
+    --sidebar-primary: 43 74% 60%;
+    --sidebar-primary-foreground: 224 42% 10%;
+    --sidebar-accent: 224 26% 18%;
+    --sidebar-accent-foreground: 44 44% 92%;
+    --sidebar-border: 223 18% 24%;
+    --sidebar-ring: 43 74% 60%;
   }
 
   .dark {
-    --background: 336 19% 10%;
-    --foreground: 37 39% 92%;
-    --card: 337 18% 13%;
-    --card-foreground: 37 39% 92%;
-    --popover: 337 18% 13%;
-    --popover-foreground: 37 39% 92%;
-    --primary: 17 58% 63%;
-    --primary-foreground: 336 19% 10%;
-    --secondary: 334 14% 18%;
-    --secondary-foreground: 37 39% 92%;
-    --muted: 334 14% 18%;
-    --muted-foreground: 24 20% 72%;
-    --accent: 18 55% 54%;
-    --accent-foreground: 336 19% 10%;
+    --background: 226 48% 8%;
+    --foreground: 45 44% 94%;
+    --card: 225 35% 12%;
+    --card-foreground: 45 44% 94%;
+    --popover: 225 35% 12%;
+    --popover-foreground: 45 44% 94%;
+    --primary: 43 68% 63%;
+    --primary-foreground: 226 48% 8%;
+    --secondary: 224 24% 16%;
+    --secondary-foreground: 45 44% 94%;
+    --muted: 224 24% 16%;
+    --muted-foreground: 35 19% 72%;
+    --accent: 43 74% 60%;
+    --accent-foreground: 226 48% 8%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
-    --border: 336 11% 23%;
-    --input: 336 11% 23%;
-    --ring: 18 55% 54%;
-    --chart-1: 18 55% 54%;
-    --chart-2: 22 48% 70%;
-    --chart-3: 345 30% 60%;
-    --chart-4: 44 40% 61%;
-    --chart-5: 10 44% 68%;
-    --sidebar-background: 337 18% 12%;
-    --sidebar-foreground: 37 39% 92%;
-    --sidebar-primary: 18 55% 54%;
-    --sidebar-primary-foreground: 336 19% 10%;
-    --sidebar-accent: 334 14% 18%;
-    --sidebar-accent-foreground: 37 39% 92%;
-    --sidebar-border: 336 11% 23%;
-    --sidebar-ring: 18 55% 54%;
+    --border: 223 18% 21%;
+    --input: 223 18% 21%;
+    --ring: 43 74% 60%;
+    --chart-1: 43 74% 60%;
+    --chart-2: 220 39% 34%;
+    --chart-3: 38 46% 53%;
+    --chart-4: 214 31% 46%;
+    --chart-5: 45 38% 69%;
+    --sidebar-background: 225 35% 12%;
+    --sidebar-foreground: 45 44% 94%;
+    --sidebar-primary: 43 74% 60%;
+    --sidebar-primary-foreground: 226 48% 8%;
+    --sidebar-accent: 224 24% 16%;
+    --sidebar-accent-foreground: 45 44% 94%;
+    --sidebar-border: 223 18% 21%;
+    --sidebar-ring: 43 74% 60%;
   }
 }
 
@@ -88,10 +88,9 @@
   body {
     @apply bg-background text-foreground font-body antialiased;
     background-image:
-      radial-gradient(circle at top left, hsl(var(--accent) / 0.14), transparent 23rem),
-      radial-gradient(circle at top right, hsl(var(--primary) / 0.12), transparent 26rem),
-      radial-gradient(circle at bottom, hsl(var(--accent) / 0.06), transparent 28rem),
-      linear-gradient(180deg, hsl(var(--background)) 0%, hsl(42 52% 97%) 46%, hsl(var(--background)) 100%);
+      radial-gradient(circle at top left, hsl(var(--accent) / 0.18), transparent 20rem),
+      radial-gradient(circle at top right, hsl(var(--primary) / 0.14), transparent 26rem),
+      linear-gradient(180deg, hsl(224 46% 13%) 0%, hsl(var(--background)) 45%, hsl(226 52% 7%) 100%);
     background-attachment: fixed;
   }
 
@@ -118,16 +117,16 @@
 
 /* Glass effect utility */
 .glass {
-  background: linear-gradient(180deg, hsl(var(--card) / 0.86), hsl(var(--card) / 0.72));
+  background: linear-gradient(180deg, hsl(var(--card) / 0.92), hsl(var(--card) / 0.80));
   backdrop-filter: blur(40px);
   -webkit-backdrop-filter: blur(40px);
   box-shadow:
-    0 18px 45px hsl(var(--foreground) / 0.06),
-    0 1px 0 hsl(0 0% 100% / 0.35) inset;
+    0 18px 45px hsl(224 40% 4% / 0.35),
+    0 1px 0 hsl(43 70% 72% / 0.12) inset;
 }
 
 .dark .glass {
-  background: hsl(var(--card) / 0.72);
+  background: hsl(var(--card) / 0.78);
 }
 
 .luxe-shell {
@@ -136,7 +135,7 @@
 
 .luxe-panel {
   @apply rounded-[28px] border border-border/80 bg-card shadow-[0_20px_60px_hsl(var(--foreground)/0.08)];
-  background-image: linear-gradient(180deg, hsl(var(--card)) 0%, hsl(var(--card) / 0.95) 100%);
+  background-image: linear-gradient(180deg, hsl(var(--card)) 0%, hsl(var(--secondary) / 0.82) 100%);
 }
 
 .luxe-subtle-panel {

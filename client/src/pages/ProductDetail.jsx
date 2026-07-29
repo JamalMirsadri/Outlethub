@@ -165,18 +165,18 @@ export default function ProductDetail() {
   const originalPrice = Number(product.original_price ?? 0);
   const outletPrice = Number(product.outlet_price ?? product.supplier_price ?? product.final_price ?? 0);
   const finalPrice = Number(product.final_price ?? 0);
-  const hasRetailDiscount = originalPrice > 0 && outletPrice > 0 && outletPrice < originalPrice;
-  const displayedProductPrice = hasRetailDiscount
+  const hasOutletPrice = originalPrice > 0 && outletPrice > 0 && outletPrice < originalPrice;
+  const displayedProductPrice = hasOutletPrice
     ? outletPrice
     : originalPrice > 0
       ? originalPrice
       : outletPrice > 0
         ? outletPrice
         : finalPrice;
-  const discount = hasRetailDiscount
+  const discount = hasOutletPrice
     ? product.discount_percent || Math.max(0, Math.round((1 - outletPrice / originalPrice) * 100))
     : 0;
-  const savings = hasRetailDiscount ? originalPrice - outletPrice : 0;
+  const savings = hasOutletPrice ? originalPrice - outletPrice : 0;
   const images = product.images?.length ? product.images : [PRODUCT_PLACEHOLDER_IMAGE];
   const currency = product.currency || "EUR";
   const displayCurrency = preferredCurrency || currency;
@@ -398,7 +398,7 @@ export default function ProductDetail() {
               <span className="font-mono text-3xl font-bold text-foreground">
                 {formatCurrency(convertAmount(displayedProductPrice, currency, displayCurrency), displayCurrency)}
               </span>
-              {hasRetailDiscount ? (
+              {hasOutletPrice ? (
                 <>
                   <span className="font-mono text-lg text-muted-foreground line-through">
                     {formatCurrency(convertAmount(originalPrice, currency, displayCurrency), displayCurrency)}
@@ -411,7 +411,7 @@ export default function ProductDetail() {
               <p className="text-sm text-muted-foreground">
                 Original retail price: {formatCurrency(convertAmount(originalPrice, currency, displayCurrency), displayCurrency)}
               </p>
-              {hasRetailDiscount ? (
+              {hasOutletPrice ? (
                 <>
                   <p className="text-sm text-muted-foreground">
                     Outlet price: {formatCurrency(convertAmount(outletPrice, currency, displayCurrency), displayCurrency)}
@@ -428,16 +428,12 @@ export default function ProductDetail() {
                   <span className="text-muted-foreground">Original Retail Price</span>
                   <span>{formatCurrency(convertAmount(originalPrice, currency, displayCurrency), displayCurrency)}</span>
                 </div>
-                {hasRetailDiscount ? (
+                {hasOutletPrice ? (
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">Outlet Price</span>
                     <span>{formatCurrency(convertAmount(outletPrice, currency, displayCurrency), displayCurrency)}</span>
                   </div>
                 ) : null}
-                <div className="flex items-center justify-between border-t border-border pt-2 font-medium">
-                  <span className="text-foreground">Displayed Price</span>
-                  <span>{formatCurrency(convertAmount(displayedProductPrice, currency, displayCurrency), displayCurrency)}</span>
-                </div>
               </div>
             </div>
 

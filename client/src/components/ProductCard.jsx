@@ -16,12 +16,19 @@ export default function ProductCard({ product, index = 0 }) {
     return null;
   }
 
-  const hasRetailDiscount =
-    Number(normalizedProduct.original_price) > 0 &&
-    Number(normalizedProduct.final_price) < Number(normalizedProduct.original_price);
-  const discount = hasRetailDiscount
+  const originalPrice = Number(normalizedProduct.original_price ?? 0);
+  const outletPrice = Number(normalizedProduct.outlet_price ?? 0);
+  const hasOutletPrice = originalPrice > 0 && outletPrice > 0 && outletPrice < originalPrice;
+  const primaryDisplayPrice = hasOutletPrice
+    ? outletPrice
+    : originalPrice > 0
+      ? originalPrice
+      : outletPrice > 0
+        ? outletPrice
+        : 0;
+  const discount = hasOutletPrice
     ? normalizedProduct.discount_percent ||
-      Math.max(0, Math.round((1 - normalizedProduct.final_price / normalizedProduct.original_price) * 100))
+      Math.max(0, Math.round((1 - outletPrice / originalPrice) * 100))
     : 0;
 
   return (
@@ -65,17 +72,19 @@ export default function ProductCard({ product, index = 0 }) {
           <p className="truncate text-sm font-medium lg:text-[15px]">{normalizedProduct.title}</p>
           <div className="flex items-center gap-2 pt-1">
             <span className="font-mono text-sm font-semibold text-foreground">
-              {formatCurrency(convertAmount(normalizedProduct.final_price ?? 0, normalizedProduct.currency || "EUR", preferredCurrency), preferredCurrency)}
+              {formatCurrency(convertAmount(primaryDisplayPrice, normalizedProduct.currency || "EUR", preferredCurrency), preferredCurrency)}
             </span>
-            {hasRetailDiscount && (
+            {hasOutletPrice && (
               <span className="font-mono text-xs text-muted-foreground line-through">
-                {formatCurrency(convertAmount(normalizedProduct.original_price ?? 0, normalizedProduct.currency || "EUR", preferredCurrency), preferredCurrency)}
+                {formatCurrency(convertAmount(originalPrice, normalizedProduct.currency || "EUR", preferredCurrency), preferredCurrency)}
               </span>
             )}
           </div>
-          <p className="text-xs text-muted-foreground">
-            Outlet price {formatCurrency(convertAmount(normalizedProduct.outlet_price ?? normalizedProduct.final_price ?? 0, normalizedProduct.currency || "EUR", preferredCurrency), preferredCurrency)}
-          </p>
+          {hasOutletPrice ? (
+            <p className="text-xs text-muted-foreground">
+              Outlet price {formatCurrency(convertAmount(outletPrice, normalizedProduct.currency || "EUR", preferredCurrency), preferredCurrency)}
+            </p>
+          ) : null}
         </div>
         </div>
       </Link>
