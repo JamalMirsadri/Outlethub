@@ -29,11 +29,24 @@ export default function Navbar() {
       .catch(() => {});
   }, []);
 
-  const menuCategories = (() => {
-    const rootCategories = categories.filter((category) => !category.parentId);
-    const source = rootCategories.length > 0 ? rootCategories : categories;
-    return source.slice(0, 5);
-  })();
+  const preferredMenuDefinitions = [
+    { key: "kids", matchers: ["kids", "kid", "children"] },
+    { key: "man", matchers: ["man", "men"] },
+    { key: "woman", matchers: ["woman", "women"] },
+  ];
+
+  const menuCategories = preferredMenuDefinitions
+    .map((definition) =>
+      categories.find((category) => {
+        const normalizedSlug = String(category.slug ?? "").trim().toLowerCase();
+        const normalizedName = String(category.name ?? "").trim().toLowerCase();
+
+        return definition.matchers.some(
+          (matcher) => normalizedSlug === matcher || normalizedName === matcher,
+        );
+      }),
+    )
+    .filter(Boolean);
 
   const mobileMenuItems = [
     { label: settings.header.shopLabel.toUpperCase(), to: "/shop" },

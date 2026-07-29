@@ -131,6 +131,50 @@ function uniqueValues(values: Array<string | null | undefined>): string[] {
   return [...new Set(values.filter((value): value is string => Boolean(value && value.trim())))];
 }
 
+async function resolveCategoryFilterIds(categoryFilter: string): Promise<string[]> {
+  const normalizedFilter = categoryFilter.trim().toLowerCase();
+
+  const categories = await prisma.category.findMany({
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      parentId: true,
+    },
+  });
+
+  const matchedCategories = categories.filter(
+    (category) =>
+      category.id === categoryFilter ||
+      category.slug === categoryFilter ||
+      category.name.trim().toLowerCase() === normalizedFilter,
+  );
+
+  if (matchedCategories.length === 0) {
+    return [];
+  }
+
+  const categoryIds = new Set(matchedCategories.map((category) => category.id));
+  const queue = [...categoryIds];
+
+  while (queue.length > 0) {
+    const currentId = queue.shift();
+
+    if (!currentId) {
+      continue;
+    }
+
+    for (const category of categories) {
+      if (category.parentId === currentId && !categoryIds.has(category.id)) {
+        categoryIds.add(category.id);
+        queue.push(category.id);
+      }
+    }
+  }
+
+  return [...categoryIds];
+}
+
 async function buildUniqueSlug(
   baseValue: string,
   exists: (slug: string) => Promise<boolean>,
@@ -1092,6 +1136,8 @@ export class CatalogService {
   }
 
   public async listPublicProducts(query: PublicProductListQuery) {
+    const categoryIds = query.category ? await resolveCategoryFilterIds(query.category) : [];
+
     const where: Prisma.ProductWhereInput = {
       status: ProductStatus.ACTIVE,
       deletedAt: null,
@@ -1110,12 +1156,8 @@ export class CatalogService {
         : {}),
       ...(query.category
         ? {
-            category: {
-              OR: [
-                { id: query.category },
-                { slug: query.category },
-                { name: { equals: query.category, mode: "insensitive" } },
-              ],
+            categoryId: {
+              in: categoryIds,
             },
           }
         : {}),

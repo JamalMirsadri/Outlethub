@@ -93,6 +93,10 @@ export function normalizeCatalogProduct(product: LegacyOrCatalogProduct | null |
     typeof product.brand === "string"
       ? product.brand_id ?? ""
       : product.brand?.id ?? product.brand_id ?? "";
+  const brandSlug =
+    typeof product.brand === "string"
+      ? ""
+      : product.brand?.slug ?? "";
 
   const categoryName =
     typeof product.category === "string"
@@ -102,6 +106,10 @@ export function normalizeCatalogProduct(product: LegacyOrCatalogProduct | null |
     typeof product.category === "string"
       ? product.category_id ?? ""
       : product.category?.id ?? product.category_id ?? "";
+  const categorySlug =
+    typeof product.category === "string"
+      ? ""
+      : product.category?.slug ?? "";
 
   const finalPrice = product.final_price ?? product.price ?? 0;
   const originalPrice = product.original_price ?? product.oldPrice ?? finalPrice;
@@ -126,8 +134,10 @@ export function normalizeCatalogProduct(product: LegacyOrCatalogProduct | null |
     description: product.description ?? "",
     brand: brandName,
     brand_id: brandId,
+    brand_slug: brandSlug,
     category: categoryName,
     category_id: categoryId,
+    category_slug: categorySlug,
     original_price: originalPrice,
     outlet_price: outletPrice,
     final_price: finalPrice,

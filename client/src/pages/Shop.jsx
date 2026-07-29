@@ -41,6 +41,8 @@ export default function Shop() {
   const [discountRange, setDiscountRange] = useState(0);
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState({ page: 1, totalPages: 1, total: 0 });
+  const brandParam = searchParams.get("brand") ?? "";
+  const categoryParam = searchParams.get("category") ?? "";
 
   useEffect(() => {
     http("/products/meta/filters")
@@ -52,11 +54,21 @@ export default function Shop() {
   }, []);
 
   useEffect(() => {
-    const categoryFromUrl = searchParams.get("category") ?? "";
-    if (categoryFromUrl !== selectedCategory) {
-      setSelectedCategory(categoryFromUrl);
+    if (categoryParam !== selectedCategory) {
+      setSelectedCategory(categoryParam);
     }
-  }, [searchParams, selectedCategory]);
+  }, [categoryParam, selectedCategory]);
+
+  useEffect(() => {
+    const nextSelectedBrands = brandParam ? [brandParam] : [];
+    const isSameSelection =
+      nextSelectedBrands.length === selectedBrands.length &&
+      nextSelectedBrands.every((brand, index) => brand === selectedBrands[index]);
+
+    if (!isSameSelection) {
+      setSelectedBrands(nextSelectedBrands);
+    }
+  }, [brandParam, selectedBrands]);
 
   useEffect(() => {
     const nextParams = new URLSearchParams(searchParams);
@@ -67,10 +79,16 @@ export default function Shop() {
       nextParams.delete("category");
     }
 
+    if (selectedBrands.length === 1) {
+      nextParams.set("brand", selectedBrands[0]);
+    } else {
+      nextParams.delete("brand");
+    }
+
     if (nextParams.toString() !== searchParams.toString()) {
       setSearchParams(nextParams, { replace: true });
     }
-  }, [searchParams, selectedCategory, setSearchParams]);
+  }, [searchParams, selectedBrands, selectedCategory, setSearchParams]);
 
   useEffect(() => {
     setLoading(true);
@@ -98,7 +116,17 @@ export default function Shop() {
 
   const filtered = useMemo(() => {
     let result = [...products];
-    if (selectedBrands.length) result = result.filter(p => selectedBrands.includes(p.brand));
+    if (selectedBrands.length) {
+      result = result.filter((product) => {
+        const productBrandName = String(product.brand ?? "").trim().toLowerCase();
+        const productBrandSlug = String(product.brand_slug ?? "").trim().toLowerCase();
+
+        return selectedBrands.some((selectedBrand) => {
+          const normalizedSelectedBrand = selectedBrand.trim().toLowerCase();
+          return normalizedSelectedBrand === productBrandSlug || normalizedSelectedBrand === productBrandName;
+        });
+      });
+    }
     if (selectedSizes.length) result = result.filter(p => p.sizes?.some(s => selectedSizes.includes(s)));
     if (selectedColors.length) result = result.filter(p => p.colors?.some(c => selectedColors.includes(c)));
 
