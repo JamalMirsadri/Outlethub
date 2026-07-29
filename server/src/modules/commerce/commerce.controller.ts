@@ -4,6 +4,7 @@ import { env } from "../../config/env.js";
 import { cartService } from "./cart.service.js";
 import { commerceAdminService } from "./commerce-admin.service.js";
 import { currencyService } from "./currency.service.js";
+import { loyaltyService } from "./loyalty.service.js";
 import { ordersService } from "./orders.service.js";
 import { paymentsService } from "./payments.service.js";
 import { pricingService } from "./pricing.service.js";
@@ -199,6 +200,53 @@ export class CommerceController {
     response.status(200).json(await commerceAdminService.getRevenueAnalytics());
   }
 
+  public async getAdminLoyaltyOverview(_request: Request, response: Response) {
+    response.status(200).json(await loyaltyService.getAdminOverview());
+  }
+
+  public async createLoyaltyPointRule(request: Request, response: Response) {
+    response.status(201).json(await loyaltyService.createPointRule(request.body));
+  }
+
+  public async updateLoyaltyPointRule(request: Request, response: Response) {
+    response.status(200).json(await loyaltyService.updatePointRule(getParam(request, "id"), request.body));
+  }
+
+  public async deleteLoyaltyPointRule(request: Request, response: Response) {
+    await loyaltyService.deletePointRule(getParam(request, "id"));
+    response.status(204).send();
+  }
+
+  public async createLoyaltyMembershipLevel(request: Request, response: Response) {
+    response.status(201).json(await loyaltyService.createMembershipLevel(request.body));
+  }
+
+  public async updateLoyaltyMembershipLevel(request: Request, response: Response) {
+    response.status(200).json(await loyaltyService.updateMembershipLevel(getParam(request, "id"), request.body));
+  }
+
+  public async deleteLoyaltyMembershipLevel(request: Request, response: Response) {
+    await loyaltyService.deleteMembershipLevel(getParam(request, "id"));
+    response.status(204).send();
+  }
+
+  public async createLoyaltyReward(request: Request, response: Response) {
+    response.status(201).json(await loyaltyService.createReward(request.body));
+  }
+
+  public async updateLoyaltyReward(request: Request, response: Response) {
+    response.status(200).json(await loyaltyService.updateReward(getParam(request, "id"), request.body));
+  }
+
+  public async deleteLoyaltyReward(request: Request, response: Response) {
+    await loyaltyService.deleteReward(getParam(request, "id"));
+    response.status(204).send();
+  }
+
+  public async createLoyaltyManualAdjustment(request: Request, response: Response) {
+    response.status(201).json(await loyaltyService.applyManualAdjustment(requireUserId(request), request.body));
+  }
+
   public async listSources(_request: Request, response: Response) {
     response.status(200).json({ items: await commerceAdminService.listSources() });
   }
@@ -256,6 +304,14 @@ export class CommerceController {
 
   public async listCustomerPayments(request: Request, response: Response) {
     response.status(200).json({ items: await paymentsService.getCustomerPayments(requireUserId(request)) });
+  }
+
+  public async getCustomerRewards(request: Request, response: Response) {
+    response.status(200).json(await loyaltyService.getCustomerRewards(requireUserId(request)));
+  }
+
+  public async redeemReward(request: Request, response: Response) {
+    response.status(200).json(await loyaltyService.redeemReward(requireUserId(request), getParam(request, "id")));
   }
 
   public async uploadPaymentReceipt(request: Request, response: Response) {

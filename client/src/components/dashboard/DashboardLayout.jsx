@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link, useLocation, Outlet } from "react-router-dom";
-import { Package, Heart, Bell, User, MapPin, CreditCard, ChevronLeft, Menu, X } from "lucide-react";
+import { Package, Heart, Bell, User, MapPin, CreditCard, ChevronLeft, Menu, X, Gift } from "lucide-react";
 import Navbar from "@/components/landing/Navbar";
 
 const NAV_ITEMS = [
@@ -8,6 +8,7 @@ const NAV_ITEMS = [
   { icon: Bell, label: "Notifications", path: "/notifications" },
   { icon: Heart, label: "Wishlist", path: "/dashboard/wishlist" },
   { icon: Bell, label: "Price Alerts", path: "/dashboard/alerts" },
+  { icon: Gift, label: "My Rewards", path: "/dashboard/rewards" },
   { icon: User, label: "Profile", path: "/dashboard/profile" },
   { icon: MapPin, label: "Addresses", path: "/dashboard/addresses" },
   { icon: CreditCard, label: "Payments", path: "/dashboard/payments" },

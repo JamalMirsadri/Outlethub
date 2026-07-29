@@ -28,6 +28,7 @@ import ProfilePage from "@/pages/dashboard/ProfilePage";
 import AddressesPage from "@/pages/dashboard/AddressesPage";
 import PaymentsPage from "@/pages/dashboard/PaymentsPage";
 import NotificationsPage from "@/pages/dashboard/NotificationsPage";
+import MyRewards from "@/pages/dashboard/MyRewards";
 import AdminLayout from "@/components/admin/AdminLayout";
 import AdminDashboard from "@/pages/admin/AdminDashboard";
 import AdminProducts from "@/pages/admin/AdminProducts";
@@ -66,6 +67,7 @@ import AdminEmailTemplates from "@/pages/admin/AdminEmailTemplates";
 import AdminNotificationsCenter from "@/pages/admin/AdminNotificationsCenter";
 import AdminSyncHistory from "@/pages/admin/AdminSyncHistory";
 import AdminSiteContent from "@/pages/admin/AdminSiteContent";
+import AdminLoyalty from "@/pages/admin/AdminLoyalty";
 
 function AppRoutes() {
   return (
@@ -91,6 +93,7 @@ function AppRoutes() {
           <Route path="/dashboard/profile" element={<ProfilePage />} />
           <Route path="/dashboard/addresses" element={<AddressesPage />} />
           <Route path="/dashboard/payments" element={<PaymentsPage />} />
+          <Route path="/dashboard/rewards" element={<MyRewards />} />
         </Route>
       </Route>
 
@@ -117,6 +120,7 @@ function AppRoutes() {
           <Route path="/admin/pricing" element={<AdminPricing />} />
           <Route path="/admin/shipping" element={<AdminShipping />} />
           <Route path="/admin/site-content" element={<AdminSiteContent />} />
+          <Route path="/admin/loyalty" element={<AdminLoyalty />} />
           <Route path="/admin/sources" element={<AdminSources />} />
           <Route path="/admin/connectors" element={<AdminConnectors />} />
           <Route path="/admin/connectors/wizard" element={<AdminConnectorWizard />} />

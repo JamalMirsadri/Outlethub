@@ -329,6 +329,24 @@ enum ReviewStatus {
   REJECTED
 }
 
+enum LoyaltyOrderAwardStatus {
+  PENDING
+  AWARDED
+  REVERSED
+}
+
+enum LoyaltyTransactionType {
+  ORDER_EARN
+  ORDER_REVERSAL
+  REWARD_REDEMPTION
+  MANUAL_ADJUSTMENT
+}
+
+enum LoyaltyRedemptionStatus {
+  REDEEMED
+  CANCELLED
+}
+
 model Role {
   id          String    @id @default(cuid())
   code        RoleCode  @unique
@@ -378,6 +396,11 @@ model User {
   priceAlerts         PriceAlert[]
   reviews             Review[]
   auditLogs           AuditLog[]
+  loyaltyAccount      LoyaltyAccount?
+  loyaltyTransactions LoyaltyPointTransaction[] @relation("LoyaltyTransactionUser")
+  loyaltyAdjustments  LoyaltyPointTransaction[] @relation("LoyaltyTransactionActor")
+  rewardRedemptions   LoyaltyRewardRedemption[]
+  loyaltyOrderAwards  LoyaltyOrderPointAward[]
   createdAt           DateTime                @default(now())
   updatedAt           DateTime                @updatedAt
 
@@ -788,6 +811,8 @@ model Order {
   paymentTransactions     PaymentTransaction[]
   paymentWebhooks         PaymentWebhook[]
   paymentRefunds          PaymentRefund[]
+  loyaltyAward            LoyaltyOrderPointAward?
+  loyaltyTransactions     LoyaltyPointTransaction[]
   notifications           Notification[]
   notificationEvents      NotificationEvent[]
   createdAt               DateTime     @default(now())
@@ -1896,4 +1921,160 @@ model Setting {
   isPublic    Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+model LoyaltyAccount {
+  id                String                    @id @default(cuid())
+  userId            String                    @unique
+  membershipLevelId String?
+  currentPoints     Int                       @default(0)
+  totalEarnedPoints Int                       @default(0)
+  totalSpentPoints  Int                       @default(0)
+  user              User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  membershipLevel   LoyaltyMembershipLevel?   @relation(fields: [membershipLevelId], references: [id], onDelete: SetNull)
+  transactions      LoyaltyPointTransaction[]
+  rewardRedemptions LoyaltyRewardRedemption[]
+  orderAwards       LoyaltyOrderPointAward[]
+  createdAt         DateTime                  @default(now())
+  updatedAt         DateTime                  @updatedAt
+
+  @@index([membershipLevelId])
+  @@index([currentPoints])
+}
+
+model LoyaltyPointRule {
+  id          String                  @id @default(cuid())
+  name        String
+  spendAmount Decimal                 @db.Decimal(10, 2)
+  pointsAwarded Int
+  currency    String                  @default("EUR")
+  isActive    Boolean                 @default(true)
+  isDefault   Boolean                 @default(false)
+  notes       String?
+  orderAwards LoyaltyOrderPointAward[]
+  createdAt   DateTime                @default(now())
+  updatedAt   DateTime                @updatedAt
+
+  @@index([isActive, isDefault])
+}
+
+model LoyaltyMembershipLevel {
+  id          String                  @id @default(cuid())
+  title       String                  @unique
+  slug        String                  @unique
+  minPoints   Int
+  color       String                  @default("#B08D57")
+  icon        String?
+  benefits    Json?
+  sortOrder   Int                     @default(0)
+  isActive    Boolean                 @default(true)
+  accounts    LoyaltyAccount[]
+  rewards     LoyaltyReward[]
+  createdAt   DateTime                @default(now())
+  updatedAt   DateTime                @updatedAt
+
+  @@index([minPoints, isActive])
+  @@index([sortOrder])
+}
+
+model LoyaltyReward {
+  id                   String                    @id @default(cuid())
+  title                String
+  slug                 String                    @unique
+  description          String?
+  pointsCost           Int
+  minMembershipLevelId String?
+  color                String?
+  icon                 String?
+  benefits             Json?
+  stockLimit           Int?
+  isActive             Boolean                   @default(true)
+  sortOrder            Int                       @default(0)
+  minMembershipLevel   LoyaltyMembershipLevel?   @relation(fields: [minMembershipLevelId], references: [id], onDelete: SetNull)
+  redemptions          LoyaltyRewardRedemption[]
+  pointTransactions    LoyaltyPointTransaction[]
+  createdAt            DateTime                  @default(now())
+  updatedAt            DateTime                  @updatedAt
+
+  @@index([minMembershipLevelId])
+  @@index([isActive, sortOrder])
+}
+
+model LoyaltyRewardRedemption {
+  id           String                  @id @default(cuid())
+  accountId    String
+  userId       String
+  rewardId     String
+  pointsSpent  Int
+  status       LoyaltyRedemptionStatus @default(REDEEMED)
+  notes        String?
+  metadata     Json?
+  redeemedAt   DateTime                @default(now())
+  cancelledAt  DateTime?
+  account      LoyaltyAccount          @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  user         User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reward       LoyaltyReward           @relation(fields: [rewardId], references: [id], onDelete: Restrict)
+  transactions LoyaltyPointTransaction[]
+  createdAt    DateTime                @default(now())
+  updatedAt    DateTime                @updatedAt
+
+  @@index([accountId, redeemedAt])
+  @@index([userId, redeemedAt])
+  @@index([rewardId])
+  @@index([status])
+}
+
+model LoyaltyPointTransaction {
+  id            String                 @id @default(cuid())
+  accountId     String
+  userId        String
+  orderId       String?
+  rewardId      String?
+  redemptionId  String?
+  actorUserId   String?
+  type          LoyaltyTransactionType
+  pointsDelta   Int
+  balanceAfter  Int
+  description   String
+  metadata      Json?
+  account       LoyaltyAccount         @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  user          User                   @relation("LoyaltyTransactionUser", fields: [userId], references: [id], onDelete: Cascade)
+  order         Order?                 @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  reward        LoyaltyReward?         @relation(fields: [rewardId], references: [id], onDelete: SetNull)
+  redemption    LoyaltyRewardRedemption? @relation(fields: [redemptionId], references: [id], onDelete: SetNull)
+  actorUser     User?                  @relation("LoyaltyTransactionActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  createdAt     DateTime               @default(now())
+
+  @@index([accountId, createdAt])
+  @@index([userId, createdAt])
+  @@index([orderId])
+  @@index([rewardId])
+  @@index([redemptionId])
+  @@index([actorUserId])
+  @@index([type, createdAt])
+}
+
+model LoyaltyOrderPointAward {
+  id           String                   @id @default(cuid())
+  orderId      String                   @unique
+  accountId    String
+  userId       String
+  pointRuleId  String?
+  awardedPoints Int
+  spendAmount  Decimal                  @db.Decimal(10, 2)
+  status       LoyaltyOrderAwardStatus  @default(PENDING)
+  metadata     Json?
+  awardedAt    DateTime?
+  reversedAt   DateTime?
+  order        Order                    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  account      LoyaltyAccount           @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  user         User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pointRule    LoyaltyPointRule?        @relation(fields: [pointRuleId], references: [id], onDelete: SetNull)
+  createdAt    DateTime                 @default(now())
+  updatedAt    DateTime                 @updatedAt
+
+  @@index([accountId])
+  @@index([userId])
+  @@index([pointRuleId])
+  @@index([status])
 }

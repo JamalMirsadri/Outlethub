@@ -252,6 +252,61 @@ export const refundOrderSchema = z.object({
   internalNotes: optionalNullableString,
 });
 
+export const createLoyaltyPointRuleSchema = z.object({
+  name: z.string().trim().min(2).max(120),
+  spendAmount: z.coerce.number().positive(),
+  pointsAwarded: z.coerce.number().int().positive(),
+  currency: z.string().trim().min(3).max(10).optional(),
+  isActive: z.boolean().optional(),
+  isDefault: z.boolean().optional(),
+  notes: optionalNullableString,
+});
+
+export const updateLoyaltyPointRuleSchema = createLoyaltyPointRuleSchema.partial().refine((value) => Object.keys(value).length > 0, {
+  message: "At least one field must be provided.",
+});
+
+export const createLoyaltyMembershipLevelSchema = z.object({
+  title: z.string().trim().min(2).max(80),
+  minPoints: z.coerce.number().int().min(0),
+  color: optionalNullableString,
+  icon: optionalNullableString,
+  benefits: z.array(z.string().trim().min(1).max(180)).max(20).optional(),
+  sortOrder: z.coerce.number().int().min(0).max(1000).optional(),
+  isActive: z.boolean().optional(),
+});
+
+export const updateLoyaltyMembershipLevelSchema = createLoyaltyMembershipLevelSchema.partial().refine((value) => Object.keys(value).length > 0, {
+  message: "At least one field must be provided.",
+});
+
+export const createLoyaltyRewardSchema = z.object({
+  title: z.string().trim().min(2).max(120),
+  description: optionalNullableString,
+  pointsCost: z.coerce.number().int().positive(),
+  minMembershipLevelId: z.union([cuidSchema, z.null()]).optional(),
+  color: optionalNullableString,
+  icon: optionalNullableString,
+  benefits: z.array(z.string().trim().min(1).max(180)).max(20).optional(),
+  stockLimit: z.union([z.coerce.number().int().positive(), z.null()]).optional(),
+  isActive: z.boolean().optional(),
+  sortOrder: z.coerce.number().int().min(0).max(1000).optional(),
+});
+
+export const updateLoyaltyRewardSchema = createLoyaltyRewardSchema.partial().refine((value) => Object.keys(value).length > 0, {
+  message: "At least one field must be provided.",
+});
+
+export const manualLoyaltyAdjustmentSchema = z.object({
+  userId: cuidSchema,
+  pointsDelta: z.coerce.number().int().refine((value) => value !== 0, {
+    message: "Points delta must not be zero.",
+  }),
+  reason: z.string().trim().min(3).max(240),
+});
+
+export const redeemLoyaltyRewardSchema = z.object({});
+
 export const updateProcurementTaskSchema = z
   .object({
     status: z

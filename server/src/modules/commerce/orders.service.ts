@@ -10,6 +10,7 @@ import type { PaymentProviderAdapter } from "./payment-providers/payment-provide
 import { paymentsService } from "./payments.service.js";
 import { pricingService } from "./pricing.service.js";
 import { procurementService } from "./procurement.service.js";
+import { loyaltyService } from "./loyalty.service.js";
 import { notificationsService } from "../notifications/notifications.service.js";
 
 function toNumber(value: Prisma.Decimal | null | undefined): number {
@@ -817,6 +818,10 @@ export class OrdersService {
       });
     }
 
+    if (status === "DELIVERED" || status === "CANCELLED" || status === "REFUNDED") {
+      await loyaltyService.reconcileOrderPoints(order.id);
+    }
+
     return mapOrder(order);
   }
 
@@ -979,6 +984,10 @@ export class OrdersService {
       });
     }
 
+    if (input.status === "DELIVERED" || input.status === "CANCELLED" || input.status === "REFUNDED") {
+      await loyaltyService.reconcileOrderPoints(order.id);
+    }
+
     return mapOrder(order);
   }
 
@@ -1047,6 +1056,8 @@ export class OrdersService {
       order: refunded,
       message: `Refund issued for ${refunded.orderNumber}`,
     });
+
+    await loyaltyService.reconcileOrderPoints(refunded.id);
 
     return mapOrder(refunded);
   }

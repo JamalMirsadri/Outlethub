@@ -9,12 +9,20 @@ import { commerceController } from "./commerce.controller.js";
 import {
   addCartItemSchema,
   createOrderSchema,
+  createLoyaltyMembershipLevelSchema,
+  createLoyaltyPointRuleSchema,
+  createLoyaltyRewardSchema,
   createPricingRuleSchema,
   entityIdParamsSchema,
+  manualLoyaltyAdjustmentSchema,
   mergeGuestCartSchema,
   previewProfitSchema,
+  redeemLoyaltyRewardSchema,
   refundOrderSchema,
   reviewPaymentSchema,
+  updateLoyaltyMembershipLevelSchema,
+  updateLoyaltyPointRuleSchema,
+  updateLoyaltyRewardSchema,
   updateProcurementTaskSchema,
   updatePreferredCurrencySchema,
   updateAdminOrderSchema,
@@ -112,6 +120,14 @@ commerceRouter.post(
 
 commerceRouter.get("/orders", requireAuth, asyncHandler(commerceController.listCustomerOrders.bind(commerceController)));
 commerceRouter.get("/payments", requireAuth, asyncHandler(commerceController.listCustomerPayments.bind(commerceController)));
+commerceRouter.get("/loyalty/me", requireAuth, asyncHandler(commerceController.getCustomerRewards.bind(commerceController)));
+commerceRouter.post(
+  "/loyalty/rewards/:id/redeem",
+  requireAuth,
+  validateParams(entityIdParamsSchema),
+  validateBody(redeemLoyaltyRewardSchema),
+  asyncHandler(commerceController.redeemReward.bind(commerceController)),
+);
 commerceRouter.post(
   "/payments/:id/receipt",
   requireAuth,
@@ -138,6 +154,7 @@ commerceRouter.use(
     "/admin/payments",
     "/admin/bank-accounts",
     "/admin/exchange-rates",
+    "/admin/loyalty",
   ],
   requireAuth,
   requireRoles(RoleCode.SUPER_ADMIN, RoleCode.ADMIN),
@@ -286,6 +303,63 @@ commerceRouter.get(
 commerceRouter.get(
   "/admin/analytics/commerce",
   asyncHandler(commerceController.getRevenueAnalytics.bind(commerceController)),
+);
+commerceRouter.get(
+  "/admin/loyalty",
+  asyncHandler(commerceController.getAdminLoyaltyOverview.bind(commerceController)),
+);
+commerceRouter.post(
+  "/admin/loyalty/point-rules",
+  validateBody(createLoyaltyPointRuleSchema),
+  asyncHandler(commerceController.createLoyaltyPointRule.bind(commerceController)),
+);
+commerceRouter.patch(
+  "/admin/loyalty/point-rules/:id",
+  validateParams(entityIdParamsSchema),
+  validateBody(updateLoyaltyPointRuleSchema),
+  asyncHandler(commerceController.updateLoyaltyPointRule.bind(commerceController)),
+);
+commerceRouter.delete(
+  "/admin/loyalty/point-rules/:id",
+  validateParams(entityIdParamsSchema),
+  asyncHandler(commerceController.deleteLoyaltyPointRule.bind(commerceController)),
+);
+commerceRouter.post(
+  "/admin/loyalty/membership-levels",
+  validateBody(createLoyaltyMembershipLevelSchema),
+  asyncHandler(commerceController.createLoyaltyMembershipLevel.bind(commerceController)),
+);
+commerceRouter.patch(
+  "/admin/loyalty/membership-levels/:id",
+  validateParams(entityIdParamsSchema),
+  validateBody(updateLoyaltyMembershipLevelSchema),
+  asyncHandler(commerceController.updateLoyaltyMembershipLevel.bind(commerceController)),
+);
+commerceRouter.delete(
+  "/admin/loyalty/membership-levels/:id",
+  validateParams(entityIdParamsSchema),
+  asyncHandler(commerceController.deleteLoyaltyMembershipLevel.bind(commerceController)),
+);
+commerceRouter.post(
+  "/admin/loyalty/rewards",
+  validateBody(createLoyaltyRewardSchema),
+  asyncHandler(commerceController.createLoyaltyReward.bind(commerceController)),
+);
+commerceRouter.patch(
+  "/admin/loyalty/rewards/:id",
+  validateParams(entityIdParamsSchema),
+  validateBody(updateLoyaltyRewardSchema),
+  asyncHandler(commerceController.updateLoyaltyReward.bind(commerceController)),
+);
+commerceRouter.delete(
+  "/admin/loyalty/rewards/:id",
+  validateParams(entityIdParamsSchema),
+  asyncHandler(commerceController.deleteLoyaltyReward.bind(commerceController)),
+);
+commerceRouter.post(
+  "/admin/loyalty/manual-adjustments",
+  validateBody(manualLoyaltyAdjustmentSchema),
+  asyncHandler(commerceController.createLoyaltyManualAdjustment.bind(commerceController)),
 );
 commerceRouter.get(
   "/admin/sources",

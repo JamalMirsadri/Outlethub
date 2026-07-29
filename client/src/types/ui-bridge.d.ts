@@ -142,3 +142,51 @@ declare module "@/components/ui/textarea" {
     TextareaProps & RefAttributes<HTMLTextAreaElement>
   >;
 }
+
+declare module "@/components/ui/tabs" {
+  import type { ForwardRefExoticComponent, HTMLAttributes, ReactNode, RefAttributes } from "react";
+
+  export interface TabsProps extends HTMLAttributes<HTMLDivElement> {
+    defaultValue?: string;
+    value?: string;
+    onValueChange?: (value: string) => void;
+    orientation?: "horizontal" | "vertical";
+    dir?: "ltr" | "rtl";
+    activationMode?: "automatic" | "manual";
+    children?: ReactNode;
+  }
+
+  export interface TabsListProps extends HTMLAttributes<HTMLDivElement> {
+    children?: ReactNode;
+  }
+
+  export interface TabsTriggerProps extends HTMLAttributes<HTMLButtonElement> {
+    value: string;
+    disabled?: boolean;
+    children?: ReactNode;
+  }
+
+  export interface TabsContentProps extends HTMLAttributes<HTMLDivElement> {
+    value: string;
+    forceMount?: boolean;
+    children?: ReactNode;
+  }
+
+  export function Tabs(props: TabsProps): JSX.Element;
+  export const TabsList: ForwardRefExoticComponent<TabsListProps & RefAttributes<HTMLDivElement>>;
+  export const TabsTrigger: ForwardRefExoticComponent<TabsTriggerProps & RefAttributes<HTMLButtonElement>>;
+  export const TabsContent: ForwardRefExoticComponent<TabsContentProps & RefAttributes<HTMLDivElement>>;
+}
+
+declare module "@/components/ui/progress" {
+  import type { ForwardRefExoticComponent, HTMLAttributes, RefAttributes } from "react";
+
+  export interface ProgressProps extends HTMLAttributes<HTMLDivElement> {
+    value?: number;
+    max?: number;
+  }
+
+  export const Progress: ForwardRefExoticComponent<
+    ProgressProps & RefAttributes<HTMLDivElement>
+  >;
+}
