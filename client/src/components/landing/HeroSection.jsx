@@ -74,7 +74,7 @@ export default function HeroSection() {
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-          className="relative overflow-hidden rounded-[30px] border border-border/70 bg-[#f6f6ec] shadow-[0_22px_60px_hsl(var(--foreground)/0.08)]"
+          className="relative overflow-hidden rounded-[30px] border border-border/70 bg-[linear-gradient(180deg,hsl(var(--card)),hsl(var(--secondary))/0.9)] shadow-[0_28px_70px_hsl(var(--foreground)/0.10)]"
         >
           <div className="relative min-h-[520px] lg:min-h-[560px]">
             <AnimatePresence mode="wait">
@@ -105,7 +105,7 @@ export default function HeroSection() {
               <button
                 type="button"
                 onClick={showPreviousSlide}
-                className="flex h-11 w-11 items-center justify-center rounded-full border border-white/50 bg-white/75 text-[hsl(var(--primary))] shadow-sm backdrop-blur transition hover:bg-white"
+                className="flex h-11 w-11 items-center justify-center rounded-full border border-white/45 bg-white/78 text-[hsl(var(--primary))] shadow-[0_12px_30px_rgba(28,20,20,0.15)] backdrop-blur transition hover:bg-white"
                 aria-label="Previous slide"
               >
                 <ChevronLeft className="h-5 w-5" />
@@ -113,7 +113,7 @@ export default function HeroSection() {
               <button
                 type="button"
                 onClick={showNextSlide}
-                className="flex h-11 w-11 items-center justify-center rounded-full border border-white/50 bg-white/75 text-[hsl(var(--primary))] shadow-sm backdrop-blur transition hover:bg-white"
+                className="flex h-11 w-11 items-center justify-center rounded-full border border-white/45 bg-white/78 text-[hsl(var(--primary))] shadow-[0_12px_30px_rgba(28,20,20,0.15)] backdrop-blur transition hover:bg-white"
                 aria-label="Next slide"
               >
                 <ChevronRight className="h-5 w-5" />
@@ -140,7 +140,7 @@ export default function HeroSection() {
                     {currentSlide.description}
                   </p>
                   <div className="mt-7 flex flex-wrap gap-3">
-                    <Button asChild size="lg" className="h-11 bg-[hsl(var(--accent))] px-6 text-xs font-semibold uppercase tracking-[0.2em] text-[hsl(var(--accent-foreground))] hover:bg-[hsl(var(--accent))/0.9]">
+                    <Button asChild size="lg" className="h-11 px-6 text-xs font-semibold uppercase tracking-[0.2em]">
                       <Link to={currentSlide.primaryHref}>{currentSlide.primaryLabel}</Link>
                     </Button>
                     <Button asChild variant="outline" size="lg" className="h-11 border-white/50 bg-white/10 px-6 text-xs font-semibold uppercase tracking-[0.2em] text-white hover:bg-white/20">
@@ -163,7 +163,7 @@ export default function HeroSection() {
               ))}
             </div>
 
-            <div className="absolute bottom-7 right-7 hidden w-full max-w-[300px] rounded-[26px] border border-white/40 bg-white/82 p-6 shadow-[0_20px_40px_rgba(42,32,24,0.12)] backdrop-blur md:block">
+            <div className="absolute bottom-7 right-7 hidden w-full max-w-[300px] rounded-[26px] border border-white/40 bg-[linear-gradient(180deg,rgba(255,255,255,0.88),rgba(255,248,244,0.80))] p-6 shadow-[0_24px_50px_rgba(42,24,24,0.16)] backdrop-blur md:block">
               <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-[hsl(var(--accent))]">
                 {currentSlide.cardEyebrow}
               </p>

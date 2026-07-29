@@ -32,8 +32,8 @@ export default function ProductCard({ product, index = 0 }) {
       className="group relative"
     >
       <Link to={`/products/${normalizedProduct.slug || normalizedProduct.id}`} className="block">
-        <div className="relative overflow-hidden rounded-[24px] border border-border/70 bg-card shadow-[0_14px_36px_hsl(var(--foreground)/0.05)]">
-          <div className="relative aspect-[4/5] overflow-hidden bg-secondary/50">
+        <div className="relative overflow-hidden rounded-[24px] border border-border/70 bg-[linear-gradient(180deg,hsl(var(--card)),hsl(var(--secondary))/0.35)] shadow-[0_18px_42px_hsl(var(--foreground)/0.07)] transition-all duration-500 group-hover:-translate-y-1 group-hover:shadow-[0_24px_58px_hsl(var(--foreground)/0.12)]">
+          <div className="relative aspect-[4/5] overflow-hidden bg-secondary/45">
           <img
             src={normalizedProduct.images?.[0] || PRODUCT_PLACEHOLDER_IMAGE}
             alt={normalizedProduct.title}
@@ -41,12 +41,12 @@ export default function ProductCard({ product, index = 0 }) {
           />
           <div className="absolute top-3 left-3 flex gap-2">
             {discount > 0 && (
-              <span className="rounded-full bg-[hsl(var(--accent))] px-2.5 py-1 text-xs font-mono font-semibold text-[hsl(var(--accent-foreground))]">
+              <span className="rounded-full bg-[linear-gradient(135deg,hsl(var(--primary)),hsl(var(--accent)))] px-2.5 py-1 text-xs font-mono font-semibold text-[hsl(var(--primary-foreground))] shadow-[0_10px_24px_hsl(var(--accent)/0.22)]">
                 -{discount}%
               </span>
             )}
             {normalizedProduct.is_trending && (
-              <span className="rounded-full bg-foreground px-2.5 py-1 text-xs font-semibold text-background">
+              <span className="rounded-full bg-primary px-2.5 py-1 text-xs font-semibold text-primary-foreground shadow-[0_10px_20px_hsl(var(--primary)/0.18)]">
                 TRENDING
               </span>
             )}

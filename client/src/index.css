@@ -7,77 +7,77 @@
 @layer base {
   :root {
     --background: 60 54% 95%;
-    --foreground: 18 17% 17%;
-    --card: 60 50% 98%;
-    --card-foreground: 18 17% 17%;
-    --popover: 60 50% 98%;
-    --popover-foreground: 18 17% 17%;
-    --primary: 22 22% 20%;
-    --primary-foreground: 42 57% 96%;
-    --secondary: 57 45% 92%;
-    --secondary-foreground: 18 17% 17%;
-    --muted: 58 34% 90%;
-    --muted-foreground: 24 12% 43%;
-    --accent: 35 52% 58%;
-    --accent-foreground: 22 22% 18%;
+    --foreground: 348 18% 16%;
+    --card: 42 60% 98%;
+    --card-foreground: 348 18% 16%;
+    --popover: 42 60% 98%;
+    --popover-foreground: 348 18% 16%;
+    --primary: 341 28% 24%;
+    --primary-foreground: 38 60% 97%;
+    --secondary: 28 48% 92%;
+    --secondary-foreground: 348 18% 16%;
+    --muted: 30 38% 90%;
+    --muted-foreground: 14 12% 39%;
+    --accent: 18 55% 54%;
+    --accent-foreground: 40 60% 98%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    --border: 49 28% 84%;
-    --input: 58 34% 90%;
-    --ring: 35 52% 58%;
-    --chart-1: 35 52% 58%;
-    --chart-2: 20 32% 33%;
-    --chart-3: 29 39% 48%;
-    --chart-4: 42 38% 71%;
-    --chart-5: 12 45% 58%;
+    --border: 25 30% 83%;
+    --input: 30 38% 90%;
+    --ring: 18 55% 54%;
+    --chart-1: 18 55% 54%;
+    --chart-2: 341 28% 24%;
+    --chart-3: 28 44% 62%;
+    --chart-4: 347 30% 67%;
+    --chart-5: 43 45% 66%;
     --radius: 1.1rem;
     --font-heading: 'Playfair Display', serif;
     --font-body: 'Inter', sans-serif;
     --font-display: 'Playfair Display', serif;
     --font-mono: 'JetBrains Mono', monospace;
-    --sidebar-background: 60 50% 98%;
-    --sidebar-foreground: 18 17% 17%;
-    --sidebar-primary: 22 22% 20%;
-    --sidebar-primary-foreground: 42 57% 96%;
-    --sidebar-accent: 57 45% 92%;
-    --sidebar-accent-foreground: 18 17% 17%;
-    --sidebar-border: 32 25% 83%;
-    --sidebar-ring: 35 52% 58%;
+    --sidebar-background: 38 57% 98%;
+    --sidebar-foreground: 348 18% 16%;
+    --sidebar-primary: 341 28% 24%;
+    --sidebar-primary-foreground: 38 60% 97%;
+    --sidebar-accent: 28 48% 92%;
+    --sidebar-accent-foreground: 348 18% 16%;
+    --sidebar-border: 24 28% 84%;
+    --sidebar-ring: 18 55% 54%;
   }
 
   .dark {
-    --background: 24 19% 10%;
-    --foreground: 42 40% 92%;
-    --card: 24 18% 13%;
-    --card-foreground: 42 40% 92%;
-    --popover: 24 18% 13%;
-    --popover-foreground: 42 40% 92%;
-    --primary: 38 46% 82%;
-    --primary-foreground: 24 19% 10%;
-    --secondary: 21 14% 18%;
-    --secondary-foreground: 42 40% 92%;
-    --muted: 21 14% 18%;
-    --muted-foreground: 31 19% 69%;
-    --accent: 35 52% 58%;
-    --accent-foreground: 24 19% 10%;
+    --background: 336 19% 10%;
+    --foreground: 37 39% 92%;
+    --card: 337 18% 13%;
+    --card-foreground: 37 39% 92%;
+    --popover: 337 18% 13%;
+    --popover-foreground: 37 39% 92%;
+    --primary: 17 58% 63%;
+    --primary-foreground: 336 19% 10%;
+    --secondary: 334 14% 18%;
+    --secondary-foreground: 37 39% 92%;
+    --muted: 334 14% 18%;
+    --muted-foreground: 24 20% 72%;
+    --accent: 18 55% 54%;
+    --accent-foreground: 336 19% 10%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
-    --border: 22 13% 22%;
-    --input: 22 13% 22%;
-    --ring: 35 52% 58%;
-    --chart-1: 35 52% 58%;
-    --chart-2: 38 36% 74%;
-    --chart-3: 17 40% 54%;
-    --chart-4: 43 28% 56%;
-    --chart-5: 11 48% 63%;
-    --sidebar-background: 24 18% 12%;
-    --sidebar-foreground: 42 40% 92%;
-    --sidebar-primary: 35 52% 58%;
-    --sidebar-primary-foreground: 24 19% 10%;
-    --sidebar-accent: 21 14% 18%;
-    --sidebar-accent-foreground: 42 40% 92%;
-    --sidebar-border: 22 13% 22%;
-    --sidebar-ring: 35 52% 58%;
+    --border: 336 11% 23%;
+    --input: 336 11% 23%;
+    --ring: 18 55% 54%;
+    --chart-1: 18 55% 54%;
+    --chart-2: 22 48% 70%;
+    --chart-3: 345 30% 60%;
+    --chart-4: 44 40% 61%;
+    --chart-5: 10 44% 68%;
+    --sidebar-background: 337 18% 12%;
+    --sidebar-foreground: 37 39% 92%;
+    --sidebar-primary: 18 55% 54%;
+    --sidebar-primary-foreground: 336 19% 10%;
+    --sidebar-accent: 334 14% 18%;
+    --sidebar-accent-foreground: 37 39% 92%;
+    --sidebar-border: 336 11% 23%;
+    --sidebar-ring: 18 55% 54%;
   }
 }
 
@@ -88,8 +88,16 @@
   body {
     @apply bg-background text-foreground font-body antialiased;
     background-image:
-      radial-gradient(circle at top, hsl(var(--accent) / 0.08), transparent 24rem),
-      linear-gradient(180deg, hsl(var(--background)) 0%, hsl(var(--background)) 100%);
+      radial-gradient(circle at top left, hsl(var(--accent) / 0.14), transparent 23rem),
+      radial-gradient(circle at top right, hsl(var(--primary) / 0.12), transparent 26rem),
+      radial-gradient(circle at bottom, hsl(var(--accent) / 0.06), transparent 28rem),
+      linear-gradient(180deg, hsl(var(--background)) 0%, hsl(42 52% 97%) 46%, hsl(var(--background)) 100%);
+    background-attachment: fixed;
+  }
+
+  ::selection {
+    background: hsl(var(--accent) / 0.22);
+    color: hsl(var(--foreground));
   }
 }
 
@@ -110,10 +118,12 @@
 
 /* Glass effect utility */
 .glass {
-  background: hsl(var(--card) / 0.8);
+  background: linear-gradient(180deg, hsl(var(--card) / 0.86), hsl(var(--card) / 0.72));
   backdrop-filter: blur(40px);
   -webkit-backdrop-filter: blur(40px);
-  box-shadow: 0 18px 45px hsl(var(--foreground) / 0.06);
+  box-shadow:
+    0 18px 45px hsl(var(--foreground) / 0.06),
+    0 1px 0 hsl(0 0% 100% / 0.35) inset;
 }
 
 .dark .glass {
@@ -125,11 +135,12 @@
 }
 
 .luxe-panel {
-  @apply rounded-[28px] border border-border/80 bg-card shadow-[0_18px_60px_hsl(var(--foreground)/0.06)];
+  @apply rounded-[28px] border border-border/80 bg-card shadow-[0_20px_60px_hsl(var(--foreground)/0.08)];
+  background-image: linear-gradient(180deg, hsl(var(--card)) 0%, hsl(var(--card) / 0.95) 100%);
 }
 
 .luxe-subtle-panel {
-  @apply rounded-[24px] border border-border/70 bg-card/80 shadow-[0_12px_38px_hsl(var(--foreground)/0.04)];
+  @apply rounded-[24px] border border-border/70 bg-card/85 shadow-[0_12px_38px_hsl(var(--foreground)/0.05)];
 }
 
 .luxe-eyebrow {
