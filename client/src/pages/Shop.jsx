@@ -44,6 +44,20 @@ export default function Shop() {
   const brandParam = searchParams.get("brand") ?? "";
   const categoryParam = searchParams.get("category") ?? "";
 
+  const updateCatalogParams = (updates) => {
+    const nextParams = new URLSearchParams(searchParams);
+
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value) {
+        nextParams.set(key, value);
+      } else {
+        nextParams.delete(key);
+      }
+    });
+
+    setSearchParams(nextParams, { replace: true });
+  };
+
   useEffect(() => {
     http("/products/meta/filters")
       .then((response) => {
@@ -54,41 +68,12 @@ export default function Shop() {
   }, []);
 
   useEffect(() => {
-    if (categoryParam !== selectedCategory) {
-      setSelectedCategory(categoryParam);
-    }
-  }, [categoryParam, selectedCategory]);
+    setSelectedCategory(categoryParam);
+  }, [categoryParam]);
 
   useEffect(() => {
-    const nextSelectedBrands = brandParam ? [brandParam] : [];
-    const isSameSelection =
-      nextSelectedBrands.length === selectedBrands.length &&
-      nextSelectedBrands.every((brand, index) => brand === selectedBrands[index]);
-
-    if (!isSameSelection) {
-      setSelectedBrands(nextSelectedBrands);
-    }
-  }, [brandParam, selectedBrands]);
-
-  useEffect(() => {
-    const nextParams = new URLSearchParams(searchParams);
-
-    if (selectedCategory) {
-      nextParams.set("category", selectedCategory);
-    } else {
-      nextParams.delete("category");
-    }
-
-    if (selectedBrands.length === 1) {
-      nextParams.set("brand", selectedBrands[0]);
-    } else {
-      nextParams.delete("brand");
-    }
-
-    if (nextParams.toString() !== searchParams.toString()) {
-      setSearchParams(nextParams, { replace: true });
-    }
-  }, [searchParams, selectedBrands, selectedCategory, setSearchParams]);
+    setSelectedBrands(brandParam ? [brandParam] : []);
+  }, [brandParam]);
 
   useEffect(() => {
     setLoading(true);
@@ -133,7 +118,17 @@ export default function Shop() {
     return result;
   }, [products, selectedBrands, selectedSizes, selectedColors]);
 
-  const toggleBrand = (b) => setSelectedBrands(prev => prev.includes(b) ? prev.filter(x => x !== b) : [...prev, b]);
+  const handleCategoryChange = (categorySlug) => {
+    const nextCategory = selectedCategory === categorySlug ? "" : categorySlug;
+    setSelectedCategory(nextCategory);
+    updateCatalogParams({ category: nextCategory });
+  };
+
+  const toggleBrand = (brandSlug) => {
+    const nextBrand = selectedBrands.includes(brandSlug) ? "" : brandSlug;
+    setSelectedBrands(nextBrand ? [nextBrand] : []);
+    updateCatalogParams({ brand: nextBrand });
+  };
   const toggleSize = (s) => setSelectedSizes(prev => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s]);
   const toggleColor = (c) => setSelectedColors(prev => prev.includes(c) ? prev.filter(x => x !== c) : [...prev, c]);
   const clearFilters = () => {
@@ -144,6 +139,7 @@ export default function Shop() {
     setDiscountRange(0);
     setSearch("");
     setPage(1);
+    updateCatalogParams({ category: "", brand: "" });
   };
   const activeFilters = selectedBrands.length + (selectedCategory ? 1 : 0) + selectedSizes.length + selectedColors.length + (discountRange > 0 ? 1 : 0);
 
@@ -207,7 +203,7 @@ export default function Shop() {
               <h4 className="text-xs font-semibold tracking-widest text-muted-foreground mb-3">CATEGORY</h4>
               <div className="space-y-2">
                 {categories.map(c => (
-                  <button key={c.id} onClick={() => setSelectedCategory(selectedCategory === c.slug ? "" : c.slug)}
+                  <button key={c.id} onClick={() => handleCategoryChange(c.slug)}
                     className={`block text-sm w-full text-left py-1 transition-colors ${selectedCategory === c.slug ? "text-[hsl(var(--accent))] font-medium" : "text-muted-foreground hover:text-foreground"}`}>
                     {c.name}
                   </button>
