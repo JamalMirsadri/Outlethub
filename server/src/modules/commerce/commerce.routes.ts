@@ -19,6 +19,7 @@ import {
   updatePreferredCurrencySchema,
   updateAdminOrderSchema,
   updateBusinessSettingsSchema,
+  updateSiteContentSettingsSchema,
   updateCartCountrySchema,
   updateCartItemSchema,
   updateOrderStatusSchema,
@@ -38,6 +39,7 @@ export const commerceRouter = Router();
 commerceRouter.use(attachOptionalAuth);
 
 commerceRouter.get("/cart", asyncHandler(commerceController.getCart.bind(commerceController)));
+commerceRouter.get("/site-content", asyncHandler(commerceController.getSiteContentSettings.bind(commerceController)));
 commerceRouter.post(
   "/cart/items",
   validateBody(addCartItemSchema),
@@ -129,6 +131,7 @@ commerceRouter.use(
     "/admin/orders",
     "/admin/shipping",
     "/admin/settings/business",
+    "/admin/site-content",
     "/admin/analytics/commerce",
     "/admin/sources",
     "/admin/procurement",
@@ -143,6 +146,15 @@ commerceRouter.use(
 commerceRouter.get(
   "/admin/pricing",
   asyncHandler(commerceController.getCommerceSettings.bind(commerceController)),
+);
+commerceRouter.get(
+  "/admin/site-content",
+  asyncHandler(commerceController.getSiteContentSettings.bind(commerceController)),
+);
+commerceRouter.patch(
+  "/admin/site-content",
+  validateBody(updateSiteContentSettingsSchema),
+  asyncHandler(commerceController.updateSiteContentSettings.bind(commerceController)),
 );
 commerceRouter.patch(
   "/admin/pricing/business",

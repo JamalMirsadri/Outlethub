@@ -150,6 +150,14 @@ export class CommerceController {
     response.status(200).json(await commerceAdminService.getCommerceSettings());
   }
 
+  public async getSiteContentSettings(_request: Request, response: Response) {
+    response.status(200).json(await commerceAdminService.getSiteContentSettings());
+  }
+
+  public async updateSiteContentSettings(request: Request, response: Response) {
+    response.status(200).json(await commerceAdminService.updateSiteContentSettings(request.body));
+  }
+
   public async updateBusinessSettings(request: Request, response: Response) {
     response.status(200).json(await commerceAdminService.updateBusinessSettings(request.body));
   }

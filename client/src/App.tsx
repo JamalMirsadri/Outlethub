@@ -5,6 +5,7 @@ import { BrowserRouter as Router, Navigate, Route, Routes } from "react-router-d
 import { AuthProvider } from "@/contexts/AuthContext";
 import { CartProvider } from "@/contexts/CartContext";
 import { CurrencyProvider } from "@/contexts/CurrencyContext";
+import { SiteContentProvider } from "@/contexts/SiteContentContext";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import ScrollToTop from "@/components/ScrollToTop";
 import ProtectedRoute from "@/components/ProtectedRoute";
@@ -64,6 +65,7 @@ import AdminAlerts from "@/pages/admin/AdminAlerts";
 import AdminEmailTemplates from "@/pages/admin/AdminEmailTemplates";
 import AdminNotificationsCenter from "@/pages/admin/AdminNotificationsCenter";
 import AdminSyncHistory from "@/pages/admin/AdminSyncHistory";
+import AdminSiteContent from "@/pages/admin/AdminSiteContent";
 
 function AppRoutes() {
   return (
@@ -114,6 +116,7 @@ function AppRoutes() {
           <Route path="/admin/categories" element={<AdminCategories />} />
           <Route path="/admin/pricing" element={<AdminPricing />} />
           <Route path="/admin/shipping" element={<AdminShipping />} />
+          <Route path="/admin/site-content" element={<AdminSiteContent />} />
           <Route path="/admin/sources" element={<AdminSources />} />
           <Route path="/admin/connectors" element={<AdminConnectors />} />
           <Route path="/admin/connectors/wizard" element={<AdminConnectorWizard />} />
@@ -150,19 +153,21 @@ function AppRoutes() {
 function App() {
   return (
     <Router>
-      <AuthProvider>
-        <CartProvider>
-          <CurrencyProvider>
-            <ThemeProvider>
-              <QueryClientProvider client={queryClientInstance}>
-                <ScrollToTop />
-                <AppRoutes />
-                <Toaster />
-              </QueryClientProvider>
-            </ThemeProvider>
-          </CurrencyProvider>
-        </CartProvider>
-      </AuthProvider>
+      <SiteContentProvider>
+        <AuthProvider>
+          <CartProvider>
+            <CurrencyProvider>
+              <ThemeProvider>
+                <QueryClientProvider client={queryClientInstance}>
+                  <ScrollToTop />
+                  <AppRoutes />
+                  <Toaster />
+                </QueryClientProvider>
+              </ThemeProvider>
+            </CurrencyProvider>
+          </CartProvider>
+        </AuthProvider>
+      </SiteContentProvider>
     </Router>
   );
 }

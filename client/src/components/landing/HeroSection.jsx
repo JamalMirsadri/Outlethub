@@ -1,14 +1,10 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
+import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-
-const DEAL_STATS = [
-  { label: "Brands", end: 200, suffix: "+" },
-  { label: "Products", end: 15000, suffix: "+" },
-  { label: "Avg. Savings", end: 45, suffix: "%" },
-];
+import { useSiteContent } from "@/contexts/SiteContentContext";
+import { HERO_PLACEHOLDER_IMAGE } from "@/lib/placeholders";
 
 function AnimatedCounter({ end, suffix, duration = 2000 }) {
   const [count, setCount] = useState(0);
@@ -34,70 +30,41 @@ function AnimatedCounter({ end, suffix, duration = 2000 }) {
   );
 }
 
-const BRANDS_ROW = ["NIKE", "ADIDAS", "TOMMY HILFIGER", "CALVIN KLEIN", "GUESS", "HUGO BOSS", "MICHAEL KORS", "COACH"];
-
-const HERO_SLIDES = [
-  {
-    eyebrow: "Luxury Outlet Edit",
-    discount: "Up To 70% Off",
-    titleTop: "Luxury Brands",
-    titleAccent: "Outlet Prices.",
-    description:
-      "Discover premium fashion from the world's top brands in a refined marketplace designed for elegant, effortless shopping.",
-    primaryLabel: "Shop Women",
-    secondaryLabel: "Shop Men",
-    toneClass:
-      "from-[rgba(250,250,235,0.08)] via-[rgba(16,34,72,0.40)] to-[rgba(21,91,78,0.48)]",
-    cardEyebrow: "Elegant Selection",
-    cardTitle: "A graceful edit for modern wardrobes.",
-    cardDescription: "Layered neutrals, tailored shapes, and polished styling in a softer boutique-inspired mood.",
-  },
-  {
-    eyebrow: "New Season Style",
-    discount: "Fresh Weekly Drops",
-    titleTop: "Refined Fashion",
-    titleAccent: "Curated Daily.",
-    description:
-      "A polished storefront experience with elevated layouts, premium contrast, and a cleaner luxury presentation across the site.",
-    primaryLabel: "Explore New In",
-    secondaryLabel: "View Collections",
-    toneClass:
-      "from-[rgba(250,250,235,0.10)] via-[rgba(88,70,45,0.26)] to-[rgba(34,56,92,0.42)]",
-    cardEyebrow: "Signature Mood",
-    cardTitle: "Soft light tones with luxury depth.",
-    cardDescription: "Balanced highlights and elegant panels create a more refined first impression for the storefront.",
-  },
-  {
-    eyebrow: "Premium Fashion Space",
-    discount: "Outlet Icons",
-    titleTop: "Timeless Looks",
-    titleAccent: "Styled Better.",
-    description:
-      "Designed to feel cleaner, brighter, and more premium while keeping all of your own product data, images, and workflows intact.",
-    primaryLabel: "Shop All",
-    secondaryLabel: "See Best Sellers",
-    toneClass:
-      "from-[rgba(250,250,235,0.08)] via-[rgba(61,52,38,0.26)] to-[rgba(14,67,73,0.42)]",
-    cardEyebrow: "Boutique Layout",
-    cardTitle: "A brighter luxury storefront feel.",
-    cardDescription: "Hero storytelling, soft cream body color, and layered content blocks for a richer visual presentation.",
-  },
-];
-
-export default function HeroSection({ heroImage }) {
+export default function HeroSection() {
+  const { settings } = useSiteContent();
   const [activeSlide, setActiveSlide] = useState(0);
+  const slides = settings.heroSlides.length > 0 ? settings.heroSlides : [];
+  const currentSlide = slides[activeSlide] ?? null;
+  const brandRow = useMemo(() => {
+    const items = settings.brandMarquee.filter(Boolean);
+    return items.length > 0 ? [...items, ...items] : [];
+  }, [settings.brandMarquee]);
 
   useEffect(() => {
+    if (slides.length <= 1) {
+      return undefined;
+    }
+
     const timer = window.setInterval(() => {
-      setActiveSlide((current) => (current + 1) % HERO_SLIDES.length);
+      setActiveSlide((current) => (current + 1) % slides.length);
     }, 5000);
 
     return () => window.clearInterval(timer);
-  }, []);
+  }, [slides.length]);
 
-  const currentSlide = HERO_SLIDES[activeSlide];
-  const showPreviousSlide = () => setActiveSlide((current) => (current === 0 ? HERO_SLIDES.length - 1 : current - 1));
-  const showNextSlide = () => setActiveSlide((current) => (current + 1) % HERO_SLIDES.length);
+  useEffect(() => {
+    if (activeSlide >= slides.length) {
+      setActiveSlide(0);
+    }
+  }, [activeSlide, slides.length]);
+
+  const showPreviousSlide = () =>
+    setActiveSlide((current) => (current === 0 ? slides.length - 1 : current - 1));
+  const showNextSlide = () => setActiveSlide((current) => (current + 1) % slides.length);
+
+  if (!currentSlide) {
+    return null;
+  }
 
   return (
     <section className="relative overflow-hidden pt-28 lg:pt-36 pb-16 lg:pb-20">
@@ -120,12 +87,17 @@ export default function HeroSection({ heroImage }) {
                 className="absolute inset-0"
               >
                 <img
-                  src={heroImage}
-                  alt="Luxury fashion"
+                  src={currentSlide.imageUrl || HERO_PLACEHOLDER_IMAGE}
+                  alt={currentSlide.titleTop}
                   className="h-full min-h-[520px] w-full object-cover lg:min-h-[560px]"
                 />
                 <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(16,21,31,0.68)_0%,rgba(16,21,31,0.28)_42%,rgba(16,21,31,0.12)_100%)]" />
-                <div className={`absolute inset-0 bg-gradient-to-r ${currentSlide.toneClass}`} />
+                <div
+                  className="absolute inset-0"
+                  style={{
+                    background: `linear-gradient(90deg, ${currentSlide.overlayFrom} 0%, ${currentSlide.overlayVia} 45%, ${currentSlide.overlayTo} 100%)`,
+                  }}
+                />
               </motion.div>
             </AnimatePresence>
 
@@ -169,10 +141,10 @@ export default function HeroSection({ heroImage }) {
                   </p>
                   <div className="mt-7 flex flex-wrap gap-3">
                     <Button asChild size="lg" className="h-11 bg-[hsl(var(--accent))] px-6 text-xs font-semibold uppercase tracking-[0.2em] text-[hsl(var(--accent-foreground))] hover:bg-[hsl(var(--accent))/0.9]">
-                      <Link to="/shop">{currentSlide.primaryLabel}</Link>
+                      <Link to={currentSlide.primaryHref}>{currentSlide.primaryLabel}</Link>
                     </Button>
                     <Button asChild variant="outline" size="lg" className="h-11 border-white/50 bg-white/10 px-6 text-xs font-semibold uppercase tracking-[0.2em] text-white hover:bg-white/20">
-                      <Link to="/shop?sort=newest">{currentSlide.secondaryLabel}</Link>
+                      <Link to={currentSlide.secondaryHref}>{currentSlide.secondaryLabel}</Link>
                     </Button>
                   </div>
                 </motion.div>
@@ -180,7 +152,7 @@ export default function HeroSection({ heroImage }) {
             </div>
 
             <div className="absolute bottom-6 left-8 flex gap-2">
-              {HERO_SLIDES.map((_, index) => (
+              {slides.map((_, index) => (
                 <button
                   key={`indicator-${index}`}
                   type="button"
@@ -202,7 +174,7 @@ export default function HeroSection({ heroImage }) {
                 {currentSlide.cardDescription}
               </p>
               <Button asChild className="mt-5 h-11 px-5 text-xs font-semibold uppercase tracking-[0.2em]">
-                <Link to="/shop">
+                <Link to={currentSlide.primaryHref}>
                   Shop Now <ArrowRight className="h-4 w-4" />
                 </Link>
               </Button>
@@ -211,9 +183,9 @@ export default function HeroSection({ heroImage }) {
         </motion.div>
 
         <div className="mt-8 grid gap-4 md:grid-cols-3">
-          {DEAL_STATS.map((stat) => (
+          {settings.heroStats.map((stat) => (
             <div key={stat.label} className="luxe-panel px-5 py-6 text-center">
-              <AnimatedCounter end={stat.end} suffix={stat.suffix} />
+              <AnimatedCounter end={stat.value} suffix={stat.suffix} />
               <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
                 {stat.label}
               </p>
@@ -229,7 +201,7 @@ export default function HeroSection({ heroImage }) {
               transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
               className="flex items-center gap-12 whitespace-nowrap px-6"
             >
-              {[...BRANDS_ROW, ...BRANDS_ROW].map((brand, i) => (
+              {brandRow.map((brand, i) => (
                 <span key={i} className="text-[11px] font-semibold tracking-[0.34em] text-muted-foreground">
                   {brand}
                 </span>

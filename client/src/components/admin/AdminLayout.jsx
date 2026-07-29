@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link, useLocation, Outlet } from "react-router-dom";
-import { LayoutDashboard, Package, ShoppingCart, Tag, Layers3, Link2, Upload, Bot, DollarSign, BarChart3, Activity, Bell, History, ChevronLeft, Menu, Sun, Moon, Globe, Truck, ClipboardList, CreditCard, Landmark, Users } from "lucide-react";
+import { LayoutDashboard, Package, ShoppingCart, Tag, Layers3, Link2, Upload, Bot, DollarSign, BarChart3, Activity, Bell, History, ChevronLeft, Menu, Sun, Moon, Globe, Truck, ClipboardList, CreditCard, Landmark, Users, FilePenLine } from "lucide-react";
 import { useTheme } from "@/components/ThemeProvider";
 
 const NAV = [
@@ -17,6 +17,7 @@ const NAV = [
   { icon: Layers3, label: "Categories", path: "/admin/categories" },
   { icon: DollarSign, label: "Pricing", path: "/admin/pricing" },
   { icon: Truck, label: "Shipping", path: "/admin/shipping" },
+  { icon: FilePenLine, label: "Site Content", path: "/admin/site-content" },
   { icon: Globe, label: "Sources", path: "/admin/sources" },
   { icon: Bot, label: "Connectors", path: "/admin/connectors" },
   { icon: Bot, label: "Wizard", path: "/admin/connectors/wizard" },

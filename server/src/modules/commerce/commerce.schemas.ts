@@ -1,6 +1,8 @@
 import { PaymentProvider, PricingTargetType } from "@prisma/client";
 import { z } from "zod";
 
+import { siteContentSettingsSchema } from "./site-content.js";
+
 const cuidSchema = z.string().cuid();
 const optionalString = z
   .string()
@@ -92,6 +94,8 @@ export const updateBusinessSettingsSchema = z
   .refine((value) => Object.keys(value).length > 0, {
     message: "At least one field must be provided.",
   });
+
+export const updateSiteContentSettingsSchema = siteContentSettingsSchema;
 
 export const createPricingRuleSchema = z.object({
   name: z.string().trim().min(2).max(120),

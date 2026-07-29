@@ -3,12 +3,14 @@ import { Link } from "react-router-dom";
 import { Search, ShoppingBag, Heart, User, Sun, Moon, Menu, X } from "lucide-react";
 import { useTheme } from "@/components/ThemeProvider";
 import { useCart } from "@/contexts/CartContext";
+import { useSiteContent } from "@/contexts/SiteContentContext";
 import { http } from "@/services/http";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function Navbar() {
   const { theme, toggleTheme } = useTheme();
   const { itemCount } = useCart();
+  const { settings } = useSiteContent();
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [categories, setCategories] = useState([]);
@@ -34,14 +36,14 @@ export default function Navbar() {
   })();
 
   const mobileMenuItems = [
-    { label: "SHOP ALL", to: "/shop" },
+    { label: settings.header.shopLabel.toUpperCase(), to: "/shop" },
     ...menuCategories.map((category) => ({
       label: category.name.toUpperCase(),
       to: `/shop?category=${encodeURIComponent(category.slug)}`,
     })),
-    { label: "CART", to: "/cart" },
-    { label: "MY ACCOUNT", to: "/dashboard" },
-    { label: "WISHLIST", to: "/dashboard/wishlist" },
+    { label: settings.header.cartLabel.toUpperCase(), to: "/cart" },
+    { label: settings.header.accountLabel.toUpperCase(), to: "/dashboard" },
+    { label: settings.header.wishlistLabel.toUpperCase(), to: "/dashboard/wishlist" },
   ];
 
   return (
@@ -54,40 +56,42 @@ export default function Navbar() {
           scrolled ? "glass border-b border-border/60" : "bg-background/95 border-b border-border/40"
         }`}
       >
+        {settings.announcementBar.enabled ? (
         <div className="border-b border-border/50 bg-[hsl(var(--secondary))/0.45]">
           <div className="luxe-shell hidden lg:flex h-10 items-center justify-between text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
             <div className="flex items-center gap-5">
-              <span>Premium brands, outlet prices</span>
+              <span>{settings.announcementBar.leftText}</span>
               <span className="h-3.5 w-px bg-border" />
-              <span>Free shipping on qualifying orders</span>
+              <span>{settings.announcementBar.rightText}</span>
             </div>
             <div className="flex items-center gap-4">
               <Link to="/login" className="luxe-link">
-                Sign in / Register
+                {settings.announcementBar.signInLabel}
               </Link>
               <Link to="/dashboard/wishlist" className="luxe-link">
-                Wishlist
+                {settings.announcementBar.wishlistLabel}
               </Link>
             </div>
           </div>
         </div>
+        ) : null}
 
         <div className="luxe-shell">
           <div className="flex h-20 items-center justify-between gap-4">
             <Link to="/" className="flex items-center gap-3">
               <span className="flex flex-col">
                 <span className="font-display text-[30px] font-semibold leading-none tracking-[-0.05em] text-[hsl(var(--accent))]">
-                  OUTLET
+                  {settings.header.logoTop}
                 </span>
                 <span className="text-[10px] font-semibold uppercase tracking-[0.34em] text-muted-foreground">
-                  Luxe Hub
+                  {settings.header.logoBottom}
                 </span>
               </span>
             </Link>
 
             <div className="hidden flex-1 items-center justify-center gap-8 lg:flex">
               <Link to="/shop" className="text-[12px] font-semibold tracking-[0.2em] text-foreground/80 hover:text-[hsl(var(--accent))] transition-colors">
-                SHOP
+                {settings.header.shopLabel.toUpperCase()}
               </Link>
               {menuCategories.map((category) => (
                 <Link
@@ -106,7 +110,7 @@ export default function Navbar() {
                 className="hidden h-11 w-[260px] items-center gap-3 rounded-full border border-border bg-card/75 px-4 text-sm text-muted-foreground shadow-sm transition hover:border-[hsl(var(--accent))/0.45] lg:flex"
               >
                 <Search className="h-4 w-4" />
-                <span>Search for products, brands...</span>
+                <span>{settings.header.searchPlaceholder}</span>
               </Link>
               <button onClick={toggleTheme} className="rounded-full border border-border bg-card/80 p-2.5 hover:border-[hsl(var(--accent))/0.55]">
                 {theme === "dark" ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
@@ -144,8 +148,12 @@ export default function Navbar() {
             <div className="p-6">
               <div className="mb-10 flex items-center justify-between">
                 <span className="flex flex-col">
-                  <span className="font-display text-3xl font-semibold tracking-[-0.05em] text-[hsl(var(--accent))]">OUTLET</span>
-                  <span className="text-[10px] font-semibold uppercase tracking-[0.34em] text-muted-foreground">Luxe Hub</span>
+                  <span className="font-display text-3xl font-semibold tracking-[-0.05em] text-[hsl(var(--accent))]">
+                    {settings.header.logoTop}
+                  </span>
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.34em] text-muted-foreground">
+                    {settings.header.logoBottom}
+                  </span>
                 </span>
                 <button onClick={() => setMobileOpen(false)} className="rounded-full border border-border p-2.5">
                   <X className="w-6 h-6" />
@@ -157,7 +165,7 @@ export default function Navbar() {
                 className="mb-8 flex h-12 items-center gap-3 rounded-full border border-border bg-card px-4 text-sm text-muted-foreground"
               >
                 <Search className="h-4 w-4" />
-                <span>Search the catalog</span>
+                <span>{settings.header.searchPlaceholder}</span>
               </Link>
               <div className="flex flex-col gap-6">
                 {mobileMenuItems.map((item, i) => (

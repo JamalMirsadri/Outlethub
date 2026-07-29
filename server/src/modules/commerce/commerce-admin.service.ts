@@ -11,6 +11,13 @@ import { ApiError } from "../../utils/api-error.js";
 import { connectorsService } from "../connectors/connectors.service.js";
 import { productMonitoringService } from "../monitoring/product-monitoring.service.js";
 import { pricingService } from "./pricing.service.js";
+import {
+  DEFAULT_SITE_CONTENT_SETTINGS,
+  resolveSiteContentSettings,
+  type SiteContentSettings,
+} from "./site-content.js";
+
+const SITE_CONTENT_SETTING_KEY = "site_content";
 
 function toNumber(value: Prisma.Decimal | null | undefined): number | null {
   if (!value) {
@@ -151,6 +158,35 @@ function mapBrandSource(source: {
 }
 
 export class CommerceAdminService {
+  public async getSiteContentSettings() {
+    const setting = await prisma.setting.findUnique({
+      where: { key: SITE_CONTENT_SETTING_KEY },
+    });
+
+    return resolveSiteContentSettings(setting?.value ?? DEFAULT_SITE_CONTENT_SETTINGS);
+  }
+
+  public async updateSiteContentSettings(input: SiteContentSettings) {
+    const resolved = resolveSiteContentSettings(input);
+
+    const setting = await prisma.setting.upsert({
+      where: { key: SITE_CONTENT_SETTING_KEY },
+      update: {
+        value: resolved,
+        description: "Storefront content, homepage content, slideshow, and SEO settings.",
+        isPublic: true,
+      },
+      create: {
+        key: SITE_CONTENT_SETTING_KEY,
+        value: resolved,
+        description: "Storefront content, homepage content, slideshow, and SEO settings.",
+        isPublic: true,
+      },
+    });
+
+    return resolveSiteContentSettings(setting.value);
+  }
+
   public async getCommerceSettings() {
     const [businessSettings, pricingRules, shippingMethods, countries, currencies, taxSettings, sources] = await Promise.all([
       prisma.businessSettings.findFirst({

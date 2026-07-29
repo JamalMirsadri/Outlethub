@@ -8,19 +8,21 @@ import HeroSection from "@/components/landing/HeroSection";
 import Footer from "@/components/landing/Footer";
 import ProductCard from "@/components/ProductCard";
 import { Button } from "@/components/ui/button";
+import { useSiteContent } from "@/contexts/SiteContentContext";
 import { normalizeCatalogProduct } from "@/lib/catalogProduct";
 import { HERO_PLACEHOLDER_IMAGE } from "@/lib/placeholders";
 
 const HERO_IMAGE = HERO_PLACEHOLDER_IMAGE;
 
-const TRUST_ITEMS = [
-  { icon: Truck, title: "Free Shipping", description: "On qualifying orders" },
-  { icon: ShieldCheck, title: "Secure Payment", description: "Protected checkout" },
-  { icon: RotateCcw, title: "30-Day Returns", description: "Easy returns support" },
-  { icon: Headphones, title: "24/7 Support", description: "We are here to help" },
-];
+const TRUST_ICON_MAP = {
+  truck: Truck,
+  shield: ShieldCheck,
+  return: RotateCcw,
+  support: Headphones,
+};
 
 export default function Home() {
+  const { settings } = useSiteContent();
   const [trendingProducts, setTrendingProducts] = useState([]);
   const [catalogProducts, setCatalogProducts] = useState([]);
   const [mostViewedProducts, setMostViewedProducts] = useState([]);
@@ -101,14 +103,16 @@ export default function Home() {
   return (
     <div className="min-h-screen">
       <Navbar />
-      <HeroSection heroImage={HERO_IMAGE} />
+      <HeroSection />
       <main className="luxe-shell pb-16">
         <section className="py-12">
           <div className="mb-8 flex items-center justify-between">
-            <h2 className="font-display text-3xl font-semibold uppercase tracking-tight">New Arrivals</h2>
+            <h2 className="font-display text-3xl font-semibold uppercase tracking-tight">
+              {settings.homeSections.newArrivalsTitle}
+            </h2>
             <Button asChild variant="ghost" className="rounded-full px-0">
-              <Link to="/shop?sort=newest">
-                View all <ArrowRight className="ml-2 h-4 w-4" />
+              <Link to={settings.homeSections.newArrivalsCtaHref}>
+                {settings.homeSections.newArrivalsCtaLabel} <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
             </Button>
           </div>
@@ -133,7 +137,9 @@ export default function Home() {
         </section>
 
         <section className="py-8">
-          <h2 className="mb-8 text-center font-display text-3xl font-semibold uppercase tracking-tight">Shop By Category</h2>
+          <h2 className="mb-8 text-center font-display text-3xl font-semibold uppercase tracking-tight">
+            {settings.homeSections.categoriesTitle}
+          </h2>
           <div className="grid gap-4 md:grid-cols-4">
             {categoryCards.map((category) => (
               <Link
@@ -157,10 +163,10 @@ export default function Home() {
             <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(16,21,31,0.68),rgba(16,21,31,0.3))]" />
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 px-6 text-center text-white">
               <p className="text-xl font-semibold uppercase tracking-[0.14em] md:text-3xl">
-                Mid-Season Edit | Refined Outlet Picks
+                {settings.homeSections.promoTitle}
               </p>
               <Button asChild className="h-11 px-6 text-xs font-semibold uppercase tracking-[0.2em]">
-                <Link to="/shop?is_trending=true">Shop Sale</Link>
+                <Link to={settings.homeSections.promoButtonHref}>{settings.homeSections.promoButtonLabel}</Link>
               </Button>
             </div>
           </div>
@@ -168,10 +174,12 @@ export default function Home() {
 
         <section className="py-12">
           <div className="mb-8 flex items-center justify-between">
-            <h2 className="font-display text-3xl font-semibold uppercase tracking-tight">Best Sellers</h2>
+            <h2 className="font-display text-3xl font-semibold uppercase tracking-tight">
+              {settings.homeSections.bestSellersTitle}
+            </h2>
             <Button asChild variant="ghost" className="rounded-full px-0">
-              <Link to="/shop">
-                View all <ArrowRight className="ml-2 h-4 w-4" />
+              <Link to={settings.homeSections.bestSellersCtaHref}>
+                {settings.homeSections.bestSellersCtaLabel} <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
             </Button>
           </div>
@@ -183,9 +191,14 @@ export default function Home() {
         </section>
 
         <section className="luxe-panel py-8">
-          <h2 className="mb-8 text-center font-display text-3xl font-semibold uppercase tracking-tight">Trust Badges</h2>
+          <h2 className="mb-8 text-center font-display text-3xl font-semibold uppercase tracking-tight">
+            {settings.homeSections.trustBadgesTitle}
+          </h2>
           <div className="grid gap-6 px-6 md:grid-cols-4">
-            {TRUST_ITEMS.map(({ icon: Icon, title, description }) => (
+            {settings.trustBadges.map(({ icon, title, description }) => {
+              const Icon = TRUST_ICON_MAP[icon] ?? ShieldCheck;
+
+              return (
               <div key={title} className="flex items-center justify-center gap-3 text-center md:justify-start">
                 <div className="flex h-12 w-12 items-center justify-center rounded-full bg-secondary">
                   <Icon className="h-5 w-5" />
@@ -195,7 +208,8 @@ export default function Home() {
                   <p className="text-sm text-muted-foreground">{description}</p>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         </section>
       </main>

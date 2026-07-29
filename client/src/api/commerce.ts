@@ -1,5 +1,6 @@
 import { getAccessToken } from "@/services/auth.service";
 import { http } from "@/services/http";
+import type { SiteContentSettings } from "@/lib/site-content";
 
 export type PaymentProvider = "BANK_TRANSFER" | "STRIPE" | "PAYPAL" | "MB_WAY" | "MULTIBANCO" | "MANUAL";
 export type PaymentStatus =
@@ -169,6 +170,8 @@ export interface CommerceSettingsResponse {
   }>;
   sources: BrandSourceRecord[];
 }
+
+export type SiteContentSettingsResponse = SiteContentSettings;
 
 export interface BrandSourceRecord {
   id: string;
@@ -705,6 +708,24 @@ export async function listAccountOrders() {
 export async function getCommerceSettings() {
   return http<CommerceSettingsResponse>("/admin/pricing", {
     token: getRequiredToken(),
+  });
+}
+
+export async function getSiteContentSettings() {
+  return http<SiteContentSettingsResponse>("/site-content");
+}
+
+export async function getAdminSiteContentSettings() {
+  return http<SiteContentSettingsResponse>("/admin/site-content", {
+    token: getRequiredToken(),
+  });
+}
+
+export async function updateAdminSiteContentSettings(payload: SiteContentSettings) {
+  return http<SiteContentSettingsResponse>("/admin/site-content", {
+    method: "PATCH",
+    token: getRequiredToken(),
+    body: JSON.stringify(payload),
   });
 }
 
