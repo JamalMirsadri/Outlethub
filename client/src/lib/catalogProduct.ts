@@ -64,6 +64,22 @@ type LegacyOrCatalogProduct = {
   updatedAt?: string;
 };
 
+function toFiniteNumber(value: unknown): number | null {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return null;
+  }
+
+  return value;
+}
+
+function calculateDiscountPercent(originalPrice: number, discountedPrice: number): number {
+  if (!(originalPrice > 0) || !(discountedPrice >= 0) || discountedPrice >= originalPrice) {
+    return 0;
+  }
+
+  return Math.max(0, Math.min(100, Math.round(((originalPrice - discountedPrice) / originalPrice) * 100)));
+}
+
 export function normalizeCatalogProduct(product: LegacyOrCatalogProduct | null | undefined) {
   if (!product) {
     return null;
@@ -90,7 +106,11 @@ export function normalizeCatalogProduct(product: LegacyOrCatalogProduct | null |
   const finalPrice = product.final_price ?? product.price ?? 0;
   const originalPrice = product.original_price ?? product.oldPrice ?? finalPrice;
   const outletPrice = product.outlet_price ?? product.outletPrice ?? finalPrice;
-  const discountPercent = product.discount_percent ?? product.discountPercent ?? 0;
+  const comparisonPrice =
+    toFiniteNumber(outletPrice) !== null && outletPrice >= 0 && outletPrice < originalPrice
+      ? outletPrice
+      : finalPrice;
+  const discountPercent = calculateDiscountPercent(originalPrice, comparisonPrice);
   const stockStatus = product.stock_status ?? product.stockStatus?.toLowerCase?.() ?? "unknown";
   const sourceType = product.source_type ?? product.sourceType?.toLowerCase?.() ?? "manual";
   const status =

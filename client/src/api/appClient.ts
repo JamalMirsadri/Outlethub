@@ -328,6 +328,18 @@ function toLegacyCategory(category: CatalogCategoryResponse) {
 }
 
 function toLegacyProduct(product: CatalogProductResponse) {
+  const originalPrice = product.oldPrice ?? product.price;
+  const outletPrice = product.outletPrice ?? product.price;
+  const finalPrice = product.price;
+  const discountedPrice =
+    typeof outletPrice === "number" && outletPrice >= 0 && outletPrice < originalPrice
+      ? outletPrice
+      : finalPrice;
+  const discountPercent =
+    originalPrice > 0 && discountedPrice >= 0 && discountedPrice < originalPrice
+      ? Math.max(0, Math.min(100, Math.round(((originalPrice - discountedPrice) / originalPrice) * 100)))
+      : 0;
+
   return {
     id: product.id,
     sku: product.sku,
@@ -339,10 +351,10 @@ function toLegacyProduct(product: CatalogProductResponse) {
     category: product.category.name,
     category_id: product.category.id,
     supplier_price: product.supplierPrice,
-    original_price: product.oldPrice ?? product.price,
-    outlet_price: product.outletPrice ?? product.price,
-    final_price: product.price,
-    discount_percent: product.discountPercent ?? 0,
+    original_price: originalPrice,
+    outlet_price: outletPrice,
+    final_price: finalPrice,
+    discount_percent: discountPercent,
     currency: product.currency,
     status: toLegacyStatus(product.status),
     stock: product.stock,
