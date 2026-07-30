@@ -202,6 +202,7 @@ export class CartService {
         paymentFeeAmount: 0,
         taxAmount: 0,
         totalAmount: 0,
+        promotion: null,
         items: [],
         shippingMethod: null,
       };
@@ -218,6 +219,7 @@ export class CartService {
       paymentFeeAmount: toNumber(cart.paymentFeeAmount),
       taxAmount: toNumber(cart.taxAmount),
       totalAmount: toNumber(cart.totalAmount),
+      promotion: null,
       items: cart.items.map((item) => ({
         id: item.id,
         productId: item.productId,

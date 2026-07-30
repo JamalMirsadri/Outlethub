@@ -1,4 +1,4 @@
-import { PaymentProvider, PricingTargetType } from "@prisma/client";
+import { CouponDiscountType, CouponStatus, PaymentProvider, PricingTargetType } from "@prisma/client";
 import { z } from "zod";
 
 import { siteContentSettingsSchema } from "./site-content.js";
@@ -179,6 +179,98 @@ export const createOrderSchema = z.object({
   paymentMethodLabel: optionalNullableString,
   notes: optionalNullableString,
 });
+
+const couponIdsSchema = z.array(cuidSchema).max(500).optional();
+
+export const applyCheckoutCouponSchema = z.object({
+  code: z.string().trim().min(2).max(64),
+});
+
+const couponSchemaShape = {
+  code: z.string().trim().min(2).max(64),
+  description: optionalNullableString,
+  discountType: z.nativeEnum(CouponDiscountType),
+  percentage: optionalNullableMoneySchema,
+  fixedAmount: optionalNullableMoneySchema,
+  freeShipping: z.boolean().optional(),
+  minimumOrderAmount: optionalNullableMoneySchema,
+  maximumDiscountAmount: optionalNullableMoneySchema,
+  usageLimit: z.union([z.coerce.number().int().positive(), z.null()]).optional(),
+  usagePerUser: z.union([z.coerce.number().int().positive(), z.null()]).optional(),
+  startsAt: z.string().datetime().optional().nullable(),
+  endsAt: z.string().datetime().optional().nullable(),
+  allowedProductIds: couponIdsSchema,
+  allowedCategoryIds: couponIdsSchema,
+  allowedBrandIds: couponIdsSchema,
+  excludedProductIds: couponIdsSchema,
+  excludedCategoryIds: couponIdsSchema,
+  excludedBrandIds: couponIdsSchema,
+  allowedMembershipLevelIds: couponIdsSchema,
+  status: z.nativeEnum(CouponStatus).optional(),
+};
+
+function validateCouponSchema(
+  value: Partial<{
+    discountType: CouponDiscountType;
+    percentage: number | null;
+    fixedAmount: number | null;
+    startsAt: string | null;
+    endsAt: string | null;
+  }>,
+  context: z.RefinementCtx,
+) {
+  if (value.discountType === CouponDiscountType.PERCENTAGE && !(typeof value.percentage === "number" && value.percentage > 0)) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["percentage"],
+      message: "Percentage discount must be greater than zero.",
+    });
+  }
+
+  if (value.discountType === CouponDiscountType.PERCENTAGE && value.percentage !== null && value.percentage !== undefined && value.percentage > 100) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["percentage"],
+      message: "Percentage discount cannot exceed 100.",
+    });
+  }
+
+  if (value.discountType === CouponDiscountType.FIXED_AMOUNT && !(typeof value.fixedAmount === "number" && value.fixedAmount > 0)) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["fixedAmount"],
+      message: "Fixed amount discount must be greater than zero.",
+    });
+  }
+
+  if (value.startsAt && value.endsAt && new Date(value.endsAt) < new Date(value.startsAt)) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["endsAt"],
+      message: "End date must be after start date.",
+    });
+  }
+}
+
+export const createCouponSchema = z
+  .object(couponSchemaShape)
+  .superRefine((value, context) => {
+    validateCouponSchema(value, context);
+  });
+
+export const updateCouponSchema = z
+  .object(couponSchemaShape)
+  .partial()
+  .superRefine((value, context) => {
+    if (Object.keys(value).length === 0) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "At least one field must be provided.",
+      });
+    }
+
+    validateCouponSchema(value, context);
+  });
 
 export const updatePreferredCurrencySchema = z.object({
   currency: z.string().trim().min(3).max(10),

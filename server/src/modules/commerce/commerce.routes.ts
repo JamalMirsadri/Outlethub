@@ -8,6 +8,8 @@ import { asyncHandler } from "../../utils/async-handler.js";
 import { commerceController } from "./commerce.controller.js";
 import {
   addCartItemSchema,
+  applyCheckoutCouponSchema,
+  createCouponSchema,
   createOrderSchema,
   createLoyaltyMembershipLevelSchema,
   createLoyaltyPointRuleSchema,
@@ -27,6 +29,7 @@ import {
   updatePreferredCurrencySchema,
   updateAdminOrderSchema,
   updateBusinessSettingsSchema,
+  updateCouponSchema,
   updateSiteContentSettingsSchema,
   updateCartCountrySchema,
   updateCartItemSchema,
@@ -117,6 +120,17 @@ commerceRouter.post(
   validateBody(createOrderSchema),
   asyncHandler(commerceController.createOrder.bind(commerceController)),
 );
+commerceRouter.post(
+  "/checkout/promotion",
+  requireAuth,
+  validateBody(applyCheckoutCouponSchema),
+  asyncHandler(commerceController.applyCheckoutCoupon.bind(commerceController)),
+);
+commerceRouter.delete(
+  "/checkout/promotion",
+  requireAuth,
+  asyncHandler(commerceController.clearCheckoutCoupon.bind(commerceController)),
+);
 
 commerceRouter.get("/orders", requireAuth, asyncHandler(commerceController.listCustomerOrders.bind(commerceController)));
 commerceRouter.get("/payments", requireAuth, asyncHandler(commerceController.listCustomerPayments.bind(commerceController)));
@@ -155,6 +169,7 @@ commerceRouter.use(
     "/admin/bank-accounts",
     "/admin/exchange-rates",
     "/admin/loyalty",
+    "/admin/coupons",
   ],
   requireAuth,
   requireRoles(RoleCode.SUPER_ADMIN, RoleCode.ADMIN),
@@ -307,6 +322,31 @@ commerceRouter.get(
 commerceRouter.get(
   "/admin/loyalty",
   asyncHandler(commerceController.getAdminLoyaltyOverview.bind(commerceController)),
+);
+commerceRouter.get(
+  "/admin/coupons",
+  asyncHandler(commerceController.getAdminCouponOverview.bind(commerceController)),
+);
+commerceRouter.post(
+  "/admin/coupons",
+  validateBody(createCouponSchema),
+  asyncHandler(commerceController.createCoupon.bind(commerceController)),
+);
+commerceRouter.patch(
+  "/admin/coupons/:id",
+  validateParams(entityIdParamsSchema),
+  validateBody(updateCouponSchema),
+  asyncHandler(commerceController.updateCoupon.bind(commerceController)),
+);
+commerceRouter.post(
+  "/admin/coupons/:id/duplicate",
+  validateParams(entityIdParamsSchema),
+  asyncHandler(commerceController.duplicateCoupon.bind(commerceController)),
+);
+commerceRouter.delete(
+  "/admin/coupons/:id",
+  validateParams(entityIdParamsSchema),
+  asyncHandler(commerceController.deleteCoupon.bind(commerceController)),
 );
 commerceRouter.post(
   "/admin/loyalty/point-rules",

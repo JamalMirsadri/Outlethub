@@ -3,6 +3,7 @@ import type { Request, Response } from "express";
 import { env } from "../../config/env.js";
 import { cartService } from "./cart.service.js";
 import { commerceAdminService } from "./commerce-admin.service.js";
+import { couponService } from "./coupon.service.js";
 import { currencyService } from "./currency.service.js";
 import { loyaltyService } from "./loyalty.service.js";
 import { ordersService } from "./orders.service.js";
@@ -204,6 +205,27 @@ export class CommerceController {
     response.status(200).json(await loyaltyService.getAdminOverview());
   }
 
+  public async getAdminCouponOverview(_request: Request, response: Response) {
+    response.status(200).json(await couponService.getAdminOverview());
+  }
+
+  public async createCoupon(request: Request, response: Response) {
+    response.status(201).json(await couponService.createCoupon(request.body));
+  }
+
+  public async updateCoupon(request: Request, response: Response) {
+    response.status(200).json(await couponService.updateCoupon(getParam(request, "id"), request.body));
+  }
+
+  public async duplicateCoupon(request: Request, response: Response) {
+    response.status(201).json(await couponService.duplicateCoupon(getParam(request, "id")));
+  }
+
+  public async deleteCoupon(request: Request, response: Response) {
+    await couponService.deleteCoupon(getParam(request, "id"));
+    response.status(204).send();
+  }
+
   public async createLoyaltyPointRule(request: Request, response: Response) {
     response.status(201).json(await loyaltyService.createPointRule(request.body));
   }
@@ -296,6 +318,15 @@ export class CommerceController {
         notes: request.body.notes ?? null,
       }),
     );
+  }
+
+  public async applyCheckoutCoupon(request: Request, response: Response) {
+    response.status(200).json(await couponService.applyCouponToCheckout(requireUserId(request), request.body.code));
+  }
+
+  public async clearCheckoutCoupon(request: Request, response: Response) {
+    await couponService.clearCheckoutCoupon(requireUserId(request));
+    response.status(204).send();
   }
 
   public async listCustomerOrders(request: Request, response: Response) {

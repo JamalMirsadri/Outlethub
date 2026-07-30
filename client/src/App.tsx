@@ -67,6 +67,7 @@ import AdminEmailTemplates from "@/pages/admin/AdminEmailTemplates";
 import AdminNotificationsCenter from "@/pages/admin/AdminNotificationsCenter";
 import AdminSyncHistory from "@/pages/admin/AdminSyncHistory";
 import AdminSiteContent from "@/pages/admin/AdminSiteContent";
+import AdminCoupons from "@/pages/admin/AdminCoupons";
 import AdminLoyalty from "@/pages/admin/AdminLoyalty";
 
 function AppRoutes() {
@@ -120,6 +121,7 @@ function AppRoutes() {
           <Route path="/admin/pricing" element={<AdminPricing />} />
           <Route path="/admin/shipping" element={<AdminShipping />} />
           <Route path="/admin/site-content" element={<AdminSiteContent />} />
+          <Route path="/admin/coupons" element={<AdminCoupons />} />
           <Route path="/admin/loyalty" element={<AdminLoyalty />} />
           <Route path="/admin/sources" element={<AdminSources />} />
           <Route path="/admin/connectors" element={<AdminConnectors />} />

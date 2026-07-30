@@ -33,6 +33,33 @@ export type ProcurementStatus =
   | "RECEIVED_AT_WAREHOUSE"
   | "READY_TO_SHIP";
 export type PricingTargetType = "GLOBAL" | "BRAND" | "CATEGORY";
+export type CouponDiscountType = "PERCENTAGE" | "FIXED_AMOUNT";
+export type CouponStatus = "ACTIVE" | "DISABLED";
+
+export interface CartPromotionRecord {
+  couponId: string | null;
+  cartApplicationId: string | null;
+  code: string;
+  description: string | null;
+  status: "applied" | "invalid";
+  message: string | null;
+  discountType: CouponDiscountType | null;
+  percentage: number | null;
+  fixedAmount: number | null;
+  freeShipping: boolean;
+  qualifiedSubtotal: number;
+  discountAmount: number;
+  shippingDiscountAmount: number;
+  savingsAmount: number;
+  totalBeforeDiscount: number;
+  totalAfterDiscount: number;
+  subtotalAfterDiscount: number;
+  shippingAfterDiscount: number;
+  handlingAmount: number;
+  paymentFeeAmount: number;
+  taxAmount: number;
+  currency: string;
+}
 
 export interface CartItemRecord {
   id: string;
@@ -70,6 +97,7 @@ export interface CartRecord {
   paymentFeeAmount: number;
   taxAmount: number;
   totalAmount: number;
+  promotion: CartPromotionRecord | null;
   items: CartItemRecord[];
   shippingMethod: {
     id: string;
@@ -230,6 +258,12 @@ export interface OrderRecord {
   } | null;
   paymentProvider: PaymentProvider;
   paymentMethodLabel: string | null;
+  promotion: {
+    code: string;
+    discountAmount: number;
+    shippingDiscountAmount: number;
+    totalSavingsAmount: number;
+  } | null;
   trackingNumber: string | null;
   carrier: string | null;
   trackingUrl: string | null;

@@ -32,6 +32,7 @@ const EMPTY_CART: CartRecord = {
   paymentFeeAmount: 0,
   taxAmount: 0,
   totalAmount: 0,
+  promotion: null,
   items: [],
   shippingMethod: null,
 };

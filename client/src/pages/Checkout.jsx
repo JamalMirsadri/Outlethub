@@ -8,6 +8,7 @@ import {
   upsertAddress,
   updateCartCountry,
 } from "@/api/commerce";
+import { applyCheckoutPromotionCode, clearCheckoutPromotionCode } from "@/api/coupons";
 import Footer from "@/components/landing/Footer";
 import Navbar from "@/components/landing/Navbar";
 import { Button } from "@/components/ui/button";
@@ -59,11 +60,14 @@ export default function Checkout() {
   const [customerNotes, setCustomerNotes] = useState("");
   const [showAddressForm, setShowAddressForm] = useState(false);
   const [addressForm, setAddressForm] = useState(EMPTY_ADDRESS_FORM);
+  const [promotionCode, setPromotionCode] = useState("");
+  const [promotionBusy, setPromotionBusy] = useState(false);
   const placingOrderRef = useRef(false);
 
   const loadSummary = async () => {
     const response = await getCheckoutSummary();
     setSummary(response);
+    setPromotionCode(response.cart.promotion?.code ?? "");
 
     if (!selectedShippingAddressId && response.addresses[0]) {
       setSelectedShippingAddressId(response.addresses[0].id);
@@ -255,6 +259,7 @@ export default function Checkout() {
 
   const currency = summary.cart.currency || summary.businessSettings.defaultCurrency || "EUR";
   const displayCurrency = isIranDelivery ? "TOMAN" : preferredCurrency || currency;
+  const promotion = summary.cart.promotion;
   const productPriceBeforeMarginAndVat = summary.cart.items.reduce(
     (sum, item) => sum + item.supplierCost * item.quantity,
     0,
@@ -263,6 +268,58 @@ export default function Checkout() {
     (sum, item) => sum + item.profitAmount * item.quantity,
     0,
   );
+
+  const applyPromotion = async () => {
+    if (!promotionCode.trim()) {
+      toast({
+        title: "Enter a promotion code",
+        description: "Add a valid code before applying it.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setPromotionBusy(true);
+
+    try {
+      await applyCheckoutPromotionCode(promotionCode);
+      await loadSummary();
+      toast({
+        title: "Promotion applied",
+        description: "The checkout total was updated successfully.",
+      });
+    } catch (error) {
+      toast({
+        title: "Promotion code is invalid",
+        description: error instanceof Error ? error.message : "Please try a different code.",
+        variant: "destructive",
+      });
+    } finally {
+      setPromotionBusy(false);
+    }
+  };
+
+  const removePromotion = async () => {
+    setPromotionBusy(true);
+
+    try {
+      await clearCheckoutPromotionCode();
+      await loadSummary();
+      setPromotionCode("");
+      toast({
+        title: "Promotion removed",
+        description: "The checkout summary returned to the standard total.",
+      });
+    } catch (error) {
+      toast({
+        title: "Unable to remove promotion",
+        description: error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setPromotionBusy(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -567,6 +624,41 @@ export default function Checkout() {
           <aside className="space-y-6">
             <div className="rounded-2xl border border-border bg-card p-6 xl:sticky xl:top-28">
               <h2 className="font-semibold text-lg mb-4">Order Summary</h2>
+              <div className="mb-5 rounded-2xl border border-border bg-secondary/20 p-4">
+                <Label className="text-xs">Promotion Code</Label>
+                <div className="mt-2 flex gap-2">
+                  <Input
+                    value={promotionCode}
+                    onChange={(event) => setPromotionCode(event.target.value)}
+                    placeholder="Enter promotion code"
+                    disabled={promotionBusy}
+                  />
+                  <Button type="button" onClick={applyPromotion} disabled={promotionBusy} className="rounded-full">
+                    {promotionBusy ? "Applying..." : "Apply"}
+                  </Button>
+                </div>
+                {promotion?.status === "applied" ? (
+                  <div className="mt-3 rounded-xl border border-[hsl(var(--accent))]/40 bg-[hsl(var(--accent))]/10 p-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="font-medium">{promotion.code}</p>
+                        <p className="text-xs text-muted-foreground">
+                          Saving {formatCurrency(promotion.savingsAmount, currency)} on this checkout.
+                        </p>
+                      </div>
+                      <Button type="button" variant="outline" size="sm" onClick={removePromotion} disabled={promotionBusy}>
+                        Remove
+                      </Button>
+                    </div>
+                  </div>
+                ) : null}
+                {promotion?.status === "invalid" ? (
+                  <div className="mt-3 rounded-xl border border-destructive/40 bg-destructive/10 p-3">
+                    <p className="text-sm font-medium">Promotion unavailable</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{promotion.message || "This code is no longer valid for the current cart."}</p>
+                  </div>
+                ) : null}
+              </div>
               <div className="space-y-3 text-sm">
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">Subtotal</span>
@@ -588,10 +680,22 @@ export default function Checkout() {
                   <span className="text-muted-foreground">Shipping</span>
                   <span>{formatCurrency(summary.cart.shippingAmount, currency)}</span>
                 </div>
+                {promotion?.status === "applied" && promotion.shippingDiscountAmount > 0 ? (
+                  <div className="flex items-center justify-between text-xs text-emerald-400">
+                    <span>Shipping Discount</span>
+                    <span>-{formatCurrency(promotion.shippingDiscountAmount, currency)}</span>
+                  </div>
+                ) : null}
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
                   <span>Shipping ({displayCurrency})</span>
                   <span>{formatCurrency(convertAmount(summary.cart.shippingAmount, currency, displayCurrency), displayCurrency)}</span>
                 </div>
+                {promotion?.status === "applied" && promotion.discountAmount > 0 ? (
+                  <div className="flex items-center justify-between text-sm text-emerald-400">
+                    <span>Promotion Discount</span>
+                    <span>-{formatCurrency(promotion.discountAmount, currency)}</span>
+                  </div>
+                ) : null}
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">Website Fee</span>
                   <span>{formatCurrency(websiteMarginAmount, currency)}</span>
@@ -636,6 +740,12 @@ export default function Checkout() {
                   <span>Total</span>
                   <span>{formatCurrency(summary.cart.totalAmount, currency)}</span>
                 </div>
+                {promotion?.status === "applied" ? (
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>Total Before Promotion</span>
+                    <span>{formatCurrency(promotion.totalBeforeDiscount, currency)}</span>
+                  </div>
+                ) : null}
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Exchange Rate</span>
                   <span>1 {currency} {"->"} {convertAmount(1, currency, displayCurrency)} {displayCurrency}</span>
@@ -644,6 +754,12 @@ export default function Checkout() {
                   <span>Total ({displayCurrency})</span>
                   <span>{formatCurrency(convertAmount(summary.cart.totalAmount, currency, displayCurrency), displayCurrency)}</span>
                 </div>
+                {promotion?.status === "applied" ? (
+                  <div className="rounded-2xl border border-[hsl(var(--accent))]/30 bg-[hsl(var(--accent))]/10 p-4 mt-4">
+                    <p className="text-xs text-muted-foreground mb-2">Promotion Savings</p>
+                    <p className="font-mono text-lg font-semibold">{formatCurrency(promotion.savingsAmount, currency)}</p>
+                  </div>
+                ) : null}
                 <div className="rounded-2xl bg-secondary/40 p-4 mt-4">
                   <p className="text-xs text-muted-foreground mb-2">Website Fee</p>
                   <p className="font-mono text-lg font-semibold">{formatCurrency(websiteMarginAmount, currency)}</p>

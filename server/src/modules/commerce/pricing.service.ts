@@ -58,6 +58,7 @@ export interface CartPricingResult {
   paymentFeeAmount: Prisma.Decimal;
   taxAmount: Prisma.Decimal;
   totalAmount: Prisma.Decimal;
+  taxPercent: Prisma.Decimal;
   minimumOrderValue: Prisma.Decimal;
   freeShippingThreshold: Prisma.Decimal;
   totalWeightKg: Prisma.Decimal;
@@ -249,6 +250,7 @@ export class PricingService {
       paymentFeeAmount,
       taxAmount,
       totalAmount,
+      taxPercent,
       minimumOrderValue: decimal(settings.minimumOrderValue),
       freeShippingThreshold,
       totalWeightKg: totalWeightKg.toDecimalPlaces(2),

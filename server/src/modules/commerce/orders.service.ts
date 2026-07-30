@@ -10,6 +10,7 @@ import type { PaymentProviderAdapter } from "./payment-providers/payment-provide
 import { paymentsService } from "./payments.service.js";
 import { pricingService } from "./pricing.service.js";
 import { procurementService } from "./procurement.service.js";
+import { couponService } from "./coupon.service.js";
 import { loyaltyService } from "./loyalty.service.js";
 import { notificationsService } from "../notifications/notifications.service.js";
 
@@ -62,6 +63,11 @@ const orderInclude = {
   customerAddress: true,
   billingAddressRef: true,
   shippingMethod: true,
+  couponApplication: {
+    include: {
+      coupon: true,
+    },
+  },
   payments: {
     orderBy: {
       createdAt: "desc",
@@ -177,6 +183,14 @@ function mapOrder(order: OrderWithRelations) {
     exchangeRateSnapshot: order.exchangeRateSnapshot,
     paymentProvider: order.paymentProvider,
     paymentMethodLabel: order.paymentMethodLabel,
+    promotion: order.couponApplication
+      ? {
+          code: order.couponApplication.codeSnapshot,
+          discountAmount: toNumber(order.couponApplication.discountAmount),
+          shippingDiscountAmount: toNumber(order.couponApplication.shippingDiscountAmount),
+          totalSavingsAmount: toNumber(order.couponApplication.totalSavingsAmount),
+        }
+      : null,
     trackingNumber: order.trackingNumber,
     carrier: order.carrier,
     trackingUrl: order.trackingUrl,
@@ -446,8 +460,55 @@ export class OrdersService {
       currencyService.getCurrencyContext(userId),
     ]);
 
+    const sourceCart = cart.cart.id
+      ? await prisma.cart.findUnique({
+          where: { id: cart.cart.id },
+          include: {
+            items: {
+              include: {
+                product: {
+                  select: {
+                    brandId: true,
+                    categoryId: true,
+                  },
+                },
+              },
+            },
+          },
+        })
+      : null;
+
+    const checkoutTotals = sourceCart
+      ? await pricingService.calculateCartTotals({
+          items: sourceCart.items.map((item) => ({
+            quantity: item.quantity,
+            customerPaid: item.customerPaid,
+            unitWeightKg: 1,
+          })),
+          countryCode: sourceCart.countryCode,
+          shippingMethodId: sourceCart.shippingMethodId,
+        })
+      : null;
+
+    const promotion = sourceCart && checkoutTotals
+      ? await couponService.getCartPromotionSummary(sourceCart.id, checkoutTotals, userId)
+      : null;
+
+    const checkoutCart = promotion?.status === "applied"
+      ? {
+          ...cart.cart,
+          shippingAmount: promotion.shippingAfterDiscount,
+          taxAmount: promotion.taxAmount,
+          totalAmount: promotion.totalAfterDiscount,
+          promotion,
+        }
+      : {
+          ...cart.cart,
+          promotion,
+        };
+
     return {
-      cart: cart.cart,
+      cart: checkoutCart,
       addresses,
       shippingMethods: settings.shippingMethods,
       countries: settings.countries,
@@ -517,6 +578,12 @@ export class OrdersService {
         items: {
           include: {
             variant: true,
+            product: {
+              select: {
+                brandId: true,
+                categoryId: true,
+              },
+            },
           },
         },
       },
@@ -536,6 +603,13 @@ export class OrdersService {
       shippingMethodId: input.shippingMethodId ?? sourceCart.shippingMethodId,
     });
 
+    const couponSummary = await couponService.getOrderCouponSummary({
+      cartId: sourceCart.id,
+      userId: input.userId,
+      cart: sourceCart,
+      totals,
+    });
+
     if (totals.totalAmount.lessThan(totals.minimumOrderValue)) {
       throw new ApiError(
         400,
@@ -547,10 +621,21 @@ export class OrdersService {
       (sum, item) => sum.plus(item.supplierCost.mul(item.quantity)),
       new Prisma.Decimal(0),
     );
-    const orderProfit = sourceCart.items.reduce(
+    const baseOrderProfit = sourceCart.items.reduce(
       (sum, item) => sum.plus(item.profitAmount.mul(item.quantity)),
       new Prisma.Decimal(0),
     );
+    const orderProfit = couponSummary
+      ? baseOrderProfit
+          .minus(new Prisma.Decimal(couponSummary.discountAmount))
+          .minus(new Prisma.Decimal(couponSummary.shippingDiscountAmount))
+          .toDecimalPlaces(2)
+      : baseOrderProfit;
+    const finalShippingAmount = couponSummary
+      ? new Prisma.Decimal(couponSummary.shippingAfterDiscount)
+      : totals.shippingAmount;
+    const finalTaxAmount = couponSummary ? new Prisma.Decimal(couponSummary.taxAmount) : totals.taxAmount;
+    const finalTotalAmount = couponSummary ? new Prisma.Decimal(couponSummary.totalAfterDiscount) : totals.totalAmount;
 
     const shippingMethod = input.shippingMethodId
       ? await prisma.shippingMethod.findUnique({
@@ -581,100 +666,147 @@ export class OrdersService {
               convertedAmount: conversion.convertedAmount,
             }));
 
-    const order = await prisma.order.create({
-      data: {
-        userId: input.userId,
-        cartId: sourceCart.id,
-        customerAddressId: shippingAddress.id,
-        billingAddressId: billingAddress?.id ?? shippingAddress.id,
-        shippingMethodId: shippingMethod?.id ?? null,
-        orderNumber: buildOrderNumber(),
-        customerName: shippingAddress.fullName,
-        customerEmail: input.customerEmail,
-        supplierSubtotal,
-        subtotal: totals.subtotalAmount,
-        shippingAmount: totals.shippingAmount,
-        handlingAmount: totals.handlingAmount,
-        paymentFeeAmount: totals.paymentFeeAmount,
-        taxAmount: totals.taxAmount,
-        totalAmount: totals.totalAmount,
-        customerPaid: totals.totalAmount,
-        profitAmount: orderProfit,
-        totalWeightKg: totals.totalWeightKg,
-        currency: totals.currency,
-        displayCurrency,
-        shippingAddress: {
-          fullName: shippingAddress.fullName,
-          phone: shippingAddress.phone,
-          countryCode: shippingAddress.countryCode,
-          city: shippingAddress.city,
-          postalCode: shippingAddress.postalCode,
-          addressLine1: shippingAddress.addressLine1,
-          addressLine2: shippingAddress.addressLine2,
-        },
-        billingAddress: billingAddress
-          ? {
-              fullName: billingAddress.fullName,
-              phone: billingAddress.phone,
-              countryCode: billingAddress.countryCode,
-              city: billingAddress.city,
-              postalCode: billingAddress.postalCode,
-              addressLine1: billingAddress.addressLine1,
-              addressLine2: billingAddress.addressLine2,
-            }
-          : undefined,
-        businessSettingsSnapshot: {
-          businessName: businessSettings.businessName,
-          supportEmail: businessSettings.supportEmail,
-          defaultCurrency: businessSettings.defaultCurrency,
-          defaultCountryCode: businessSettings.defaultCountryCode,
-          defaultMarginPercent: toNumber(businessSettings.defaultMarginPercent),
-          fixedProfitAmount: toNumber(businessSettings.fixedProfitAmount),
-          handlingFee: toNumber(businessSettings.handlingFee),
-          paymentFee: toNumber(businessSettings.paymentFee),
-          vatPercent: toNumber(businessSettings.vatPercent),
-          freeShippingThreshold: toNumber(businessSettings.freeShippingThreshold),
-          minimumOrderValue: toNumber(businessSettings.minimumOrderValue),
-        },
-        pricingSnapshot: {
+    const order = await prisma.$transaction(async (transaction) => {
+      const createdOrder = await transaction.order.create({
+        data: {
+          userId: input.userId,
+          cartId: sourceCart.id,
+          customerAddressId: shippingAddress.id,
+          billingAddressId: billingAddress?.id ?? shippingAddress.id,
           shippingMethodId: shippingMethod?.id ?? null,
-          shippingMethodName: shippingMethod?.name ?? null,
-          countryCode: shippingAddress.countryCode,
-          totalWeightKg: toNumber(totals.totalWeightKg),
-          subtotalAmount: toNumber(totals.subtotalAmount),
-          shippingAmount: toNumber(totals.shippingAmount),
-          handlingAmount: toNumber(totals.handlingAmount),
-          paymentFeeAmount: toNumber(totals.paymentFeeAmount),
-          taxAmount: toNumber(totals.taxAmount),
-          totalAmount: toNumber(totals.totalAmount),
+          orderNumber: buildOrderNumber(),
+          customerName: shippingAddress.fullName,
+          customerEmail: input.customerEmail,
+          supplierSubtotal,
+          subtotal: totals.subtotalAmount,
+          shippingAmount: finalShippingAmount,
+          handlingAmount: totals.handlingAmount,
+          paymentFeeAmount: totals.paymentFeeAmount,
+          taxAmount: finalTaxAmount,
+          totalAmount: finalTotalAmount,
+          customerPaid: finalTotalAmount,
+          profitAmount: orderProfit,
+          totalWeightKg: totals.totalWeightKg,
+          currency: totals.currency,
+          displayCurrency,
+          shippingAddress: {
+            fullName: shippingAddress.fullName,
+            phone: shippingAddress.phone,
+            countryCode: shippingAddress.countryCode,
+            city: shippingAddress.city,
+            postalCode: shippingAddress.postalCode,
+            addressLine1: shippingAddress.addressLine1,
+            addressLine2: shippingAddress.addressLine2,
+          },
+          billingAddress: billingAddress
+            ? {
+                fullName: billingAddress.fullName,
+                phone: billingAddress.phone,
+                countryCode: billingAddress.countryCode,
+                city: billingAddress.city,
+                postalCode: billingAddress.postalCode,
+                addressLine1: billingAddress.addressLine1,
+                addressLine2: billingAddress.addressLine2,
+              }
+            : undefined,
+          businessSettingsSnapshot: {
+            businessName: businessSettings.businessName,
+            supportEmail: businessSettings.supportEmail,
+            defaultCurrency: businessSettings.defaultCurrency,
+            defaultCountryCode: businessSettings.defaultCountryCode,
+            defaultMarginPercent: toNumber(businessSettings.defaultMarginPercent),
+            fixedProfitAmount: toNumber(businessSettings.fixedProfitAmount),
+            handlingFee: toNumber(businessSettings.handlingFee),
+            paymentFee: toNumber(businessSettings.paymentFee),
+            vatPercent: toNumber(businessSettings.vatPercent),
+            freeShippingThreshold: toNumber(businessSettings.freeShippingThreshold),
+            minimumOrderValue: toNumber(businessSettings.minimumOrderValue),
+          },
+          pricingSnapshot: {
+            shippingMethodId: shippingMethod?.id ?? null,
+            shippingMethodName: shippingMethod?.name ?? null,
+            countryCode: shippingAddress.countryCode,
+            totalWeightKg: toNumber(totals.totalWeightKg),
+            subtotalAmount: toNumber(totals.subtotalAmount),
+            shippingAmount: toNumber(finalShippingAmount),
+            handlingAmount: toNumber(totals.handlingAmount),
+            paymentFeeAmount: toNumber(totals.paymentFeeAmount),
+            taxAmount: toNumber(finalTaxAmount),
+            totalAmount: toNumber(finalTotalAmount),
+            promotion: couponSummary
+              ? {
+                  code: couponSummary.code,
+                  description: couponSummary.description,
+                  discountAmount: couponSummary.discountAmount,
+                  shippingDiscountAmount: couponSummary.shippingDiscountAmount,
+                  savingsAmount: couponSummary.savingsAmount,
+                  totalBeforeDiscount: couponSummary.totalBeforeDiscount,
+                  totalAfterDiscount: couponSummary.totalAfterDiscount,
+                }
+              : null,
+          },
+          exchangeRateSnapshot,
+          paymentProvider: input.paymentProvider,
+          paymentMethodLabel: input.paymentMethodLabel ?? null,
+          notes: input.notes ?? null,
+          items: {
+            create: sourceCart.items.map((item) => ({
+              productId: item.productId,
+              title: item.snapshotTitle,
+              brandName: item.snapshotBrand,
+              size: item.variant?.size ?? null,
+              color: item.variant?.color ?? null,
+              quantity: item.quantity,
+              supplierCost: item.supplierCost,
+              customerPaid: item.customerPaid,
+              profitAmount: item.profitAmount,
+              unitPrice: item.customerPaid,
+              totalPrice: item.customerPaid.mul(item.quantity),
+              imageUrl: item.snapshotImageUrl,
+              sourceUrl: item.snapshotSourceUrl,
+              sourceStore: item.snapshotBrand,
+              currency: item.currency,
+            })),
+          },
         },
-        exchangeRateSnapshot,
-        paymentProvider: input.paymentProvider,
-        paymentMethodLabel: input.paymentMethodLabel ?? null,
-        notes: input.notes ?? null,
-        items: {
-          create: sourceCart.items.map((item) => ({
-            productId: item.productId,
-            title: item.snapshotTitle,
-            brandName: item.snapshotBrand,
-            size: item.variant?.size ?? null,
-            color: item.variant?.color ?? null,
-            quantity: item.quantity,
-            supplierCost: item.supplierCost,
-            customerPaid: item.customerPaid,
-            profitAmount: item.profitAmount,
-            unitPrice: item.customerPaid,
-            totalPrice: item.customerPaid.mul(item.quantity),
-            imageUrl: item.snapshotImageUrl,
-            sourceUrl: item.snapshotSourceUrl,
-            sourceStore: item.snapshotBrand,
-            currency: item.currency,
-          })),
+        include: {
+          ...orderInclude,
         },
-      },
-      include: {
-        ...orderInclude,
-      },
+      });
+
+      if (couponSummary) {
+        await couponService.recordOrderCouponUsage(transaction, {
+          orderId: createdOrder.id,
+          userId: input.userId,
+          couponSummary,
+        });
+      }
+
+      await transaction.cartItem.deleteMany({
+        where: {
+          cartId: sourceCart.id,
+        },
+      });
+
+      await transaction.couponCartApplication.deleteMany({
+        where: {
+          cartId: sourceCart.id,
+        },
+      });
+
+      await transaction.cart.update({
+        where: { id: sourceCart.id },
+        data: {
+          subtotalAmount: 0,
+          shippingAmount: 0,
+          handlingAmount: 0,
+          paymentFeeAmount: 0,
+          taxAmount: 0,
+          totalAmount: 0,
+        },
+      });
+
+      return createdOrder;
     });
 
     await paymentsService.initializeOrderPayment({
@@ -685,24 +817,6 @@ export class OrdersService {
       provider: input.paymentProvider,
       amount: order.totalAmount,
       paymentMethodLabel: input.paymentMethodLabel ?? null,
-    });
-
-    await prisma.cartItem.deleteMany({
-      where: {
-        cartId: sourceCart.id,
-      },
-    });
-
-    await prisma.cart.update({
-      where: { id: sourceCart.id },
-      data: {
-        subtotalAmount: 0,
-        shippingAmount: 0,
-        handlingAmount: 0,
-        paymentFeeAmount: 0,
-        taxAmount: 0,
-        totalAmount: 0,
-      },
     });
 
     const persistedOrder = await prisma.order.findUnique({
