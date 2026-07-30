@@ -360,6 +360,19 @@ enum CouponStatus {
   DISABLED
 }
 
+enum CampaignDisplayType {
+  POPUP
+  BANNER
+  HERO
+  INLINE
+}
+
+enum CampaignStatus {
+  DRAFT
+  ACTIVE
+  DISABLED
+}
+
 enum LoyaltyRewardType {
   PERCENTAGE_DISCOUNT
   FIXED_AMOUNT_DISCOUNT
@@ -2194,6 +2207,25 @@ model Coupon {
   @@index([endsAt])
   @@index([issuedToUserId])
   @@index([sourceRewardId])
+}
+
+model Campaign {
+  id          String              @id @default(cuid())
+  title       String
+  description String?
+  image       String?
+  displayType CampaignDisplayType
+  link        String?
+  status      CampaignStatus      @default(DRAFT)
+  startsAt    DateTime?
+  endsAt      DateTime?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  @@index([status])
+  @@index([displayType])
+  @@index([startsAt])
+  @@index([endsAt])
 }
 
 model ReferralRelationship {

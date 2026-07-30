@@ -9,6 +9,7 @@ import { commerceController } from "./commerce.controller.js";
 import {
   addCartItemSchema,
   applyCheckoutCouponSchema,
+  createCampaignSchema,
   createCouponSchema,
   createOrderSchema,
   createLoyaltyMembershipLevelSchema,
@@ -34,6 +35,7 @@ import {
   updateReferralUserCodeSchema,
   updateAdminOrderSchema,
   updateBusinessSettingsSchema,
+  updateCampaignSchema,
   updateCouponSchema,
   updateSiteContentSettingsSchema,
   updateCartCountrySchema,
@@ -176,6 +178,7 @@ commerceRouter.use(
     "/admin/exchange-rates",
     "/admin/loyalty",
     "/admin/coupons",
+    "/admin/campaigns",
     "/admin/referrals",
   ],
   requireAuth,
@@ -215,6 +218,31 @@ commerceRouter.delete(
   "/admin/pricing/rules/:id",
   validateParams(entityIdParamsSchema),
   asyncHandler(commerceController.deletePricingRule.bind(commerceController)),
+);
+commerceRouter.get(
+  "/admin/campaigns",
+  asyncHandler(commerceController.getAdminCampaignOverview.bind(commerceController)),
+);
+commerceRouter.get(
+  "/admin/campaigns/:id",
+  validateParams(entityIdParamsSchema),
+  asyncHandler(commerceController.getAdminCampaign.bind(commerceController)),
+);
+commerceRouter.post(
+  "/admin/campaigns",
+  validateBody(createCampaignSchema),
+  asyncHandler(commerceController.createCampaign.bind(commerceController)),
+);
+commerceRouter.patch(
+  "/admin/campaigns/:id",
+  validateParams(entityIdParamsSchema),
+  validateBody(updateCampaignSchema),
+  asyncHandler(commerceController.updateCampaign.bind(commerceController)),
+);
+commerceRouter.delete(
+  "/admin/campaigns/:id",
+  validateParams(entityIdParamsSchema),
+  asyncHandler(commerceController.deleteCampaign.bind(commerceController)),
 );
 commerceRouter.get(
   "/admin/orders",

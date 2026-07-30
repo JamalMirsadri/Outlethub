@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 
 import { env } from "../../config/env.js";
 import { cartService } from "./cart.service.js";
+import { campaignService } from "./campaign.service.js";
 import { commerceAdminService } from "./commerce-admin.service.js";
 import { couponService } from "./coupon.service.js";
 import { currencyService } from "./currency.service.js";
@@ -208,6 +209,27 @@ export class CommerceController {
 
   public async getAdminCouponOverview(_request: Request, response: Response) {
     response.status(200).json(await couponService.getAdminOverview());
+  }
+
+  public async getAdminCampaignOverview(_request: Request, response: Response) {
+    response.status(200).json(await campaignService.getAdminOverview());
+  }
+
+  public async getAdminCampaign(request: Request, response: Response) {
+    response.status(200).json(await campaignService.getById(getParam(request, "id")));
+  }
+
+  public async createCampaign(request: Request, response: Response) {
+    response.status(201).json(await campaignService.create(request.body));
+  }
+
+  public async updateCampaign(request: Request, response: Response) {
+    response.status(200).json(await campaignService.update(getParam(request, "id"), request.body));
+  }
+
+  public async deleteCampaign(request: Request, response: Response) {
+    await campaignService.delete(getParam(request, "id"));
+    response.status(204).send();
   }
 
   public async createCoupon(request: Request, response: Response) {

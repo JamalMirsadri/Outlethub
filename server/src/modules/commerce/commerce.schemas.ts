@@ -1,4 +1,6 @@
 import {
+  CampaignDisplayType,
+  CampaignStatus,
   CouponDiscountType,
   CouponStatus,
   LoyaltyRewardType,
@@ -191,6 +193,37 @@ export const createOrderSchema = z.object({
 
 const couponIdsSchema = z.array(cuidSchema).max(500).optional();
 
+const campaignSchemaShape = {
+  title: z.string().trim().min(2).max(160),
+  description: optionalNullableString,
+  image: optionalNullableString,
+  displayType: z.nativeEnum(CampaignDisplayType),
+  link: optionalNullableString,
+  status: z.nativeEnum(CampaignStatus).optional(),
+  startsAt: z.string().datetime().optional().nullable(),
+  endsAt: z.string().datetime().optional().nullable(),
+};
+
+function validateCampaignSchema(
+  value: Partial<{
+    startsAt: unknown;
+    endsAt: unknown;
+  }>,
+  context: z.RefinementCtx,
+) {
+  if (
+    typeof value.startsAt === "string" &&
+    typeof value.endsAt === "string" &&
+    new Date(value.endsAt) < new Date(value.startsAt)
+  ) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["endsAt"],
+      message: "End date must be after start date.",
+    });
+  }
+}
+
 export const applyCheckoutCouponSchema = z.object({
   code: z.string().trim().min(2).max(64),
 });
@@ -288,6 +321,26 @@ export const updateCouponSchema = z
     }
 
     validateCouponSchema(value, context);
+  });
+
+export const createCampaignSchema = z
+  .object(campaignSchemaShape)
+  .superRefine((value, context) => {
+    validateCampaignSchema(value, context);
+  });
+
+export const updateCampaignSchema = z
+  .object(campaignSchemaShape)
+  .partial()
+  .superRefine((value, context) => {
+    if (Object.keys(value).length === 0) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "At least one field must be provided.",
+      });
+    }
+
+    validateCampaignSchema(value, context);
   });
 
 export const updatePreferredCurrencySchema = z.object({
