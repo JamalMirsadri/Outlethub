@@ -1,5 +1,5 @@
 import bcrypt from "bcryptjs";
-import { PrismaClient, PricingTargetType, ProductSource, ProductStatus, RoleCode, ScraperStatus, ScraperType, StockStatus, SyncFrequency, UserStatus } from "@prisma/client";
+import { Prisma, PricingTargetType, ProductSource, ProductStatus, RoleCode, ScraperStatus, ScraperType, StockStatus, SyncFrequency, UserStatus } from "@prisma/client";
 
 import { prisma as appPrisma } from "../src/config/prisma.js";
 import { commerceAdminService } from "../src/modules/commerce/commerce-admin.service.js";
@@ -9,8 +9,9 @@ import { closeMonitoringQueueInfrastructure } from "../src/modules/monitoring/mo
 import { closeNotificationQueueInfrastructure } from "../src/modules/notifications/notification-queue.js";
 import { notificationsService } from "../src/modules/notifications/notifications.service.js";
 import { closeScraperQueueInfrastructure } from "../src/modules/scrapers/scraper-queue.js";
+import { upsertUserWithReferralCode } from "../src/utils/referral-code.js";
 
-const prisma = new PrismaClient();
+const prisma = appPrisma;
 const DEMO_ADMIN_EMAIL = "admin@outlethub.local";
 const DEMO_ADMIN_PASSWORD = "Admin12345!";
 const DEMO_ADMIN_NAME = "Demo Admin";
@@ -54,27 +55,29 @@ async function seedDemoAdmin(): Promise<void> {
 
   const passwordHash = await bcrypt.hash(DEMO_ADMIN_PASSWORD, 12);
 
-  await prisma.user.upsert({
-    where: { email: DEMO_ADMIN_EMAIL },
-    update: {
-      fullName: DEMO_ADMIN_NAME,
-      passwordHash,
-      roleId: adminRole.id,
-      status: UserStatus.ACTIVE,
-      emailVerified: true,
-      emailVerifiedAt: new Date(),
-    },
-    create: {
-      email: DEMO_ADMIN_EMAIL,
-      referralCode: "ADMINDEMO",
-      fullName: DEMO_ADMIN_NAME,
-      passwordHash,
-      roleId: adminRole.id,
-      status: UserStatus.ACTIVE,
-      emailVerified: true,
-      emailVerifiedAt: new Date(),
-    },
-  });
+  await upsertUserWithReferralCode(
+    prisma,
+    {
+      where: { email: DEMO_ADMIN_EMAIL },
+      update: {
+        fullName: DEMO_ADMIN_NAME,
+        passwordHash,
+        roleId: adminRole.id,
+        status: UserStatus.ACTIVE,
+        emailVerified: true,
+        emailVerifiedAt: new Date(),
+      },
+      create: {
+        email: DEMO_ADMIN_EMAIL,
+        fullName: DEMO_ADMIN_NAME,
+        passwordHash,
+        roleId: adminRole.id,
+        status: UserStatus.ACTIVE,
+        emailVerified: true,
+        emailVerifiedAt: new Date(),
+      },
+    } as Prisma.UserUpsertArgs,
+  );
 }
 
 async function seedDemoCatalog(): Promise<void> {
@@ -758,7 +761,6 @@ async function main(): Promise<void> {
 main()
   .then(async () => {
     await prisma.$disconnect();
-    await appPrisma.$disconnect();
     await closeImportQueueInfrastructure();
     await closeMonitoringQueueInfrastructure();
     await closeNotificationQueueInfrastructure();
@@ -767,7 +769,6 @@ main()
   .catch(async (error: unknown) => {
     console.error("Prisma seed failed", error);
     await prisma.$disconnect();
-    await appPrisma.$disconnect();
     await closeImportQueueInfrastructure();
     await closeMonitoringQueueInfrastructure();
     await closeNotificationQueueInfrastructure();

@@ -5,6 +5,7 @@ import { resolve } from "node:path";
 import { prisma } from "../../config/prisma.js";
 import { ApiError } from "../../utils/api-error.js";
 import { createNumericCode, createRandomToken, hashToken } from "../../utils/crypto.js";
+import { createUserWithReferralCode } from "../../utils/referral-code.js";
 import { comparePassword, hashPassword } from "../../services/password.service.js";
 import {
   signAccessToken,
@@ -346,24 +347,22 @@ export class AuthService {
 
       const user = await prisma.$transaction(async (transaction) => {
         const fullName = input.fullName?.trim() || null;
-        const referralCode = await referralService.createUniqueReferralCode(transaction, {
-          email: normalizedEmail,
-          fullName,
-        });
 
-        const createdUser = await transaction.user.create({
-          data: {
-            email: normalizedEmail,
-            referralCode,
-            passwordHash,
-            fullName,
-            status: "PENDING",
-            roleId: customerRole.id,
-          },
-          include: {
-            role: true,
-          },
-        });
+        const createdUser = (await createUserWithReferralCode(
+          transaction,
+          {
+            data: {
+              email: normalizedEmail,
+              passwordHash,
+              fullName,
+              status: "PENDING",
+              roleId: customerRole.id,
+            },
+            include: {
+              role: true,
+            },
+          } as Prisma.UserCreateArgs,
+        )) as Prisma.UserGetPayload<{ include: { role: true } }>;
 
         await referralService.registerReferralForNewUser(transaction, {
           userId: createdUser.id,

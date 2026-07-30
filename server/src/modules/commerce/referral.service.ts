@@ -11,6 +11,7 @@ import {
 
 import { prisma } from "../../config/prisma.js";
 import { ApiError } from "../../utils/api-error.js";
+import { generateUniqueReferralCode, normalizeReferralCode } from "../../utils/referral-code.js";
 import {
   applyPointsDelta,
   calculatePoints,
@@ -30,10 +31,6 @@ const ORDER_PENDING_STATUSES = [
   "SHIPPED",
 ] as const;
 
-function normalizeReferralCode(value: string | null | undefined) {
-  return value?.trim().toUpperCase().replace(/[^A-Z0-9]/g, "") ?? "";
-}
-
 function buildUserDisplayName(user: {
   email: string;
   fullName: string | null;
@@ -41,11 +38,6 @@ function buildUserDisplayName(user: {
   lastName?: string | null;
 }) {
   return user.fullName || [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email;
-}
-
-function buildReferralCodeSeed(value: string) {
-  const normalized = normalizeReferralCode(value).slice(0, 8);
-  return normalized || "OUTLET";
 }
 
 function buildRelationshipNotes(channel: string, referrerCode: string) {
@@ -71,30 +63,6 @@ function buildEventKey(input: {
 
 function resolveOrderTrigger(purchaseIndex: number) {
   return purchaseIndex <= 1 ? ReferralTriggerType.FIRST_ORDER : ReferralTriggerType.REPEAT_ORDER;
-}
-
-async function generateUniqueReferralCode(
-  executor: PrismaExecutor,
-  input: { userId?: string | null; email: string; fullName: string | null },
-) {
-  const baseSeed = buildReferralCodeSeed(
-    input.fullName || input.email.split("@")[0] || input.userId || "OUTLET",
-  );
-
-  for (let index = 0; index < 20; index += 1) {
-    const randomSuffix = Math.random().toString(36).slice(2, 8).toUpperCase();
-    const code = `${baseSeed}${index === 0 ? "" : index}${randomSuffix}`.slice(0, 14);
-    const existing = await executor.user.findUnique({
-      where: { referralCode: code },
-      select: { id: true },
-    });
-
-    if (!existing || (input.userId && existing.id === input.userId)) {
-      return code;
-    }
-  }
-
-  return normalizeReferralCode(`${input.userId ?? input.email}${Date.now().toString(36)}`).slice(0, 18);
 }
 
 async function ensureReferralIdentity(executor: PrismaExecutor, userId: string) {
