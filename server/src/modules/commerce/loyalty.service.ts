@@ -261,8 +261,17 @@ function mapIssuedCoupon(
     createdAt: Date;
     sourceReward?: { id: string; title: string } | null;
     _count?: { orderApplications: number };
+    usageCount?: number;
+    usageCountByUser?: number;
+    isUsedByCustomer?: boolean;
+    isAvailableToCustomer?: boolean;
+    assignmentSource?: string;
   },
 ) {
+  const usageCount = coupon.usageCount ?? coupon._count?.orderApplications ?? 0;
+  const usageCountByUser = coupon.usageCountByUser ?? usageCount;
+  const isUsedByCustomer = coupon.isUsedByCustomer ?? usageCountByUser > 0;
+
   return {
     id: coupon.id,
     code: coupon.code,
@@ -276,8 +285,12 @@ function mapIssuedCoupon(
     startsAt: coupon.startsAt,
     endsAt: coupon.endsAt,
     status: coupon.status,
-    usageCount: coupon._count?.orderApplications ?? 0,
-    isUsed: (coupon._count?.orderApplications ?? 0) > 0,
+    usageCount,
+    usageCountByUser,
+    isUsed: isUsedByCustomer,
+    isUsedByCustomer,
+    isAvailableToCustomer: coupon.isAvailableToCustomer ?? !isUsedByCustomer,
+    assignmentSource: coupon.assignmentSource ?? "REWARD",
     sourceReward: coupon.sourceReward
       ? {
           id: coupon.sourceReward.id,
@@ -571,7 +584,7 @@ export class LoyaltyService {
     await ensureBootstrap();
     await synchronizeEligibleOrderPoints(prisma, { userId });
 
-    const [account, levels, rewards, transactions, redemptions, issuedCoupons] = await Promise.all([
+    const [account, levels, rewards, transactions, redemptions, issuedRewardCoupons, assignedCoupons] = await Promise.all([
       getOrCreateAccount(prisma, userId),
       prisma.loyaltyMembershipLevel.findMany({
         where: { isActive: true },
@@ -662,6 +675,7 @@ export class LoyaltyService {
         orderBy: { createdAt: "desc" },
         take: 50,
       }),
+      couponService.getCustomerAssignedCoupons(userId),
     ]);
 
     const currentLevel =
@@ -674,6 +688,19 @@ export class LoyaltyService {
       progressTarget > progressBase
         ? Math.max(0, Math.min(100, ((account.currentPoints - progressBase) / (progressTarget - progressBase)) * 100))
         : 100;
+
+    const issuedCoupons = [
+      ...issuedRewardCoupons.map((coupon) =>
+        mapIssuedCoupon({
+          ...coupon,
+          usageCountByUser: coupon._count?.orderApplications ?? 0,
+          isUsedByCustomer: (coupon._count?.orderApplications ?? 0) > 0,
+          isAvailableToCustomer: (coupon._count?.orderApplications ?? 0) === 0,
+          assignmentSource: "REWARD",
+        }),
+      ),
+      ...assignedCoupons.map((coupon) => mapIssuedCoupon(coupon)),
+    ].filter((coupon, index, collection) => collection.findIndex((entry) => entry.id === coupon.id) === index);
 
     return {
       account: {
@@ -712,7 +739,7 @@ export class LoyaltyService {
         reward: redemption.reward,
         issuedCoupon: redemption.issuedCoupon,
       })),
-      issuedCoupons: issuedCoupons.map(mapIssuedCoupon),
+      issuedCoupons,
     };
   }
 

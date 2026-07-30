@@ -188,7 +188,11 @@ export interface LoyaltyCustomerRewardsResponse {
     endsAt: string | null;
     status: string;
     usageCount: number;
+    usageCountByUser: number;
     isUsed: boolean;
+    isUsedByCustomer: boolean;
+    isAvailableToCustomer: boolean;
+    assignmentSource: "REWARD" | "DIRECT" | "MEMBERSHIP" | "PUBLIC";
     sourceReward: { id: string; title: string } | null;
     createdAt: string;
   }>;

@@ -51,6 +51,19 @@ function formatRewardType(value: string) {
     .replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
+function formatCouponAssignmentSource(value: "REWARD" | "DIRECT" | "MEMBERSHIP" | "PUBLIC") {
+  switch (value) {
+    case "DIRECT":
+      return "Assigned";
+    case "MEMBERSHIP":
+      return "Membership";
+    case "PUBLIC":
+      return "Available";
+    default:
+      return "Reward";
+  }
+}
+
 export default function MyRewards() {
   const [data, setData] = useState(EMPTY_REWARDS);
   const [loading, setLoading] = useState(true);
@@ -287,7 +300,7 @@ export default function MyRewards() {
           <div className="mt-5 space-y-4">
             {data.issuedCoupons.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-border p-6 text-sm text-muted-foreground">
-                Your redeemed reward coupons will appear here.
+                Your assigned and redeemed coupons will appear here.
               </div>
             ) : (
               data.issuedCoupons.map((coupon) => (
@@ -296,11 +309,23 @@ export default function MyRewards() {
                     <div>
                       <div className="flex flex-wrap items-center gap-2">
                         <p className="font-medium">{coupon.code}</p>
-                        {coupon.isUsed ? <Badge variant="outline">Used</Badge> : <Badge>Available</Badge>}
+                        <Badge variant="outline">{formatCouponAssignmentSource(coupon.assignmentSource)}</Badge>
+                        {coupon.isUsedByCustomer ? (
+                          <Badge variant="outline">Used</Badge>
+                        ) : coupon.isAvailableToCustomer ? (
+                          <Badge>Available</Badge>
+                        ) : (
+                          <Badge variant="secondary">Unavailable</Badge>
+                        )}
                         {coupon.freeShipping ? <Badge variant="secondary">Free Shipping</Badge> : null}
                       </div>
                       <p className="mt-1 text-sm text-muted-foreground">
-                        {coupon.sourceReward?.title || "Reward coupon"}
+                        {coupon.sourceReward?.title ||
+                          (coupon.assignmentSource === "MEMBERSHIP"
+                            ? "Membership coupon"
+                            : coupon.assignmentSource === "DIRECT"
+                              ? "Directly assigned coupon"
+                              : "Available coupon")}
                         {coupon.endsAt ? ` • Expires ${moment(coupon.endsAt).format("MMM D, YYYY")}` : " • No expiry"}
                       </p>
                       {coupon.description ? <p className="mt-2 text-sm text-muted-foreground">{coupon.description}</p> : null}
@@ -314,7 +339,7 @@ export default function MyRewards() {
                             : `${coupon.fixedAmount ?? 0} EUR Off`}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        Used {coupon.usageCount} time{coupon.usageCount === 1 ? "" : "s"}
+                        Used by you {coupon.usageCountByUser} time{coupon.usageCountByUser === 1 ? "" : "s"}
                       </p>
                     </div>
                   </div>

@@ -315,6 +315,72 @@ export class CouponService {
     return account?.membershipLevelId ?? firstActiveLevel?.id ?? null;
   }
 
+  public async getCustomerAssignedCoupons(userId: string) {
+    const now = new Date();
+    const membershipLevelId = await this.getCartMembershipLevelId(prisma, userId);
+
+    const coupons = await prisma.coupon.findMany({
+      where: {
+        isGeneratedRewardCoupon: false,
+        status: CouponStatus.ACTIVE,
+        OR: [{ issuedToUserId: null }, { issuedToUserId: userId }],
+        AND: [
+          {
+            OR: [{ startsAt: null }, { startsAt: { lte: now } }],
+          },
+          {
+            OR: [{ endsAt: null }, { endsAt: { gte: now } }],
+          },
+        ],
+      },
+      orderBy: [{ createdAt: "desc" }],
+      include: {
+        sourceReward: {
+          select: {
+            id: true,
+            title: true,
+          },
+        },
+      },
+    });
+
+    const records = await Promise.all(
+      coupons.map(async (coupon) => {
+        if (
+          coupon.allowedMembershipLevelIds.length > 0 &&
+          (!membershipLevelId || !coupon.allowedMembershipLevelIds.includes(membershipLevelId))
+        ) {
+          return null;
+        }
+
+        const { usageCount, usageCountByUser } = await this.countCouponUsage(prisma, {
+          couponId: coupon.id,
+          userId,
+        });
+
+        const assignmentSource =
+          coupon.issuedToUserId === userId
+            ? "DIRECT"
+            : coupon.allowedMembershipLevelIds.length > 0
+              ? "MEMBERSHIP"
+              : "PUBLIC";
+
+        return {
+          ...coupon,
+          usageCount,
+          usageCountByUser,
+          isUsedByCustomer: usageCountByUser > 0,
+          isAvailableToCustomer:
+            (coupon.usageLimit === null || usageCount < coupon.usageLimit) &&
+            (coupon.usagePerUser === null || usageCountByUser < coupon.usagePerUser),
+          assignmentSource,
+        };
+      }),
+    );
+
+    return records.filter((record) => record !== null);
+  }
+
   private async buildCartContext(executor: PrismaExecutor, cartId: string): Promise<CartContext> {
     const cart = await executor.cart.findUnique({
       where: { id: cartId },
