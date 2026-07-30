@@ -1,4 +1,4 @@
-import { CouponDiscountType, CouponStatus, OrderStatus, Prisma } from "@prisma/client";
+import { CouponDiscountType, CouponStatus, LoyaltyRewardType, OrderStatus, Prisma } from "@prisma/client";
 
 import { prisma } from "../../config/prisma.js";
 import { ApiError } from "../../utils/api-error.js";
@@ -39,6 +39,22 @@ function buildDuplicateCode(code: string) {
   const normalized = normalizeCouponCode(code);
   const maxBaseLength = Math.max(1, 48 - suffix.length - 1);
   return `${normalized.slice(0, maxBaseLength)}-${suffix}`;
+}
+
+function buildIssuedRewardCouponCode(prefix: string | null | undefined, fallbackLabel: string) {
+  const suffix = Math.random().toString(36).slice(2, 8).toUpperCase();
+  const normalizedPrefix = normalizeCouponCode(prefix || fallbackLabel).slice(0, 18);
+  return `${normalizedPrefix || "REWARD"}-${Date.now().toString().slice(-6)}-${suffix}`;
+}
+
+function extractPercentageValue(value: string) {
+  const match = value.match(/(\d+(?:\.\d+)?)\s*%/i);
+  return match ? Number(match[1]) : null;
+}
+
+function extractEuroAmount(value: string) {
+  const match = value.match(/(\d+(?:\.\d+)?)\s*(?:€|eur)/i);
+  return match ? Number(match[1]) : null;
 }
 
 interface CartContextItem {
@@ -143,6 +159,10 @@ function mapCoupon(coupon: {
   excludedBrandIds: string[];
   allowedMembershipLevelIds: string[];
   status: CouponStatus;
+  issuedToUserId?: string | null;
+  sourceRewardId?: string | null;
+  sourceRedemptionId?: string | null;
+  isGeneratedRewardCoupon?: boolean;
   createdAt: Date;
   updatedAt: Date;
   _count?: {
@@ -171,6 +191,10 @@ function mapCoupon(coupon: {
     excludedBrandIds: coupon.excludedBrandIds,
     allowedMembershipLevelIds: coupon.allowedMembershipLevelIds,
     status: coupon.status,
+    issuedToUserId: coupon.issuedToUserId ?? null,
+    sourceRewardId: coupon.sourceRewardId ?? null,
+    sourceRedemptionId: coupon.sourceRedemptionId ?? null,
+    isGeneratedRewardCoupon: coupon.isGeneratedRewardCoupon ?? false,
     usageCount: coupon._count?.orderApplications ?? 0,
     createdAt: coupon.createdAt,
     updatedAt: coupon.updatedAt,
@@ -178,6 +202,75 @@ function mapCoupon(coupon: {
 }
 
 export class CouponService {
+  private async createCouponRecord(
+    executor: PrismaExecutor,
+    input: {
+      code: string;
+      description?: string | null;
+      discountType: CouponDiscountType;
+      percentage?: number | Prisma.Decimal | null;
+      fixedAmount?: number | Prisma.Decimal | null;
+      freeShipping?: boolean;
+      minimumOrderAmount?: number | Prisma.Decimal | null;
+      maximumDiscountAmount?: number | Prisma.Decimal | null;
+      usageLimit?: number | null;
+      usagePerUser?: number | null;
+      startsAt?: Date | string | null;
+      endsAt?: Date | string | null;
+      allowedProductIds?: string[];
+      allowedCategoryIds?: string[];
+      allowedBrandIds?: string[];
+      excludedProductIds?: string[];
+      excludedCategoryIds?: string[];
+      excludedBrandIds?: string[];
+      allowedMembershipLevelIds?: string[];
+      status?: CouponStatus;
+      issuedToUserId?: string | null;
+      sourceRewardId?: string | null;
+      sourceRedemptionId?: string | null;
+      isGeneratedRewardCoupon?: boolean;
+    },
+  ) {
+    return executor.coupon.create({
+      data: {
+        code: normalizeCouponCode(input.code),
+        description: input.description ?? null,
+        discountType: input.discountType,
+        percentage:
+          input.percentage !== null && input.percentage !== undefined ? decimal(input.percentage) : null,
+        fixedAmount:
+          input.fixedAmount !== null && input.fixedAmount !== undefined ? decimal(input.fixedAmount) : null,
+        freeShipping: input.freeShipping ?? false,
+        minimumOrderAmount:
+          input.minimumOrderAmount !== null && input.minimumOrderAmount !== undefined
+            ? decimal(input.minimumOrderAmount)
+            : null,
+        maximumDiscountAmount:
+          input.maximumDiscountAmount !== null && input.maximumDiscountAmount !== undefined
+            ? decimal(input.maximumDiscountAmount)
+            : null,
+        usageLimit: input.usageLimit ?? null,
+        usagePerUser: input.usagePerUser ?? null,
+        startsAt:
+          input.startsAt instanceof Date ? input.startsAt : input.startsAt ? new Date(input.startsAt) : null,
+        endsAt:
+          input.endsAt instanceof Date ? input.endsAt : input.endsAt ? new Date(input.endsAt) : null,
+        allowedProductIds: uniqueIds(input.allowedProductIds),
+        allowedCategoryIds: uniqueIds(input.allowedCategoryIds),
+        allowedBrandIds: uniqueIds(input.allowedBrandIds),
+        excludedProductIds: uniqueIds(input.excludedProductIds),
+        excludedCategoryIds: uniqueIds(input.excludedCategoryIds),
+        excludedBrandIds: uniqueIds(input.excludedBrandIds),
+        allowedMembershipLevelIds: uniqueIds(input.allowedMembershipLevelIds),
+        status: input.status ?? CouponStatus.ACTIVE,
+        issuedToUserId: input.issuedToUserId ?? null,
+        sourceRewardId: input.sourceRewardId ?? null,
+        sourceRedemptionId: input.sourceRedemptionId ?? null,
+        isGeneratedRewardCoupon: input.isGeneratedRewardCoupon ?? false,
+      },
+    });
+  }
+
   private async getUserCart(executor: PrismaExecutor, userId: string) {
     const cart = await executor.cart.findFirst({
       where: { userId },
@@ -304,6 +397,7 @@ export class CouponService {
         excludedBrandIds: string[];
         allowedMembershipLevelIds: string[];
         status: CouponStatus;
+        issuedToUserId?: string | null;
       };
       cart: CartContext;
       totals: PromotionTotals;
@@ -339,6 +433,10 @@ export class CouponService {
 
     if (input.coupon.status !== CouponStatus.ACTIVE) {
       return invalid("This promotion code is currently disabled.");
+    }
+
+    if (input.coupon.issuedToUserId && input.userId && input.coupon.issuedToUserId !== input.userId) {
+      return invalid("This promotion code belongs to another customer account.");
     }
 
     const now = new Date();
@@ -802,36 +900,7 @@ export class CouponService {
     allowedMembershipLevelIds?: string[];
     status?: CouponStatus;
   }) {
-    const created = await prisma.coupon.create({
-      data: {
-        code: normalizeCouponCode(input.code),
-        description: input.description ?? null,
-        discountType: input.discountType,
-        percentage: input.percentage !== null && input.percentage !== undefined ? new Prisma.Decimal(input.percentage) : null,
-        fixedAmount: input.fixedAmount !== null && input.fixedAmount !== undefined ? new Prisma.Decimal(input.fixedAmount) : null,
-        freeShipping: input.freeShipping ?? false,
-        minimumOrderAmount:
-          input.minimumOrderAmount !== null && input.minimumOrderAmount !== undefined
-            ? new Prisma.Decimal(input.minimumOrderAmount)
-            : null,
-        maximumDiscountAmount:
-          input.maximumDiscountAmount !== null && input.maximumDiscountAmount !== undefined
-            ? new Prisma.Decimal(input.maximumDiscountAmount)
-            : null,
-        usageLimit: input.usageLimit ?? null,
-        usagePerUser: input.usagePerUser ?? null,
-        startsAt: input.startsAt ? new Date(input.startsAt) : null,
-        endsAt: input.endsAt ? new Date(input.endsAt) : null,
-        allowedProductIds: uniqueIds(input.allowedProductIds),
-        allowedCategoryIds: uniqueIds(input.allowedCategoryIds),
-        allowedBrandIds: uniqueIds(input.allowedBrandIds),
-        excludedProductIds: uniqueIds(input.excludedProductIds),
-        excludedCategoryIds: uniqueIds(input.excludedCategoryIds),
-        excludedBrandIds: uniqueIds(input.excludedBrandIds),
-        allowedMembershipLevelIds: uniqueIds(input.allowedMembershipLevelIds),
-        status: input.status ?? CouponStatus.ACTIVE,
-      },
-    });
+    const created = await this.createCouponRecord(prisma, input);
 
     return mapCoupon(created);
   }
@@ -935,32 +1004,155 @@ export class CouponService {
       throw new ApiError(404, "Coupon not found.");
     }
 
-    const duplicated = await prisma.coupon.create({
-      data: {
-        code: buildDuplicateCode(existing.code),
-        description: existing.description,
-        discountType: existing.discountType,
-        percentage: existing.percentage,
-        fixedAmount: existing.fixedAmount,
-        freeShipping: existing.freeShipping,
-        minimumOrderAmount: existing.minimumOrderAmount,
-        maximumDiscountAmount: existing.maximumDiscountAmount,
-        usageLimit: existing.usageLimit,
-        usagePerUser: existing.usagePerUser,
-        startsAt: existing.startsAt,
-        endsAt: existing.endsAt,
-        allowedProductIds: existing.allowedProductIds,
-        allowedCategoryIds: existing.allowedCategoryIds,
-        allowedBrandIds: existing.allowedBrandIds,
-        excludedProductIds: existing.excludedProductIds,
-        excludedCategoryIds: existing.excludedCategoryIds,
-        excludedBrandIds: existing.excludedBrandIds,
-        allowedMembershipLevelIds: existing.allowedMembershipLevelIds,
-        status: CouponStatus.DISABLED,
-      },
+    const duplicated = await this.createCouponRecord(prisma, {
+      code: buildDuplicateCode(existing.code),
+      description: existing.description,
+      discountType: existing.discountType,
+      percentage: existing.percentage,
+      fixedAmount: existing.fixedAmount,
+      freeShipping: existing.freeShipping,
+      minimumOrderAmount: existing.minimumOrderAmount,
+      maximumDiscountAmount: existing.maximumDiscountAmount,
+      usageLimit: existing.usageLimit,
+      usagePerUser: existing.usagePerUser,
+      startsAt: existing.startsAt,
+      endsAt: existing.endsAt,
+      allowedProductIds: existing.allowedProductIds,
+      allowedCategoryIds: existing.allowedCategoryIds,
+      allowedBrandIds: existing.allowedBrandIds,
+      excludedProductIds: existing.excludedProductIds,
+      excludedCategoryIds: existing.excludedCategoryIds,
+      excludedBrandIds: existing.excludedBrandIds,
+      allowedMembershipLevelIds: existing.allowedMembershipLevelIds,
+      status: CouponStatus.DISABLED,
     });
 
     return mapCoupon(duplicated);
+  }
+
+  public async createIssuedCouponFromReward(
+    executor: PrismaExecutor,
+    input: {
+      userId: string;
+      reward: {
+        id: string;
+        title: string;
+        description: string | null;
+        rewardType: LoyaltyRewardType;
+        startsAt: Date | null;
+        endsAt: Date | null;
+        couponTemplateId: string | null;
+        couponPercentage: Prisma.Decimal | null;
+        couponFixedAmount: Prisma.Decimal | null;
+        couponMinimumOrderAmount: Prisma.Decimal | null;
+        couponMaximumDiscountAmount: Prisma.Decimal | null;
+        couponDurationDays: number | null;
+        couponCodePrefix: string | null;
+        couponTemplate?: {
+          code: string;
+          description: string | null;
+          discountType: CouponDiscountType;
+          percentage: Prisma.Decimal | null;
+          fixedAmount: Prisma.Decimal | null;
+          freeShipping: boolean;
+          minimumOrderAmount: Prisma.Decimal | null;
+          maximumDiscountAmount: Prisma.Decimal | null;
+          endsAt: Date | null;
+          allowedProductIds: string[];
+          allowedCategoryIds: string[];
+          allowedBrandIds: string[];
+          excludedProductIds: string[];
+          excludedCategoryIds: string[];
+          excludedBrandIds: string[];
+        } | null;
+      };
+      redemptionId: string;
+    },
+  ) {
+    const now = new Date();
+    const rewardCopyText = `${input.reward.title} ${input.reward.description ?? ""}`;
+    const inferredPercentage =
+      input.reward.couponPercentage ?? (extractPercentageValue(rewardCopyText) ?? null);
+    const inferredFixedAmount =
+      input.reward.couponFixedAmount ?? (extractEuroAmount(rewardCopyText) ?? null);
+    const generatedEndsAt = input.reward.couponDurationDays
+      ? new Date(now.getTime() + input.reward.couponDurationDays * 24 * 60 * 60 * 1000)
+      : input.reward.endsAt;
+
+    if (input.reward.rewardType === LoyaltyRewardType.COUPON_TEMPLATE) {
+      if (!input.reward.couponTemplate) {
+        throw new ApiError(400, "The selected reward template coupon no longer exists.");
+      }
+
+      return this.createCouponRecord(executor, {
+        code: buildIssuedRewardCouponCode(input.reward.couponCodePrefix ?? input.reward.couponTemplate.code, input.reward.title),
+        description: input.reward.description || input.reward.couponTemplate.description,
+        discountType: input.reward.couponTemplate.discountType,
+        percentage: input.reward.couponTemplate.percentage,
+        fixedAmount: input.reward.couponTemplate.fixedAmount,
+        freeShipping: input.reward.couponTemplate.freeShipping,
+        minimumOrderAmount: input.reward.couponTemplate.minimumOrderAmount,
+        maximumDiscountAmount: input.reward.couponTemplate.maximumDiscountAmount,
+        usageLimit: 1,
+        usagePerUser: 1,
+        startsAt: now,
+        endsAt: generatedEndsAt ?? input.reward.couponTemplate.endsAt ?? null,
+        allowedProductIds: input.reward.couponTemplate.allowedProductIds,
+        allowedCategoryIds: input.reward.couponTemplate.allowedCategoryIds,
+        allowedBrandIds: input.reward.couponTemplate.allowedBrandIds,
+        excludedProductIds: input.reward.couponTemplate.excludedProductIds,
+        excludedCategoryIds: input.reward.couponTemplate.excludedCategoryIds,
+        excludedBrandIds: input.reward.couponTemplate.excludedBrandIds,
+        allowedMembershipLevelIds: [],
+        issuedToUserId: input.userId,
+        sourceRewardId: input.reward.id,
+        sourceRedemptionId: input.redemptionId,
+        isGeneratedRewardCoupon: true,
+      });
+    }
+
+    if (
+      input.reward.rewardType === LoyaltyRewardType.PERCENTAGE_DISCOUNT &&
+      !(typeof inferredPercentage === "number" && inferredPercentage > 0)
+    ) {
+      throw new ApiError(400, "This percentage reward is missing its coupon value.");
+    }
+
+    if (
+      input.reward.rewardType === LoyaltyRewardType.FIXED_AMOUNT_DISCOUNT &&
+      !(typeof inferredFixedAmount === "number" && inferredFixedAmount > 0)
+    ) {
+      throw new ApiError(400, "This fixed-amount reward is missing its coupon value.");
+    }
+
+    return this.createCouponRecord(executor, {
+      code: buildIssuedRewardCouponCode(input.reward.couponCodePrefix, input.reward.title),
+      description: input.reward.description || `Issued from reward ${input.reward.title}`,
+      discountType:
+        input.reward.rewardType === LoyaltyRewardType.PERCENTAGE_DISCOUNT
+          ? CouponDiscountType.PERCENTAGE
+          : CouponDiscountType.FIXED_AMOUNT,
+      percentage:
+        input.reward.rewardType === LoyaltyRewardType.PERCENTAGE_DISCOUNT
+          ? inferredPercentage
+          : null,
+      fixedAmount:
+        input.reward.rewardType === LoyaltyRewardType.FIXED_AMOUNT_DISCOUNT
+          ? inferredFixedAmount
+          : null,
+      freeShipping: input.reward.rewardType === LoyaltyRewardType.FREE_SHIPPING,
+      minimumOrderAmount: input.reward.couponMinimumOrderAmount,
+      maximumDiscountAmount: input.reward.couponMaximumDiscountAmount,
+      usageLimit: 1,
+      usagePerUser: 1,
+      startsAt: now,
+      endsAt: generatedEndsAt ?? null,
+      allowedMembershipLevelIds: [],
+      issuedToUserId: input.userId,
+      sourceRewardId: input.reward.id,
+      sourceRedemptionId: input.redemptionId,
+      isGeneratedRewardCoupon: true,
+    });
   }
 }
 

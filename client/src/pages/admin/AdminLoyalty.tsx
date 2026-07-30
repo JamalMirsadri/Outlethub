@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { getAdminCouponOverview } from "@/api/coupons";
 import {
   createLoyaltyManualAdjustment,
   createLoyaltyMembershipLevel,
@@ -9,6 +10,7 @@ import {
   deleteLoyaltyReward,
   getAdminLoyaltyOverview,
   type LoyaltyAdminOverviewResponse,
+  type LoyaltyRewardPayload,
   updateLoyaltyMembershipLevel,
   updateLoyaltyPointRule,
   updateLoyaltyReward,
@@ -66,7 +68,17 @@ const DEFAULT_REWARD_FORM = {
   title: "",
   description: "",
   pointsCost: "100",
+  rewardType: "PERCENTAGE_DISCOUNT",
+  startsAt: "",
+  endsAt: "",
   minMembershipLevelId: "none",
+  couponTemplateId: "none",
+  couponPercentage: "5",
+  couponFixedAmount: "",
+  couponMinimumOrderAmount: "",
+  couponMaximumDiscountAmount: "",
+  couponDurationDays: "30",
+  couponCodePrefix: "",
   color: "#D4AF37",
   icon: "gift",
   benefitsText: "",
@@ -108,6 +120,7 @@ export default function AdminLoyalty() {
   const [ruleForm, setRuleForm] = useState(DEFAULT_RULE_FORM);
   const [levelForm, setLevelForm] = useState(DEFAULT_LEVEL_FORM);
   const [rewardForm, setRewardForm] = useState(DEFAULT_REWARD_FORM);
+  const [couponTemplates, setCouponTemplates] = useState<Array<{ id: string; code: string; description: string | null }>>([]);
   const [adjustmentForm, setAdjustmentForm] = useState({
     userId: "",
     pointsDelta: "0",
@@ -127,9 +140,10 @@ export default function AdminLoyalty() {
     }
 
     try {
-      const [overviewResponse, usersResponse] = await Promise.all([
+      const [overviewResponse, usersResponse, couponOverview] = await Promise.all([
         getAdminLoyaltyOverview(),
         listAdminUsers({ pageSize: 100, status: "ALL" }),
+        getAdminCouponOverview(),
       ]);
 
       setOverview(overviewResponse);
@@ -140,6 +154,7 @@ export default function AdminLoyalty() {
           name: user.fullName || [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email,
         })),
       );
+      setCouponTemplates(couponOverview.coupons.map((coupon) => ({ id: coupon.id, code: coupon.code, description: coupon.description })));
     } catch (error) {
       toast({
         title: "Unable to load loyalty settings",
@@ -238,11 +253,21 @@ export default function AdminLoyalty() {
     setSavingSection("reward");
 
     try {
-      const payload = {
+      const payload: LoyaltyRewardPayload = {
         title: rewardForm.title,
         description: rewardForm.description || null,
         pointsCost: Number(rewardForm.pointsCost),
+        rewardType: rewardForm.rewardType as LoyaltyRewardPayload["rewardType"],
+        startsAt: rewardForm.startsAt ? new Date(rewardForm.startsAt).toISOString() : null,
+        endsAt: rewardForm.endsAt ? new Date(rewardForm.endsAt).toISOString() : null,
         minMembershipLevelId: rewardForm.minMembershipLevelId === "none" ? null : rewardForm.minMembershipLevelId,
+        couponTemplateId: rewardForm.couponTemplateId === "none" ? null : rewardForm.couponTemplateId,
+        couponPercentage: rewardForm.couponPercentage ? Number(rewardForm.couponPercentage) : null,
+        couponFixedAmount: rewardForm.couponFixedAmount ? Number(rewardForm.couponFixedAmount) : null,
+        couponMinimumOrderAmount: rewardForm.couponMinimumOrderAmount ? Number(rewardForm.couponMinimumOrderAmount) : null,
+        couponMaximumDiscountAmount: rewardForm.couponMaximumDiscountAmount ? Number(rewardForm.couponMaximumDiscountAmount) : null,
+        couponDurationDays: rewardForm.couponDurationDays ? Number(rewardForm.couponDurationDays) : null,
+        couponCodePrefix: rewardForm.couponCodePrefix || null,
         color: rewardForm.color || null,
         icon: rewardForm.icon || null,
         benefits: toLines(rewardForm.benefitsText),
@@ -628,8 +653,32 @@ export default function AdminLoyalty() {
                   <Input type="number" min="1" step="1" value={rewardForm.pointsCost} onChange={(event) => setRewardForm((current) => ({ ...current, pointsCost: event.target.value }))} />
                 </div>
                 <div className="space-y-2">
-                  <Label>Stock Limit</Label>
+                  <Label>Usage Limit</Label>
                   <Input type="number" min="1" step="1" value={rewardForm.stockLimit} onChange={(event) => setRewardForm((current) => ({ ...current, stockLimit: event.target.value }))} />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Reward Type</Label>
+                <Select value={rewardForm.rewardType} onValueChange={(value) => setRewardForm((current) => ({ ...current, rewardType: value }))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="PERCENTAGE_DISCOUNT">Percentage Discount Coupon</SelectItem>
+                    <SelectItem value="FIXED_AMOUNT_DISCOUNT">Fixed Amount Coupon</SelectItem>
+                    <SelectItem value="FREE_SHIPPING">Free Shipping Coupon</SelectItem>
+                    <SelectItem value="COUPON_TEMPLATE">Coupon Template</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Start Date</Label>
+                  <Input type="datetime-local" value={rewardForm.startsAt} onChange={(event) => setRewardForm((current) => ({ ...current, startsAt: event.target.value }))} />
+                </div>
+                <div className="space-y-2">
+                  <Label>End Date</Label>
+                  <Input type="datetime-local" value={rewardForm.endsAt} onChange={(event) => setRewardForm((current) => ({ ...current, endsAt: event.target.value }))} />
                 </div>
               </div>
               <div className="space-y-2">
@@ -647,6 +696,58 @@ export default function AdminLoyalty() {
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+              {rewardForm.rewardType === "COUPON_TEMPLATE" ? (
+                <div className="space-y-2">
+                  <Label>Coupon Template</Label>
+                  <Select value={rewardForm.couponTemplateId} onValueChange={(value) => setRewardForm((current) => ({ ...current, couponTemplateId: value }))}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a coupon template" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Select template</SelectItem>
+                      {couponTemplates.map((coupon) => (
+                        <SelectItem key={coupon.id} value={coupon.id}>
+                          {coupon.code}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : null}
+              {rewardForm.rewardType === "PERCENTAGE_DISCOUNT" ? (
+                <div className="space-y-2">
+                  <Label>Coupon Percentage</Label>
+                  <Input type="number" min="1" max="100" step="0.01" value={rewardForm.couponPercentage} onChange={(event) => setRewardForm((current) => ({ ...current, couponPercentage: event.target.value }))} />
+                </div>
+              ) : null}
+              {rewardForm.rewardType === "FIXED_AMOUNT_DISCOUNT" ? (
+                <div className="space-y-2">
+                  <Label>Coupon Fixed Amount</Label>
+                  <Input type="number" min="0.01" step="0.01" value={rewardForm.couponFixedAmount} onChange={(event) => setRewardForm((current) => ({ ...current, couponFixedAmount: event.target.value }))} />
+                </div>
+              ) : null}
+              {rewardForm.rewardType !== "COUPON_TEMPLATE" ? (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>Coupon Minimum Order</Label>
+                    <Input type="number" min="0" step="0.01" value={rewardForm.couponMinimumOrderAmount} onChange={(event) => setRewardForm((current) => ({ ...current, couponMinimumOrderAmount: event.target.value }))} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Coupon Maximum Discount</Label>
+                    <Input type="number" min="0" step="0.01" value={rewardForm.couponMaximumDiscountAmount} onChange={(event) => setRewardForm((current) => ({ ...current, couponMaximumDiscountAmount: event.target.value }))} />
+                  </div>
+                </div>
+              ) : null}
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Coupon Expiry Days</Label>
+                  <Input type="number" min="1" step="1" value={rewardForm.couponDurationDays} onChange={(event) => setRewardForm((current) => ({ ...current, couponDurationDays: event.target.value }))} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Coupon Code Prefix</Label>
+                  <Input value={rewardForm.couponCodePrefix} onChange={(event) => setRewardForm((current) => ({ ...current, couponCodePrefix: event.target.value.toUpperCase() }))} />
+                </div>
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
@@ -696,9 +797,11 @@ export default function AdminLoyalty() {
                       </div>
                       {reward.description ? <p className="mt-2 text-sm text-muted-foreground">{reward.description}</p> : null}
                       <div className="mt-3 flex flex-wrap gap-2">
+                        <Badge variant="secondary">{reward.rewardType.replaceAll("_", " ")}</Badge>
                         {reward.minMembershipLevel ? <Badge variant="outline">{reward.minMembershipLevel.title}+</Badge> : null}
-                        {reward.stockLimit !== null ? <Badge variant="outline">Stock {reward.stockLimit}</Badge> : null}
+                        {reward.usageLimit !== null ? <Badge variant="outline">Usage {reward.usageLimit}</Badge> : null}
                         <Badge variant="outline">Redeemed {reward.redemptionCount ?? 0}</Badge>
+                        {reward.couponTemplate ? <Badge variant="outline">Template {reward.couponTemplate.code}</Badge> : null}
                       </div>
                       <div className="mt-4 flex flex-wrap gap-2">
                         {reward.benefits.map((benefit) => (
@@ -718,7 +821,17 @@ export default function AdminLoyalty() {
                           title: reward.title,
                           description: reward.description || "",
                           pointsCost: String(reward.pointsCost),
+                          rewardType: reward.rewardType,
+                          startsAt: reward.startsAt ? moment(reward.startsAt).format("YYYY-MM-DDTHH:mm") : "",
+                          endsAt: reward.endsAt ? moment(reward.endsAt).format("YYYY-MM-DDTHH:mm") : "",
                           minMembershipLevelId: reward.minMembershipLevelId || "none",
+                          couponTemplateId: reward.couponTemplateId || "none",
+                          couponPercentage: reward.couponPercentage !== null && reward.couponPercentage !== undefined ? String(reward.couponPercentage) : "",
+                          couponFixedAmount: reward.couponFixedAmount !== null && reward.couponFixedAmount !== undefined ? String(reward.couponFixedAmount) : "",
+                          couponMinimumOrderAmount: reward.couponMinimumOrderAmount !== null && reward.couponMinimumOrderAmount !== undefined ? String(reward.couponMinimumOrderAmount) : "",
+                          couponMaximumDiscountAmount: reward.couponMaximumDiscountAmount !== null && reward.couponMaximumDiscountAmount !== undefined ? String(reward.couponMaximumDiscountAmount) : "",
+                          couponDurationDays: reward.couponDurationDays !== null && reward.couponDurationDays !== undefined ? String(reward.couponDurationDays) : "30",
+                          couponCodePrefix: reward.couponCodePrefix || "",
                           color: reward.color || "",
                           icon: reward.icon || "",
                           benefitsText: reward.benefits.join("\n"),

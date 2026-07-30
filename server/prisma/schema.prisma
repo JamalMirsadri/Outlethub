@@ -357,6 +357,13 @@ enum CouponStatus {
   DISABLED
 }
 
+enum LoyaltyRewardType {
+  PERCENTAGE_DISCOUNT
+  FIXED_AMOUNT_DISCOUNT
+  FREE_SHIPPING
+  COUPON_TEMPLATE
+}
+
 model Role {
   id          String    @id @default(cuid())
   code        RoleCode  @unique
@@ -413,6 +420,7 @@ model User {
   loyaltyOrderAwards  LoyaltyOrderPointAward[]
   couponCartApplications  CouponCartApplication[]
   couponOrderApplications CouponOrderApplication[]
+  issuedCoupons       Coupon[]                 @relation("IssuedCouponUser")
   createdAt           DateTime                @default(now())
   updatedAt           DateTime                @updatedAt
 
@@ -1997,7 +2005,17 @@ model LoyaltyReward {
   slug                 String                    @unique
   description          String?
   pointsCost           Int
+  rewardType           LoyaltyRewardType         @default(PERCENTAGE_DISCOUNT)
+  startsAt             DateTime?
+  endsAt               DateTime?
   minMembershipLevelId String?
+  couponTemplateId     String?
+  couponPercentage     Decimal?                  @db.Decimal(5, 2)
+  couponFixedAmount    Decimal?                  @db.Decimal(10, 2)
+  couponMinimumOrderAmount Decimal?              @db.Decimal(10, 2)
+  couponMaximumDiscountAmount Decimal?           @db.Decimal(10, 2)
+  couponDurationDays   Int?
+  couponCodePrefix     String?
   color                String?
   icon                 String?
   benefits             Json?
@@ -2005,12 +2023,15 @@ model LoyaltyReward {
   isActive             Boolean                   @default(true)
   sortOrder            Int                       @default(0)
   minMembershipLevel   LoyaltyMembershipLevel?   @relation(fields: [minMembershipLevelId], references: [id], onDelete: SetNull)
+  couponTemplate       Coupon?                   @relation("LoyaltyRewardCouponTemplate", fields: [couponTemplateId], references: [id], onDelete: SetNull)
   redemptions          LoyaltyRewardRedemption[]
   pointTransactions    LoyaltyPointTransaction[]
+  generatedCoupons     Coupon[]                  @relation("CouponRewardSource")
   createdAt            DateTime                  @default(now())
   updatedAt            DateTime                  @updatedAt
 
   @@index([minMembershipLevelId])
+  @@index([couponTemplateId])
   @@index([isActive, sortOrder])
 }
 
@@ -2029,6 +2050,7 @@ model LoyaltyRewardRedemption {
   user         User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
   reward       LoyaltyReward           @relation(fields: [rewardId], references: [id], onDelete: Restrict)
   transactions LoyaltyPointTransaction[]
+  issuedCoupon Coupon?                 @relation("RewardRedemptionIssuedCoupon")
   createdAt    DateTime                @default(now())
   updatedAt    DateTime                @updatedAt
 
@@ -2115,14 +2137,24 @@ model Coupon {
   excludedBrandIds          String[]               @default([])
   allowedMembershipLevelIds String[]               @default([])
   status                    CouponStatus           @default(ACTIVE)
+  issuedToUserId            String?
+  sourceRewardId            String?
+  sourceRedemptionId        String?                @unique
+  isGeneratedRewardCoupon   Boolean                @default(false)
   cartApplications          CouponCartApplication[]
   orderApplications         CouponOrderApplication[]
+  issuedToUser              User?                  @relation("IssuedCouponUser", fields: [issuedToUserId], references: [id], onDelete: SetNull)
+  sourceReward              LoyaltyReward?         @relation("CouponRewardSource", fields: [sourceRewardId], references: [id], onDelete: SetNull)
+  rewardRedemption          LoyaltyRewardRedemption? @relation("RewardRedemptionIssuedCoupon", fields: [sourceRedemptionId], references: [id], onDelete: SetNull)
+  rewardTemplateFor         LoyaltyReward[]        @relation("LoyaltyRewardCouponTemplate")
   createdAt                 DateTime               @default(now())
   updatedAt                 DateTime               @updatedAt
 
   @@index([status])
   @@index([startsAt])
   @@index([endsAt])
+  @@index([issuedToUserId])
+  @@index([sourceRewardId])
 }
 
 model CouponCartApplication {

@@ -31,14 +31,26 @@ export interface LoyaltyRewardRecord {
   slug: string;
   description: string | null;
   pointsCost: number;
+  rewardType: "PERCENTAGE_DISCOUNT" | "FIXED_AMOUNT_DISCOUNT" | "FREE_SHIPPING" | "COUPON_TEMPLATE";
+  startsAt: string | null;
+  endsAt: string | null;
   color: string | null;
   icon: string | null;
   benefits: string[];
   stockLimit: number | null;
+  usageLimit?: number | null;
   isActive: boolean;
   sortOrder: number;
   minMembershipLevelId: string | null;
   minMembershipLevel: LoyaltyLevelRecord | null;
+  couponTemplateId?: string | null;
+  couponTemplate?: { id: string; code: string; description: string | null } | null;
+  couponPercentage?: number | null;
+  couponFixedAmount?: number | null;
+  couponMinimumOrderAmount?: number | null;
+  couponMaximumDiscountAmount?: number | null;
+  couponDurationDays?: number | null;
+  couponCodePrefix?: string | null;
   redemptionCount?: number;
   isUnlocked?: boolean;
   isRedeemable?: boolean;
@@ -83,7 +95,17 @@ export interface LoyaltyRewardPayload {
   title: string;
   description?: string | null;
   pointsCost: number;
+  rewardType: "PERCENTAGE_DISCOUNT" | "FIXED_AMOUNT_DISCOUNT" | "FREE_SHIPPING" | "COUPON_TEMPLATE";
+  startsAt?: string | null;
+  endsAt?: string | null;
   minMembershipLevelId?: string | null;
+  couponTemplateId?: string | null;
+  couponPercentage?: number | null;
+  couponFixedAmount?: number | null;
+  couponMinimumOrderAmount?: number | null;
+  couponMaximumDiscountAmount?: number | null;
+  couponDurationDays?: number | null;
+  couponCodePrefix?: string | null;
   color?: string | null;
   icon?: string | null;
   benefits?: string[];
@@ -143,6 +165,25 @@ export interface LoyaltyCustomerRewardsResponse {
     redeemedAt: string;
     cancelledAt: string | null;
     reward: { id: string; title: string };
+    issuedCoupon?: { id: string; code: string } | null;
+  }>;
+  issuedCoupons: Array<{
+    id: string;
+    code: string;
+    description: string | null;
+    discountType: string;
+    percentage: number | null;
+    fixedAmount: number | null;
+    freeShipping: boolean;
+    minimumOrderAmount: number | null;
+    maximumDiscountAmount: number | null;
+    startsAt: string | null;
+    endsAt: string | null;
+    status: string;
+    usageCount: number;
+    isUsed: boolean;
+    sourceReward: { id: string; title: string } | null;
+    createdAt: string;
   }>;
 }
 
@@ -240,7 +281,10 @@ export async function getMyRewards() {
 }
 
 export async function redeemLoyaltyReward(id: string) {
-  return http<{ redemption: { id: string; rewardId: string; pointsSpent: number; status: string; redeemedAt: string } }>(
+  return http<{
+    redemption: { id: string; rewardId: string; pointsSpent: number; status: string; redeemedAt: string };
+    coupon: { id: string; code: string; description: string | null; endsAt: string | null };
+  }>(
     `/loyalty/rewards/${id}/redeem`,
     {
       method: "POST",

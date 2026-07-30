@@ -24,6 +24,7 @@ const EMPTY_REWARDS: LoyaltyCustomerRewardsResponse = {
   rewards: [],
   history: [],
   redemptions: [],
+  issuedCoupons: [],
 };
 
 function StatCard({ label, value, hint }: { label: string; value: string | number; hint: string }) {
@@ -37,6 +38,13 @@ function StatCard({ label, value, hint }: { label: string; value: string | numbe
 }
 
 function formatTransactionType(value: string) {
+  return value
+    .toLowerCase()
+    .replaceAll("_", " ")
+    .replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
+function formatRewardType(value: string) {
   return value
     .toLowerCase()
     .replaceAll("_", " ")
@@ -196,6 +204,7 @@ export default function MyRewards() {
                       </div>
                       {reward.description ? <p className="mt-2 text-sm text-muted-foreground">{reward.description}</p> : null}
                       <div className="mt-4 flex flex-wrap gap-2">
+                        <Badge variant="secondary">{formatRewardType(reward.rewardType)}</Badge>
                         {reward.benefits.map((benefit) => (
                           <Badge key={benefit} variant="outline">
                             {benefit}
@@ -208,11 +217,11 @@ export default function MyRewards() {
                       onClick={async () => {
                         setRedeemingRewardId(reward.id);
                         try {
-                          await redeemLoyaltyReward(reward.id);
+                          const result = await redeemLoyaltyReward(reward.id);
                           await load({ silent: true });
                           toast({
                             title: "Reward redeemed",
-                            description: `${reward.title} was redeemed successfully.`,
+                            description: `${reward.title} redeemed successfully. Coupon: ${result.coupon.code}`,
                           });
                         } catch (error) {
                           toast({
@@ -255,6 +264,7 @@ export default function MyRewards() {
                   <div className="flex flex-wrap items-center gap-2">
                     <h4 className="text-lg font-semibold">{reward.title}</h4>
                     <Badge variant="outline">{reward.pointsCost} pts</Badge>
+                    <Badge variant="secondary">{formatRewardType(reward.rewardType)}</Badge>
                     {reward.minMembershipLevel ? <Badge variant="outline">{reward.minMembershipLevel.title}+</Badge> : null}
                   </div>
                   {reward.description ? <p className="mt-2 text-sm text-muted-foreground">{reward.description}</p> : null}
@@ -269,6 +279,51 @@ export default function MyRewards() {
       </div>
 
       <div className="grid gap-6 xl:grid-cols-2">
+        <div className="luxe-panel p-6">
+          <div className="flex items-center gap-2">
+            <Gift className="h-5 w-5 text-[hsl(var(--accent))]" />
+            <h3 className="text-xl font-semibold">My Coupons</h3>
+          </div>
+          <div className="mt-5 space-y-4">
+            {data.issuedCoupons.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-border p-6 text-sm text-muted-foreground">
+                Your redeemed reward coupons will appear here.
+              </div>
+            ) : (
+              data.issuedCoupons.map((coupon) => (
+                <div key={coupon.id} className="rounded-2xl border border-border p-4">
+                  <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="font-medium">{coupon.code}</p>
+                        {coupon.isUsed ? <Badge variant="outline">Used</Badge> : <Badge>Available</Badge>}
+                        {coupon.freeShipping ? <Badge variant="secondary">Free Shipping</Badge> : null}
+                      </div>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        {coupon.sourceReward?.title || "Reward coupon"}
+                        {coupon.endsAt ? ` • Expires ${moment(coupon.endsAt).format("MMM D, YYYY")}` : " • No expiry"}
+                      </p>
+                      {coupon.description ? <p className="mt-2 text-sm text-muted-foreground">{coupon.description}</p> : null}
+                    </div>
+                    <div className="text-left md:text-right">
+                      <p className="font-semibold">
+                        {coupon.freeShipping
+                          ? "Free Shipping"
+                          : coupon.discountType === "PERCENTAGE"
+                            ? `${coupon.percentage ?? 0}% Off`
+                            : `${coupon.fixedAmount ?? 0} EUR Off`}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Used {coupon.usageCount} time{coupon.usageCount === 1 ? "" : "s"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
         <div className="luxe-panel p-6">
           <div className="flex items-center gap-2">
             <Award className="h-5 w-5 text-[hsl(var(--accent))]" />
@@ -286,6 +341,9 @@ export default function MyRewards() {
                     <div>
                       <p className="font-medium">{redemption.reward.title}</p>
                       <p className="text-sm text-muted-foreground">{moment(redemption.redeemedAt).format("MMM D, YYYY • HH:mm")}</p>
+                      {redemption.issuedCoupon ? (
+                        <p className="mt-1 text-xs text-muted-foreground">Issued coupon: {redemption.issuedCoupon.code}</p>
+                      ) : null}
                     </div>
                     <Badge>{redemption.pointsSpent} pts</Badge>
                   </div>

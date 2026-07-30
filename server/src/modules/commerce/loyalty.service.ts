@@ -1,6 +1,7 @@
 import {
   LoyaltyOrderAwardStatus,
   LoyaltyRedemptionStatus,
+  LoyaltyRewardType,
   LoyaltyTransactionType,
   Prisma,
   type LoyaltyMembershipLevel,
@@ -10,6 +11,7 @@ import {
 
 import { prisma } from "../../config/prisma.js";
 import { ApiError } from "../../utils/api-error.js";
+import { couponService } from "./coupon.service.js";
 
 const DEFAULT_LEVELS = [
   {
@@ -136,6 +138,7 @@ function mapPointRule(rule: LoyaltyPointRule) {
 function mapReward(
   reward: LoyaltyReward & {
     minMembershipLevel?: LoyaltyMembershipLevel | null;
+    couponTemplate?: { id: string; code: string; description: string | null } | null;
     _count?: { redemptions: number };
   },
 ) {
@@ -145,14 +148,32 @@ function mapReward(
     slug: reward.slug,
     description: reward.description,
     pointsCost: reward.pointsCost,
+    rewardType: reward.rewardType,
+    startsAt: reward.startsAt,
+    endsAt: reward.endsAt,
     color: reward.color,
     icon: reward.icon,
     benefits: toStringArray(reward.benefits),
     stockLimit: reward.stockLimit,
+    usageLimit: reward.stockLimit,
     isActive: reward.isActive,
     sortOrder: reward.sortOrder,
     minMembershipLevelId: reward.minMembershipLevelId,
     minMembershipLevel: reward.minMembershipLevel ? mapLevel(reward.minMembershipLevel) : null,
+    couponTemplateId: reward.couponTemplateId,
+    couponTemplate: reward.couponTemplate
+      ? {
+          id: reward.couponTemplate.id,
+          code: reward.couponTemplate.code,
+          description: reward.couponTemplate.description,
+        }
+      : null,
+    couponPercentage: toNumber(reward.couponPercentage),
+    couponFixedAmount: toNumber(reward.couponFixedAmount),
+    couponMinimumOrderAmount: toNumber(reward.couponMinimumOrderAmount),
+    couponMaximumDiscountAmount: toNumber(reward.couponMaximumDiscountAmount),
+    couponDurationDays: reward.couponDurationDays,
+    couponCodePrefix: reward.couponCodePrefix,
     redemptionCount: reward._count?.redemptions ?? 0,
     createdAt: reward.createdAt,
     updatedAt: reward.updatedAt,
@@ -218,6 +239,50 @@ function mapTransaction(
           name: buildName(transaction.actorUser),
         }
       : null,
+  };
+}
+
+function mapIssuedCoupon(
+  coupon: {
+    id: string;
+    code: string;
+    description: string | null;
+    discountType: string;
+    percentage: Prisma.Decimal | null;
+    fixedAmount: Prisma.Decimal | null;
+    freeShipping: boolean;
+    minimumOrderAmount: Prisma.Decimal | null;
+    maximumDiscountAmount: Prisma.Decimal | null;
+    startsAt: Date | null;
+    endsAt: Date | null;
+    status: string;
+    createdAt: Date;
+    sourceReward?: { id: string; title: string } | null;
+    _count?: { orderApplications: number };
+  },
+) {
+  return {
+    id: coupon.id,
+    code: coupon.code,
+    description: coupon.description,
+    discountType: coupon.discountType,
+    percentage: toNumber(coupon.percentage),
+    fixedAmount: toNumber(coupon.fixedAmount),
+    freeShipping: coupon.freeShipping,
+    minimumOrderAmount: toNumber(coupon.minimumOrderAmount),
+    maximumDiscountAmount: toNumber(coupon.maximumDiscountAmount),
+    startsAt: coupon.startsAt,
+    endsAt: coupon.endsAt,
+    status: coupon.status,
+    usageCount: coupon._count?.orderApplications ?? 0,
+    isUsed: (coupon._count?.orderApplications ?? 0) > 0,
+    sourceReward: coupon.sourceReward
+      ? {
+          id: coupon.sourceReward.id,
+          title: coupon.sourceReward.title,
+        }
+      : null,
+    createdAt: coupon.createdAt,
   };
 }
 
@@ -364,15 +429,23 @@ function canAccessReward(
   reward: LoyaltyReward & { minMembershipLevel?: LoyaltyMembershipLevel | null },
   accountPoints: number,
   currentLevel: LoyaltyMembershipLevel | null,
+  redemptionCount: number,
 ) {
+  const now = new Date();
   const meetsPoints = accountPoints >= reward.pointsCost;
   const meetsLevel =
     !reward.minMembershipLevel ||
     Boolean(currentLevel && currentLevel.minPoints >= reward.minMembershipLevel.minPoints);
+  const isWithinSchedule =
+    (!reward.startsAt || reward.startsAt <= now) && (!reward.endsAt || reward.endsAt >= now);
+  const hasRemainingUsage =
+    reward.stockLimit === null || redemptionCount < reward.stockLimit;
+  const isRewardAvailable = reward.isActive && isWithinSchedule && hasRemainingUsage;
 
   return {
     isUnlocked: meetsLevel,
-    isRedeemable: meetsLevel && meetsPoints && reward.isActive,
+    isRedeemable: meetsLevel && meetsPoints && isRewardAvailable,
+    isRewardAvailable,
   };
 }
 
@@ -390,6 +463,13 @@ export class LoyaltyService {
       prisma.loyaltyReward.findMany({
         include: {
           minMembershipLevel: true,
+          couponTemplate: {
+            select: {
+              id: true,
+              code: true,
+              description: true,
+            },
+          },
           _count: {
             select: { redemptions: true },
           },
@@ -459,7 +539,7 @@ export class LoyaltyService {
   public async getCustomerRewards(userId: string) {
     await ensureBootstrap();
 
-    const [account, levels, rewards, transactions, redemptions] = await Promise.all([
+    const [account, levels, rewards, transactions, redemptions, issuedCoupons] = await Promise.all([
       getOrCreateAccount(prisma, userId),
       prisma.loyaltyMembershipLevel.findMany({
         where: { isActive: true },
@@ -469,6 +549,13 @@ export class LoyaltyService {
         where: { isActive: true },
         include: {
           minMembershipLevel: true,
+          couponTemplate: {
+            select: {
+              id: true,
+              code: true,
+              description: true,
+            },
+          },
           _count: {
             select: { redemptions: true },
           },
@@ -512,8 +599,35 @@ export class LoyaltyService {
               title: true,
             },
           },
+          issuedCoupon: {
+            select: {
+              id: true,
+              code: true,
+            },
+          },
         },
         orderBy: { redeemedAt: "desc" },
+        take: 50,
+      }),
+      prisma.coupon.findMany({
+        where: {
+          issuedToUserId: userId,
+          isGeneratedRewardCoupon: true,
+        },
+        include: {
+          sourceReward: {
+            select: {
+              id: true,
+              title: true,
+            },
+          },
+          _count: {
+            select: {
+              orderApplications: true,
+            },
+          },
+        },
+        orderBy: { createdAt: "desc" },
         take: 50,
       }),
     ]);
@@ -544,7 +658,12 @@ export class LoyaltyService {
       },
       membershipLevels: levels.map(mapLevel),
       rewards: rewards.map((reward) => {
-        const access = canAccessReward(reward, account.currentPoints, currentLevel);
+        const access = canAccessReward(
+          reward,
+          account.currentPoints,
+          currentLevel,
+          reward._count?.redemptions ?? 0,
+        );
         return {
           ...mapReward(reward),
           ...access,
@@ -559,7 +678,9 @@ export class LoyaltyService {
         redeemedAt: redemption.redeemedAt,
         cancelledAt: redemption.cancelledAt,
         reward: redemption.reward,
+        issuedCoupon: redemption.issuedCoupon,
       })),
+      issuedCoupons: issuedCoupons.map(mapIssuedCoupon),
     };
   }
 
@@ -748,7 +869,17 @@ export class LoyaltyService {
     title: string;
     description?: string | null;
     pointsCost: number;
+    rewardType: LoyaltyRewardType;
+    startsAt?: string | null;
+    endsAt?: string | null;
     minMembershipLevelId?: string | null;
+    couponTemplateId?: string | null;
+    couponPercentage?: number | null;
+    couponFixedAmount?: number | null;
+    couponMinimumOrderAmount?: number | null;
+    couponMaximumDiscountAmount?: number | null;
+    couponDurationDays?: number | null;
+    couponCodePrefix?: string | null;
     color?: string | null;
     icon?: string | null;
     benefits?: string[];
@@ -762,7 +893,29 @@ export class LoyaltyService {
         slug: slugify(`${input.title}-${Date.now()}`),
         description: input.description ?? null,
         pointsCost: input.pointsCost,
+        rewardType: input.rewardType,
+        startsAt: input.startsAt ? new Date(input.startsAt) : null,
+        endsAt: input.endsAt ? new Date(input.endsAt) : null,
         minMembershipLevelId: input.minMembershipLevelId ?? null,
+        couponTemplateId: input.couponTemplateId ?? null,
+        couponPercentage:
+          input.couponPercentage !== null && input.couponPercentage !== undefined
+            ? new Prisma.Decimal(input.couponPercentage)
+            : null,
+        couponFixedAmount:
+          input.couponFixedAmount !== null && input.couponFixedAmount !== undefined
+            ? new Prisma.Decimal(input.couponFixedAmount)
+            : null,
+        couponMinimumOrderAmount:
+          input.couponMinimumOrderAmount !== null && input.couponMinimumOrderAmount !== undefined
+            ? new Prisma.Decimal(input.couponMinimumOrderAmount)
+            : null,
+        couponMaximumDiscountAmount:
+          input.couponMaximumDiscountAmount !== null && input.couponMaximumDiscountAmount !== undefined
+            ? new Prisma.Decimal(input.couponMaximumDiscountAmount)
+            : null,
+        couponDurationDays: input.couponDurationDays ?? null,
+        couponCodePrefix: input.couponCodePrefix ?? null,
         color: input.color ?? null,
         icon: input.icon ?? null,
         benefits: input.benefits ?? [],
@@ -772,6 +925,13 @@ export class LoyaltyService {
       },
       include: {
         minMembershipLevel: true,
+        couponTemplate: {
+          select: {
+            id: true,
+            code: true,
+            description: true,
+          },
+        },
         _count: {
           select: { redemptions: true },
         },
@@ -787,7 +947,17 @@ export class LoyaltyService {
       title: string;
       description: string | null;
       pointsCost: number;
+      rewardType: LoyaltyRewardType;
+      startsAt: string | null;
+      endsAt: string | null;
       minMembershipLevelId: string | null;
+      couponTemplateId: string | null;
+      couponPercentage: number | null;
+      couponFixedAmount: number | null;
+      couponMinimumOrderAmount: number | null;
+      couponMaximumDiscountAmount: number | null;
+      couponDurationDays: number | null;
+      couponCodePrefix: string | null;
       color: string | null;
       icon: string | null;
       benefits: string[];
@@ -809,7 +979,47 @@ export class LoyaltyService {
         slug: input.title ? slugify(input.title) : undefined,
         description: input.description,
         pointsCost: input.pointsCost,
+        rewardType: input.rewardType,
+        startsAt:
+          input.startsAt === undefined
+            ? undefined
+            : input.startsAt === null
+              ? null
+              : new Date(input.startsAt),
+        endsAt:
+          input.endsAt === undefined
+            ? undefined
+            : input.endsAt === null
+              ? null
+              : new Date(input.endsAt),
         minMembershipLevelId: input.minMembershipLevelId,
+        couponTemplateId: input.couponTemplateId,
+        couponPercentage:
+          input.couponPercentage === undefined
+            ? undefined
+            : input.couponPercentage === null
+              ? null
+              : new Prisma.Decimal(input.couponPercentage),
+        couponFixedAmount:
+          input.couponFixedAmount === undefined
+            ? undefined
+            : input.couponFixedAmount === null
+              ? null
+              : new Prisma.Decimal(input.couponFixedAmount),
+        couponMinimumOrderAmount:
+          input.couponMinimumOrderAmount === undefined
+            ? undefined
+            : input.couponMinimumOrderAmount === null
+              ? null
+              : new Prisma.Decimal(input.couponMinimumOrderAmount),
+        couponMaximumDiscountAmount:
+          input.couponMaximumDiscountAmount === undefined
+            ? undefined
+            : input.couponMaximumDiscountAmount === null
+              ? null
+              : new Prisma.Decimal(input.couponMaximumDiscountAmount),
+        couponDurationDays: input.couponDurationDays,
+        couponCodePrefix: input.couponCodePrefix,
         color: input.color,
         icon: input.icon,
         benefits: input.benefits ?? undefined,
@@ -819,6 +1029,13 @@ export class LoyaltyService {
       },
       include: {
         minMembershipLevel: true,
+        couponTemplate: {
+          select: {
+            id: true,
+            code: true,
+            description: true,
+          },
+        },
         _count: {
           select: { redemptions: true },
         },
@@ -855,6 +1072,12 @@ export class LoyaltyService {
           where: { id: rewardId },
           include: {
             minMembershipLevel: true,
+            couponTemplate: true,
+            _count: {
+              select: {
+                redemptions: true,
+              },
+            },
           },
         }),
         getActiveLevels(transaction),
@@ -866,7 +1089,12 @@ export class LoyaltyService {
 
       const currentLevel =
         account.membershipLevel ?? resolveMembershipLevel(levels, account.currentPoints);
-      const access = canAccessReward(reward, account.currentPoints, currentLevel);
+      const access = canAccessReward(
+        reward,
+        account.currentPoints,
+        currentLevel,
+        reward._count?.redemptions ?? 0,
+      );
 
       if (!access.isUnlocked) {
         throw new ApiError(400, "Your membership level does not unlock this reward yet.");
@@ -876,17 +1104,8 @@ export class LoyaltyService {
         throw new ApiError(400, "You do not have enough points to redeem this reward.");
       }
 
-      if (reward.stockLimit !== null) {
-        const redemptionCount = await transaction.loyaltyRewardRedemption.count({
-          where: {
-            rewardId,
-            status: LoyaltyRedemptionStatus.REDEEMED,
-          },
-        });
-
-        if (redemptionCount >= reward.stockLimit) {
-          throw new ApiError(400, "This reward is no longer available.");
-        }
+      if (!access.isRewardAvailable) {
+        throw new ApiError(400, "This reward is no longer available.");
       }
 
       const redemption = await transaction.loyaltyRewardRedemption.create({
@@ -900,6 +1119,23 @@ export class LoyaltyService {
         },
       });
 
+      const issuedCoupon = await couponService.createIssuedCouponFromReward(transaction, {
+        userId,
+        reward,
+        redemptionId: redemption.id,
+      });
+
+      await transaction.loyaltyRewardRedemption.update({
+        where: { id: redemption.id },
+        data: {
+          notes: `Redeemed reward ${reward.title} -> coupon ${issuedCoupon.code}`,
+          metadata: {
+            issuedCouponId: issuedCoupon.id,
+            issuedCouponCode: issuedCoupon.code,
+          },
+        },
+      });
+
       await applyPointsDelta(transaction, {
         userId,
         rewardId,
@@ -909,6 +1145,8 @@ export class LoyaltyService {
         description: `Redeemed reward ${reward.title}`,
         metadata: {
           rewardTitle: reward.title,
+          issuedCouponId: issuedCoupon.id,
+          issuedCouponCode: issuedCoupon.code,
         },
       });
 
@@ -919,6 +1157,12 @@ export class LoyaltyService {
           pointsSpent: redemption.pointsSpent,
           status: redemption.status,
           redeemedAt: redemption.redeemedAt,
+        },
+        coupon: {
+          id: issuedCoupon.id,
+          code: issuedCoupon.code,
+          description: issuedCoupon.description,
+          endsAt: issuedCoupon.endsAt,
         },
       };
     });

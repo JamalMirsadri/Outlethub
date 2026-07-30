@@ -1,4 +1,4 @@
-import { CouponDiscountType, CouponStatus, PaymentProvider, PricingTargetType } from "@prisma/client";
+import { CouponDiscountType, CouponStatus, LoyaltyRewardType, PaymentProvider, PricingTargetType } from "@prisma/client";
 import { z } from "zod";
 
 import { siteContentSettingsSchema } from "./site-content.js";
@@ -214,12 +214,17 @@ function validateCouponSchema(
     discountType: CouponDiscountType;
     percentage: number | null;
     fixedAmount: number | null;
+    freeShipping: boolean;
     startsAt: string | null;
     endsAt: string | null;
   }>,
   context: z.RefinementCtx,
 ) {
-  if (value.discountType === CouponDiscountType.PERCENTAGE && !(typeof value.percentage === "number" && value.percentage > 0)) {
+  if (
+    value.discountType === CouponDiscountType.PERCENTAGE &&
+    !value.freeShipping &&
+    !(typeof value.percentage === "number" && value.percentage > 0)
+  ) {
     context.addIssue({
       code: z.ZodIssueCode.custom,
       path: ["percentage"],
@@ -235,7 +240,11 @@ function validateCouponSchema(
     });
   }
 
-  if (value.discountType === CouponDiscountType.FIXED_AMOUNT && !(typeof value.fixedAmount === "number" && value.fixedAmount > 0)) {
+  if (
+    value.discountType === CouponDiscountType.FIXED_AMOUNT &&
+    !value.freeShipping &&
+    !(typeof value.fixedAmount === "number" && value.fixedAmount > 0)
+  ) {
     context.addIssue({
       code: z.ZodIssueCode.custom,
       path: ["fixedAmount"],
@@ -372,21 +381,86 @@ export const updateLoyaltyMembershipLevelSchema = createLoyaltyMembershipLevelSc
   message: "At least one field must be provided.",
 });
 
-export const createLoyaltyRewardSchema = z.object({
+const loyaltyRewardSchemaShape = {
   title: z.string().trim().min(2).max(120),
   description: optionalNullableString,
   pointsCost: z.coerce.number().int().positive(),
+  rewardType: z.nativeEnum(LoyaltyRewardType),
+  startsAt: z.string().datetime().optional().nullable(),
+  endsAt: z.string().datetime().optional().nullable(),
   minMembershipLevelId: z.union([cuidSchema, z.null()]).optional(),
+  couponTemplateId: z.union([cuidSchema, z.null()]).optional(),
+  couponPercentage: optionalNullableMoneySchema,
+  couponFixedAmount: optionalNullableMoneySchema,
+  couponMinimumOrderAmount: optionalNullableMoneySchema,
+  couponMaximumDiscountAmount: optionalNullableMoneySchema,
+  couponDurationDays: z.union([z.coerce.number().int().positive(), z.null()]).optional(),
+  couponCodePrefix: optionalNullableString,
   color: optionalNullableString,
   icon: optionalNullableString,
   benefits: z.array(z.string().trim().min(1).max(180)).max(20).optional(),
   stockLimit: z.union([z.coerce.number().int().positive(), z.null()]).optional(),
   isActive: z.boolean().optional(),
   sortOrder: z.coerce.number().int().min(0).max(1000).optional(),
+};
+
+function validateLoyaltyRewardSchema(
+  value: Partial<{
+    rewardType: LoyaltyRewardType;
+    startsAt: string | null;
+    endsAt: string | null;
+    couponTemplateId: string | null;
+    couponPercentage: number | null;
+    couponFixedAmount: number | null;
+  }>,
+  context: z.RefinementCtx,
+) {
+  if (value.startsAt && value.endsAt && new Date(value.endsAt) < new Date(value.startsAt)) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["endsAt"],
+      message: "End date must be after start date.",
+    });
+  }
+
+  if (value.rewardType === LoyaltyRewardType.PERCENTAGE_DISCOUNT && !(typeof value.couponPercentage === "number" && value.couponPercentage > 0 && value.couponPercentage <= 100)) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["couponPercentage"],
+      message: "Percentage coupon rewards require a value between 0 and 100.",
+    });
+  }
+
+  if (value.rewardType === LoyaltyRewardType.FIXED_AMOUNT_DISCOUNT && !(typeof value.couponFixedAmount === "number" && value.couponFixedAmount > 0)) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["couponFixedAmount"],
+      message: "Fixed amount coupon rewards require a positive amount.",
+    });
+  }
+
+  if (value.rewardType === LoyaltyRewardType.COUPON_TEMPLATE && !value.couponTemplateId) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["couponTemplateId"],
+      message: "Template coupon rewards require a coupon template.",
+    });
+  }
+}
+
+export const createLoyaltyRewardSchema = z.object(loyaltyRewardSchemaShape).superRefine((value, context) => {
+  validateLoyaltyRewardSchema(value, context);
 });
 
-export const updateLoyaltyRewardSchema = createLoyaltyRewardSchema.partial().refine((value) => Object.keys(value).length > 0, {
-  message: "At least one field must be provided.",
+export const updateLoyaltyRewardSchema = z.object(loyaltyRewardSchemaShape).partial().superRefine((value, context) => {
+  if (Object.keys(value).length === 0) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "At least one field must be provided.",
+    });
+  }
+
+  validateLoyaltyRewardSchema(value, context);
 });
 
 export const manualLoyaltyAdjustmentSchema = z.object({
