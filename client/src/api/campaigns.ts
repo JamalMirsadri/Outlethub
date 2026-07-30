@@ -54,6 +54,10 @@ export async function getAdminCampaignOverview() {
   });
 }
 
+export async function getActiveCenterPopup() {
+  return http<CampaignRecord | null>("/campaigns/center-popup");
+}
+
 export async function getAdminCampaign(id: string) {
   return http<CampaignRecord>(`/admin/campaigns/${id}`, {
     token: getRequiredToken(),

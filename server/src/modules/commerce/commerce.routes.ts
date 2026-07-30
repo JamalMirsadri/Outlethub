@@ -58,6 +58,7 @@ commerceRouter.use(attachOptionalAuth);
 
 commerceRouter.get("/cart", asyncHandler(commerceController.getCart.bind(commerceController)));
 commerceRouter.get("/site-content", asyncHandler(commerceController.getSiteContentSettings.bind(commerceController)));
+commerceRouter.get("/campaigns/center-popup", asyncHandler(commerceController.getActiveCenterPopup.bind(commerceController)));
 commerceRouter.post(
   "/cart/items",
   validateBody(addCartItemSchema),

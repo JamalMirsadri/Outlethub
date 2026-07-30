@@ -38,6 +38,28 @@ function validateCampaignSchedule(input: { startsAt?: string | null; endsAt?: st
 }
 
 export class CampaignService {
+  public async getActiveCenterPopup() {
+    const now = new Date();
+
+    const campaign = await prisma.campaign.findFirst({
+      where: {
+        status: CampaignStatus.ACTIVE,
+        displayType: CampaignDisplayType.POPUP,
+        AND: [
+          {
+            OR: [{ startsAt: null }, { startsAt: { lte: now } }],
+          },
+          {
+            OR: [{ endsAt: null }, { endsAt: { gte: now } }],
+          },
+        ],
+      },
+      orderBy: [{ startsAt: "asc" }, { createdAt: "desc" }],
+    });
+
+    return campaign ? mapCampaign(campaign) : null;
+  }
+
   public async getAdminOverview() {
     const campaigns = await prisma.campaign.findMany({
       orderBy: [{ createdAt: "desc" }],

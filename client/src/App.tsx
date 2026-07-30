@@ -1,4 +1,5 @@
 import { Toaster } from "@/components/ui/toaster";
+import CenterCampaignPopup from "@/components/campaigns/CenterCampaignPopup";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter as Router, Navigate, Route, Routes } from "react-router-dom";
 
@@ -173,6 +174,7 @@ function App() {
                 <QueryClientProvider client={queryClientInstance}>
                   <ScrollToTop />
                   <AppRoutes />
+                  <CenterCampaignPopup />
                   <Toaster />
                 </QueryClientProvider>
               </ThemeProvider>

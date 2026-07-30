@@ -158,6 +158,10 @@ export class CommerceController {
     response.status(200).json(await commerceAdminService.getSiteContentSettings());
   }
 
+  public async getActiveCenterPopup(_request: Request, response: Response) {
+    response.status(200).json(await campaignService.getActiveCenterPopup());
+  }
+
   public async updateSiteContentSettings(request: Request, response: Response) {
     response.status(200).json(await commerceAdminService.updateSiteContentSettings(request.body));
   }
