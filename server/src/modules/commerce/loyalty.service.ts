@@ -71,6 +71,8 @@ const DEFAULT_POINT_RULE = {
   notes: "1 point is awarded for every 1 EUR on completed orders.",
 };
 
+const LOYALTY_RECONCILE_ORDER_STATUSES = ["DELIVERED", "CANCELLED", "REFUNDED"] as const;
+
 export type PrismaExecutor = typeof prisma | Prisma.TransactionClient;
 
 export function toNumber(value: Prisma.Decimal | null | undefined): number | null {
@@ -315,6 +317,32 @@ async function getActiveLevels(executor: PrismaExecutor) {
   });
 }
 
+async function synchronizeEligibleOrderPoints(
+  executor: PrismaExecutor,
+  filter?: {
+    userId?: string;
+  },
+) {
+  const eligibleOrders = await executor.order.findMany({
+    where: {
+      ...(filter?.userId ? { userId: filter.userId } : {}),
+      status: {
+        in: [...LOYALTY_RECONCILE_ORDER_STATUSES],
+      },
+    },
+    select: {
+      id: true,
+    },
+    orderBy: {
+      createdAt: "asc",
+    },
+  });
+
+  for (const order of eligibleOrders) {
+    await loyaltyService.reconcileOrderPoints(order.id);
+  }
+}
+
 function resolveMembershipLevel(levels: LoyaltyMembershipLevel[], currentPoints: number) {
   let resolved = levels[0] ?? null;
 
@@ -454,6 +482,7 @@ function canAccessReward(
 export class LoyaltyService {
   public async getAdminOverview() {
     await ensureBootstrap();
+    await synchronizeEligibleOrderPoints(prisma);
 
     const [rules, levels, rewards, accountsAggregate, recentTransactions] = await Promise.all([
       prisma.loyaltyPointRule.findMany({
@@ -540,6 +569,7 @@ export class LoyaltyService {
 
   public async getCustomerRewards(userId: string) {
     await ensureBootstrap();
+    await synchronizeEligibleOrderPoints(prisma, { userId });
 
     const [account, levels, rewards, transactions, redemptions, issuedCoupons] = await Promise.all([
       getOrCreateAccount(prisma, userId),
