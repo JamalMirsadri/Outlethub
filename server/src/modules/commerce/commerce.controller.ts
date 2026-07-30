@@ -10,6 +10,7 @@ import { ordersService } from "./orders.service.js";
 import { paymentsService } from "./payments.service.js";
 import { pricingService } from "./pricing.service.js";
 import { procurementService } from "./procurement.service.js";
+import { referralService } from "./referral.service.js";
 
 const CART_COOKIE_NAME = "outlethub_cart_token";
 const cartCookieOptions = {
@@ -343,6 +344,51 @@ export class CommerceController {
 
   public async redeemReward(request: Request, response: Response) {
     response.status(200).json(await loyaltyService.redeemReward(requireUserId(request), getParam(request, "id")));
+  }
+
+  public async getCustomerReferrals(request: Request, response: Response) {
+    response.status(200).json(await referralService.getCustomerOverview(requireUserId(request)));
+  }
+
+  public async getAdminReferrals(_request: Request, response: Response) {
+    response.status(200).json(await referralService.getAdminOverview());
+  }
+
+  public async createReferralRule(request: Request, response: Response) {
+    response.status(201).json(await referralService.createRule(request.body));
+  }
+
+  public async updateReferralRule(request: Request, response: Response) {
+    response.status(200).json(await referralService.updateRule(getParam(request, "id"), request.body));
+  }
+
+  public async deleteReferralRule(request: Request, response: Response) {
+    await referralService.deleteRule(getParam(request, "id"));
+    response.status(204).send();
+  }
+
+  public async createReferralRelationship(request: Request, response: Response) {
+    response.status(201).json(await referralService.createRelationship(requireUserId(request), request.body));
+  }
+
+  public async updateReferralRelationship(request: Request, response: Response) {
+    response.status(200).json(
+      await referralService.updateRelationship(requireUserId(request), getParam(request, "id"), request.body),
+    );
+  }
+
+  public async deleteReferralRelationship(request: Request, response: Response) {
+    await referralService.deleteRelationship(requireUserId(request), getParam(request, "id"));
+    response.status(204).send();
+  }
+
+  public async updateReferralUserCode(request: Request, response: Response) {
+    response.status(200).json(
+      await referralService.updateUserReferralCode(requireUserId(request), {
+        userId: getParam(request, "id"),
+        referralCode: request.body.referralCode,
+      }),
+    );
   }
 
   public async uploadPaymentReceipt(request: Request, response: Response) {

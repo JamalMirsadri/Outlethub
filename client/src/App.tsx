@@ -29,6 +29,7 @@ import AddressesPage from "@/pages/dashboard/AddressesPage";
 import PaymentsPage from "@/pages/dashboard/PaymentsPage";
 import NotificationsPage from "@/pages/dashboard/NotificationsPage";
 import MyRewards from "@/pages/dashboard/MyRewards";
+import MyReferrals from "@/pages/dashboard/MyReferrals";
 import AdminLayout from "@/components/admin/AdminLayout";
 import AdminDashboard from "@/pages/admin/AdminDashboard";
 import AdminProducts from "@/pages/admin/AdminProducts";
@@ -69,6 +70,7 @@ import AdminSyncHistory from "@/pages/admin/AdminSyncHistory";
 import AdminSiteContent from "@/pages/admin/AdminSiteContent";
 import AdminCoupons from "@/pages/admin/AdminCoupons";
 import AdminLoyalty from "@/pages/admin/AdminLoyalty";
+import AdminReferrals from "@/pages/admin/AdminReferrals";
 
 function AppRoutes() {
   return (
@@ -95,6 +97,7 @@ function AppRoutes() {
           <Route path="/dashboard/addresses" element={<AddressesPage />} />
           <Route path="/dashboard/payments" element={<PaymentsPage />} />
           <Route path="/dashboard/rewards" element={<MyRewards />} />
+          <Route path="/dashboard/referrals" element={<MyReferrals />} />
         </Route>
       </Route>
 
@@ -123,6 +126,7 @@ function AppRoutes() {
           <Route path="/admin/site-content" element={<AdminSiteContent />} />
           <Route path="/admin/coupons" element={<AdminCoupons />} />
           <Route path="/admin/loyalty" element={<AdminLoyalty />} />
+          <Route path="/admin/referrals" element={<AdminReferrals />} />
           <Route path="/admin/sources" element={<AdminSources />} />
           <Route path="/admin/connectors" element={<AdminConnectors />} />
           <Route path="/admin/connectors/wizard" element={<AdminConnectorWizard />} />

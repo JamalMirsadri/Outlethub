@@ -66,6 +66,7 @@ async function seedDemoAdmin(): Promise<void> {
     },
     create: {
       email: DEMO_ADMIN_EMAIL,
+      referralCode: "ADMINDEMO",
       fullName: DEMO_ADMIN_NAME,
       passwordHash,
       roleId: adminRole.id,

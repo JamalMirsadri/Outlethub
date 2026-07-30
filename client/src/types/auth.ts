@@ -23,6 +23,7 @@ export interface RegisterPayload {
   password: string;
   confirmPassword: string;
   fullName?: string;
+  referralCode?: string;
 }
 
 export interface LoginPayload {

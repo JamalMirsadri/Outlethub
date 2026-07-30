@@ -7,6 +7,7 @@ export const registerSchema = z
     password: z.string().min(8).max(128),
     confirmPassword: z.string().min(8).max(128),
     fullName: z.string().min(2).max(100).optional(),
+    referralCode: z.string().trim().min(4).max(32).optional(),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords do not match",

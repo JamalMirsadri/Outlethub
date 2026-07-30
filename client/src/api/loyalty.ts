@@ -116,7 +116,14 @@ export interface LoyaltyRewardPayload {
 
 export interface LoyaltyTransactionRecord {
   id: string;
-  type: "ORDER_EARN" | "ORDER_REVERSAL" | "REWARD_REDEMPTION" | "MANUAL_ADJUSTMENT";
+  type:
+    | "ORDER_EARN"
+    | "ORDER_REVERSAL"
+    | "REWARD_REDEMPTION"
+    | "MANUAL_ADJUSTMENT"
+    | "REFERRAL_REWARD"
+    | "REFERRAL_REVERSAL"
+    | "REFERRAL_MANUAL_ADJUSTMENT";
   pointsDelta: number;
   balanceAfter: number;
   description: string;

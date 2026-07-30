@@ -12,6 +12,7 @@ import { pricingService } from "./pricing.service.js";
 import { procurementService } from "./procurement.service.js";
 import { couponService } from "./coupon.service.js";
 import { loyaltyService } from "./loyalty.service.js";
+import { referralService } from "./referral.service.js";
 import { notificationsService } from "../notifications/notifications.service.js";
 
 function toNumber(value: Prisma.Decimal | null | undefined): number {
@@ -837,6 +838,7 @@ export class OrdersService {
       message: `Order ${persistedOrder.orderNumber} created`,
     })
       .catch(() => undefined);
+    await referralService.syncOrderReferralRewards(persistedOrder.id);
     return mapOrder(persistedOrder);
   }
 
@@ -935,6 +937,8 @@ export class OrdersService {
     if (status === "DELIVERED" || status === "CANCELLED" || status === "REFUNDED") {
       await loyaltyService.reconcileOrderPoints(order.id);
     }
+
+    await referralService.syncOrderReferralRewards(order.id);
 
     return mapOrder(order);
   }
@@ -1102,6 +1106,8 @@ export class OrdersService {
       await loyaltyService.reconcileOrderPoints(order.id);
     }
 
+    await referralService.syncOrderReferralRewards(order.id);
+
     return mapOrder(order);
   }
 
@@ -1172,6 +1178,7 @@ export class OrdersService {
     });
 
     await loyaltyService.reconcileOrderPoints(refunded.id);
+    await referralService.syncOrderReferralRewards(refunded.id);
 
     return mapOrder(refunded);
   }

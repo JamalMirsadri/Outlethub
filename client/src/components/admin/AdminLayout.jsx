@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link, useLocation, Outlet } from "react-router-dom";
-import { LayoutDashboard, Package, ShoppingCart, Tag, Layers3, Link2, Upload, Bot, DollarSign, BarChart3, Activity, Bell, History, ChevronLeft, Menu, Sun, Moon, Globe, Truck, ClipboardList, CreditCard, Landmark, Users, FilePenLine, Award, TicketPercent } from "lucide-react";
+import { LayoutDashboard, Package, ShoppingCart, Tag, Layers3, Link2, Upload, Bot, DollarSign, BarChart3, Activity, Bell, History, ChevronLeft, Menu, Sun, Moon, Globe, Truck, ClipboardList, CreditCard, Landmark, Users, FilePenLine, Award, TicketPercent, GitBranch } from "lucide-react";
 import { useTheme } from "@/components/ThemeProvider";
 
 const NAV = [
@@ -20,6 +20,7 @@ const NAV = [
   { icon: FilePenLine, label: "Site Content", path: "/admin/site-content" },
   { icon: TicketPercent, label: "Coupons", path: "/admin/coupons" },
   { icon: Award, label: "Loyalty", path: "/admin/loyalty" },
+  { icon: GitBranch, label: "Referrals", path: "/admin/referrals" },
   { icon: Globe, label: "Sources", path: "/admin/sources" },
   { icon: Bot, label: "Connectors", path: "/admin/connectors" },
   { icon: Bot, label: "Wizard", path: "/admin/connectors/wizard" },

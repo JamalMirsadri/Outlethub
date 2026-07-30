@@ -1,5 +1,5 @@
-import { useRef, useState, type ChangeEvent, type FormEvent } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,9 +12,11 @@ import { toast } from "@/components/ui/use-toast";
 import { register, resendVerification, verifyEmail } from "@/services/auth.service";
 
 export default function Register() {
+  const [searchParams] = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [referralCode, setReferralCode] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showOtp, setShowOtp] = useState(false);
@@ -22,6 +24,13 @@ export default function Register() {
   const registerRequestRef = useRef(false);
   const verifyRequestRef = useRef(false);
   const resendRequestRef = useRef(false);
+
+  useEffect(() => {
+    const referralCodeFromQuery = searchParams.get("ref")?.trim().toUpperCase() ?? "";
+    if (referralCodeFromQuery) {
+      setReferralCode(referralCodeFromQuery);
+    }
+  }, [searchParams]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -42,6 +51,7 @@ export default function Register() {
         email,
         password,
         confirmPassword,
+        referralCode: referralCode.trim().toUpperCase() || undefined,
       });
       setShowOtp(true);
     } catch (requestError: unknown) {
@@ -240,6 +250,20 @@ export default function Register() {
               required
             />
           </div>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="referralCode">Referral Code</Label>
+          <Input
+            id="referralCode"
+            type="text"
+            autoComplete="off"
+            placeholder="Optional"
+            value={referralCode}
+            onChange={(event: ChangeEvent<HTMLInputElement>) =>
+              setReferralCode(event.target.value.toUpperCase())
+            }
+            className="h-12"
+          />
         </div>
         <Button type="submit" className="w-full h-12 font-medium" disabled={loading}>
           {loading ? (

@@ -71,9 +71,9 @@ const DEFAULT_POINT_RULE = {
   notes: "1 point is awarded for every 1 EUR on completed orders.",
 };
 
-type PrismaExecutor = typeof prisma | Prisma.TransactionClient;
+export type PrismaExecutor = typeof prisma | Prisma.TransactionClient;
 
-function toNumber(value: Prisma.Decimal | null | undefined): number | null {
+export function toNumber(value: Prisma.Decimal | null | undefined): number | null {
   if (!value) {
     return null;
   }
@@ -94,7 +94,7 @@ function slugify(value: string): string {
     .replace(/-{2,}/g, "-");
 }
 
-function calculatePoints(orderAmount: number, rule: { spendAmount: Prisma.Decimal; pointsAwarded: number }): number {
+export function calculatePoints(orderAmount: number, rule: { spendAmount: Prisma.Decimal; pointsAwarded: number }): number {
   const spendAmount = Number(rule.spendAmount);
 
   if (!(orderAmount > 0) || !(spendAmount > 0) || !(rule.pointsAwarded > 0)) {
@@ -349,7 +349,7 @@ async function syncMembershipLevel(
   return currentLevel;
 }
 
-async function getOrCreateAccount(executor: PrismaExecutor, userId: string) {
+export async function getOrCreateAccount(executor: PrismaExecutor, userId: string) {
   const created = await executor.loyaltyAccount.upsert({
     where: { userId },
     update: {},
@@ -368,7 +368,7 @@ async function getOrCreateAccount(executor: PrismaExecutor, userId: string) {
   });
 }
 
-async function getDefaultRule(executor: PrismaExecutor) {
+export async function getDefaultRule(executor: PrismaExecutor) {
   return executor.loyaltyPointRule.findFirst({
     where: {
       isActive: true,
@@ -377,7 +377,7 @@ async function getDefaultRule(executor: PrismaExecutor) {
   });
 }
 
-async function applyPointsDelta(
+export async function applyPointsDelta(
   executor: PrismaExecutor,
   input: {
     userId: string;
@@ -387,6 +387,7 @@ async function applyPointsDelta(
     orderId?: string | null;
     rewardId?: string | null;
     redemptionId?: string | null;
+    referralRewardId?: string | null;
     actorUserId?: string | null;
     metadata?: Prisma.JsonValue;
   },
@@ -415,6 +416,7 @@ async function applyPointsDelta(
       orderId: input.orderId ?? null,
       rewardId: input.rewardId ?? null,
       redemptionId: input.redemptionId ?? null,
+      referralRewardId: input.referralRewardId ?? null,
       actorUserId: input.actorUserId ?? null,
       type: input.type,
       pointsDelta: input.pointsDelta,

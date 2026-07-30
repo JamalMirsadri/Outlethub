@@ -1,4 +1,13 @@
-import { CouponDiscountType, CouponStatus, LoyaltyRewardType, PaymentProvider, PricingTargetType } from "@prisma/client";
+import {
+  CouponDiscountType,
+  CouponStatus,
+  LoyaltyRewardType,
+  PaymentProvider,
+  PricingTargetType,
+  ReferralRelationshipStatus,
+  ReferralRuleRewardType,
+  ReferralTriggerType,
+} from "@prisma/client";
 import { z } from "zod";
 
 import { siteContentSettingsSchema } from "./site-content.js";
@@ -472,6 +481,85 @@ export const manualLoyaltyAdjustmentSchema = z.object({
 });
 
 export const redeemLoyaltyRewardSchema = z.object({});
+
+const referralRuleSchemaShape = {
+  name: z.string().trim().min(2).max(120),
+  description: optionalNullableString,
+  trigger: z.nativeEnum(ReferralTriggerType),
+  levelNumber: z.coerce.number().int().positive().max(20),
+  rewardType: z.nativeEnum(ReferralRuleRewardType),
+  rewardValue: z.coerce.number().positive(),
+  minOrderAmount: optionalNullableMoneySchema,
+  maxRewardPoints: z.union([z.coerce.number().int().positive(), z.null()]).optional(),
+  maxReferralCount: z.union([z.coerce.number().int().positive(), z.null()]).optional(),
+  expiresInDays: z.union([z.coerce.number().int().positive(), z.null()]).optional(),
+  conditions: z.record(z.string(), z.unknown()).optional().nullable(),
+  startsAt: z.string().datetime().optional().nullable(),
+  endsAt: z.string().datetime().optional().nullable(),
+  isActive: z.boolean().optional(),
+  sortOrder: z.coerce.number().int().min(0).max(1000).optional(),
+};
+
+function validateReferralRuleSchema(
+  value: Partial<{
+    trigger: ReferralTriggerType;
+    rewardType: ReferralRuleRewardType;
+    startsAt: string | null;
+    endsAt: string | null;
+  }>,
+  context: z.RefinementCtx,
+) {
+  if (value.startsAt && value.endsAt && new Date(value.endsAt) < new Date(value.startsAt)) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["endsAt"],
+      message: "End date must be after start date.",
+    });
+  }
+
+  if (value.trigger === ReferralTriggerType.SIGNUP && value.rewardType === ReferralRuleRewardType.PERCENTAGE) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["rewardType"],
+      message: "Signup referral rules must use fixed points.",
+    });
+  }
+}
+
+export const createReferralRuleSchema = z.object(referralRuleSchemaShape).superRefine((value, context) => {
+  validateReferralRuleSchema(value, context);
+});
+
+export const updateReferralRuleSchema = z.object(referralRuleSchemaShape).partial().superRefine((value, context) => {
+  if (Object.keys(value).length === 0) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "At least one field must be provided.",
+    });
+  }
+
+  validateReferralRuleSchema(value, context);
+});
+
+export const createReferralRelationshipSchema = z.object({
+  referrerUserId: cuidSchema,
+  referredUserId: cuidSchema,
+  notes: optionalNullableString,
+});
+
+export const updateReferralRelationshipSchema = z
+  .object({
+    referrerUserId: cuidSchema.optional(),
+    notes: optionalNullableString,
+    status: z.nativeEnum(ReferralRelationshipStatus).optional(),
+  })
+  .refine((value) => Object.keys(value).length > 0, {
+    message: "At least one field must be provided.",
+  });
+
+export const updateReferralUserCodeSchema = z.object({
+  referralCode: z.string().trim().min(4).max(32),
+});
 
 export const updateProcurementTaskSchema = z
   .object({

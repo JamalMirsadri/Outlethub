@@ -14,6 +14,8 @@ import {
   createLoyaltyMembershipLevelSchema,
   createLoyaltyPointRuleSchema,
   createLoyaltyRewardSchema,
+  createReferralRelationshipSchema,
+  createReferralRuleSchema,
   createPricingRuleSchema,
   entityIdParamsSchema,
   manualLoyaltyAdjustmentSchema,
@@ -27,6 +29,9 @@ import {
   updateLoyaltyRewardSchema,
   updateProcurementTaskSchema,
   updatePreferredCurrencySchema,
+  updateReferralRelationshipSchema,
+  updateReferralRuleSchema,
+  updateReferralUserCodeSchema,
   updateAdminOrderSchema,
   updateBusinessSettingsSchema,
   updateCouponSchema,
@@ -135,6 +140,7 @@ commerceRouter.delete(
 commerceRouter.get("/orders", requireAuth, asyncHandler(commerceController.listCustomerOrders.bind(commerceController)));
 commerceRouter.get("/payments", requireAuth, asyncHandler(commerceController.listCustomerPayments.bind(commerceController)));
 commerceRouter.get("/loyalty/me", requireAuth, asyncHandler(commerceController.getCustomerRewards.bind(commerceController)));
+commerceRouter.get("/referrals/me", requireAuth, asyncHandler(commerceController.getCustomerReferrals.bind(commerceController)));
 commerceRouter.post(
   "/loyalty/rewards/:id/redeem",
   requireAuth,
@@ -170,6 +176,7 @@ commerceRouter.use(
     "/admin/exchange-rates",
     "/admin/loyalty",
     "/admin/coupons",
+    "/admin/referrals",
   ],
   requireAuth,
   requireRoles(RoleCode.SUPER_ADMIN, RoleCode.ADMIN),
@@ -326,6 +333,48 @@ commerceRouter.get(
 commerceRouter.get(
   "/admin/coupons",
   asyncHandler(commerceController.getAdminCouponOverview.bind(commerceController)),
+);
+commerceRouter.get(
+  "/admin/referrals",
+  asyncHandler(commerceController.getAdminReferrals.bind(commerceController)),
+);
+commerceRouter.post(
+  "/admin/referrals/rules",
+  validateBody(createReferralRuleSchema),
+  asyncHandler(commerceController.createReferralRule.bind(commerceController)),
+);
+commerceRouter.patch(
+  "/admin/referrals/rules/:id",
+  validateParams(entityIdParamsSchema),
+  validateBody(updateReferralRuleSchema),
+  asyncHandler(commerceController.updateReferralRule.bind(commerceController)),
+);
+commerceRouter.delete(
+  "/admin/referrals/rules/:id",
+  validateParams(entityIdParamsSchema),
+  asyncHandler(commerceController.deleteReferralRule.bind(commerceController)),
+);
+commerceRouter.post(
+  "/admin/referrals/relationships",
+  validateBody(createReferralRelationshipSchema),
+  asyncHandler(commerceController.createReferralRelationship.bind(commerceController)),
+);
+commerceRouter.patch(
+  "/admin/referrals/relationships/:id",
+  validateParams(entityIdParamsSchema),
+  validateBody(updateReferralRelationshipSchema),
+  asyncHandler(commerceController.updateReferralRelationship.bind(commerceController)),
+);
+commerceRouter.delete(
+  "/admin/referrals/relationships/:id",
+  validateParams(entityIdParamsSchema),
+  asyncHandler(commerceController.deleteReferralRelationship.bind(commerceController)),
+);
+commerceRouter.patch(
+  "/admin/referrals/users/:id/code",
+  validateParams(entityIdParamsSchema),
+  validateBody(updateReferralUserCodeSchema),
+  asyncHandler(commerceController.updateReferralUserCode.bind(commerceController)),
 );
 commerceRouter.post(
   "/admin/coupons",

@@ -12,6 +12,7 @@ import {
   verifyRefreshToken,
 } from "../../services/jwt.service.js";
 import { notificationsService } from "../notifications/notifications.service.js";
+import { referralService } from "../commerce/referral.service.js";
 import type {
   AdminResetUserPasswordInput,
   AdminUsersQueryInput,
@@ -343,17 +344,33 @@ export class AuthService {
 
       const passwordHash = await hashPassword(input.password);
 
-      const user = await prisma.user.create({
-        data: {
+      const user = await prisma.$transaction(async (transaction) => {
+        const fullName = input.fullName?.trim() || null;
+        const referralCode = await referralService.createUniqueReferralCode(transaction, {
           email: normalizedEmail,
-          passwordHash,
-          fullName: input.fullName?.trim() || null,
-          status: "PENDING",
-          roleId: customerRole.id,
-        },
-        include: {
-          role: true,
-        },
+          fullName,
+        });
+
+        const createdUser = await transaction.user.create({
+          data: {
+            email: normalizedEmail,
+            referralCode,
+            passwordHash,
+            fullName,
+            status: "PENDING",
+            roleId: customerRole.id,
+          },
+          include: {
+            role: true,
+          },
+        });
+
+        await referralService.registerReferralForNewUser(transaction, {
+          userId: createdUser.id,
+          referralCode: input.referralCode ?? null,
+        });
+
+        return createdUser;
       });
 
       // #region debug-point A:register-user-created

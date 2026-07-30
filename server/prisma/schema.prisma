@@ -340,6 +340,9 @@ enum LoyaltyTransactionType {
   ORDER_REVERSAL
   REWARD_REDEMPTION
   MANUAL_ADJUSTMENT
+  REFERRAL_REWARD
+  REFERRAL_REVERSAL
+  REFERRAL_MANUAL_ADJUSTMENT
 }
 
 enum LoyaltyRedemptionStatus {
@@ -364,6 +367,30 @@ enum LoyaltyRewardType {
   COUPON_TEMPLATE
 }
 
+enum ReferralRelationshipStatus {
+  ACTIVE
+  REMOVED
+}
+
+enum ReferralTriggerType {
+  SIGNUP
+  FIRST_ORDER
+  REPEAT_ORDER
+}
+
+enum ReferralRuleRewardType {
+  FIXED_POINTS
+  PERCENTAGE
+}
+
+enum ReferralRewardStatus {
+  PENDING
+  AWARDED
+  REVERSED
+  CANCELLED
+  EXPIRED
+}
+
 model Role {
   id          String    @id @default(cuid())
   code        RoleCode  @unique
@@ -378,6 +405,7 @@ model User {
   id                  String                  @id @default(cuid())
   roleId              String
   email               String                  @unique
+  referralCode        String                  @unique
   passwordHash        String?
   fullName            String?
   firstName           String?
@@ -421,6 +449,13 @@ model User {
   couponCartApplications  CouponCartApplication[]
   couponOrderApplications CouponOrderApplication[]
   issuedCoupons       Coupon[]                 @relation("IssuedCouponUser")
+  directReferrals     ReferralRelationship[]   @relation("ReferralRelationshipReferrer")
+  referredBy          ReferralRelationship?    @relation("ReferralRelationshipReferred")
+  createdReferralRelationships ReferralRelationship[] @relation("ReferralRelationshipCreatedBy")
+  referralAncestors   ReferralClosure[]        @relation("ReferralClosureDescendant")
+  referralDescendants ReferralClosure[]        @relation("ReferralClosureAncestor")
+  referralRewardsEarned ReferralReward[]       @relation("ReferralRewardBeneficiary")
+  referralRewardsGenerated ReferralReward[]    @relation("ReferralRewardSource")
   createdAt           DateTime                @default(now())
   updatedAt           DateTime                @updatedAt
 
@@ -834,6 +869,7 @@ model Order {
   paymentRefunds          PaymentRefund[]
   loyaltyAward            LoyaltyOrderPointAward?
   loyaltyTransactions     LoyaltyPointTransaction[]
+  referralRewards         ReferralReward[]
   couponApplication       CouponOrderApplication?
   notifications           Notification[]
   notificationEvents      NotificationEvent[]
@@ -2067,6 +2103,7 @@ model LoyaltyPointTransaction {
   orderId       String?
   rewardId      String?
   redemptionId  String?
+  referralRewardId String?              @unique
   actorUserId   String?
   type          LoyaltyTransactionType
   pointsDelta   Int
@@ -2078,6 +2115,7 @@ model LoyaltyPointTransaction {
   order         Order?                 @relation(fields: [orderId], references: [id], onDelete: SetNull)
   reward        LoyaltyReward?         @relation(fields: [rewardId], references: [id], onDelete: SetNull)
   redemption    LoyaltyRewardRedemption? @relation(fields: [redemptionId], references: [id], onDelete: SetNull)
+  referralReward ReferralReward?       @relation(fields: [referralRewardId], references: [id], onDelete: SetNull)
   actorUser     User?                  @relation("LoyaltyTransactionActor", fields: [actorUserId], references: [id], onDelete: SetNull)
   createdAt     DateTime               @default(now())
 
@@ -2086,6 +2124,7 @@ model LoyaltyPointTransaction {
   @@index([orderId])
   @@index([rewardId])
   @@index([redemptionId])
+  @@index([referralRewardId])
   @@index([actorUserId])
   @@index([type, createdAt])
 }
@@ -2155,6 +2194,105 @@ model Coupon {
   @@index([endsAt])
   @@index([issuedToUserId])
   @@index([sourceRewardId])
+}
+
+model ReferralRelationship {
+  id               String                     @id @default(cuid())
+  referrerUserId   String
+  referredUserId   String                     @unique
+  referralCodeUsed String?
+  sourceChannel    String?
+  status           ReferralRelationshipStatus @default(ACTIVE)
+  notes            String?
+  createdByUserId  String?
+  referrerUser     User                       @relation("ReferralRelationshipReferrer", fields: [referrerUserId], references: [id], onDelete: Cascade)
+  referredUser     User                       @relation("ReferralRelationshipReferred", fields: [referredUserId], references: [id], onDelete: Cascade)
+  createdByUser    User?                      @relation("ReferralRelationshipCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  rewards          ReferralReward[]
+  createdAt        DateTime                   @default(now())
+  updatedAt        DateTime                   @updatedAt
+
+  @@index([referrerUserId, status, createdAt])
+  @@index([referredUserId, status])
+  @@index([createdByUserId])
+}
+
+model ReferralClosure {
+  ancestorUserId   String
+  descendantUserId String
+  depth            Int
+  ancestorUser     User     @relation("ReferralClosureAncestor", fields: [ancestorUserId], references: [id], onDelete: Cascade)
+  descendantUser   User     @relation("ReferralClosureDescendant", fields: [descendantUserId], references: [id], onDelete: Cascade)
+  createdAt        DateTime @default(now())
+
+  @@id([ancestorUserId, descendantUserId])
+  @@index([ancestorUserId, depth])
+  @@index([descendantUserId, depth])
+}
+
+model ReferralRule {
+  id              String                 @id @default(cuid())
+  name            String
+  description     String?
+  trigger         ReferralTriggerType
+  levelNumber     Int
+  rewardType      ReferralRuleRewardType
+  rewardValue     Decimal                @db.Decimal(10, 2)
+  minOrderAmount  Decimal?               @db.Decimal(10, 2)
+  maxRewardPoints Int?
+  maxReferralCount Int?
+  expiresInDays   Int?
+  conditions      Json?
+  startsAt        DateTime?
+  endsAt          DateTime?
+  isActive        Boolean                @default(true)
+  sortOrder       Int                    @default(0)
+  rewards         ReferralReward[]
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+
+  @@index([trigger, levelNumber, isActive])
+  @@index([startsAt, endsAt])
+  @@index([sortOrder])
+}
+
+model ReferralReward {
+  id                  String               @id @default(cuid())
+  relationshipId      String?
+  ruleId              String?
+  beneficiaryUserId   String
+  sourceUserId        String
+  orderId             String?
+  eventKey            String               @unique
+  trigger             ReferralTriggerType
+  levelNumber         Int
+  rewardType          ReferralRuleRewardType
+  rewardValue         Decimal              @db.Decimal(10, 2)
+  basePoints          Int?
+  pointsAwarded       Int
+  status              ReferralRewardStatus @default(PENDING)
+  title               String
+  description         String?
+  metadata            Json?
+  pendingAt           DateTime?
+  awardedAt           DateTime?
+  reversedAt          DateTime?
+  expiresAt           DateTime?
+  relationship        ReferralRelationship? @relation(fields: [relationshipId], references: [id], onDelete: SetNull)
+  rule                ReferralRule?        @relation(fields: [ruleId], references: [id], onDelete: SetNull)
+  beneficiaryUser     User                 @relation("ReferralRewardBeneficiary", fields: [beneficiaryUserId], references: [id], onDelete: Cascade)
+  sourceUser          User                 @relation("ReferralRewardSource", fields: [sourceUserId], references: [id], onDelete: Cascade)
+  order               Order?               @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  loyaltyTransaction  LoyaltyPointTransaction?
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+
+  @@index([beneficiaryUserId, status, createdAt])
+  @@index([sourceUserId, createdAt])
+  @@index([orderId])
+  @@index([ruleId])
+  @@index([relationshipId])
+  @@index([trigger, levelNumber])
 }
 
 model CouponCartApplication {
