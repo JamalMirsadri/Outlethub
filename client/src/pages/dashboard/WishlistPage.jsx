@@ -3,8 +3,10 @@ import { appClient } from "@/api/appClient";
 import { Heart, Trash2, ExternalLink } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { useTranslation } from "react-i18next";
 
 export default function WishlistPage() {
+  const { t } = useTranslation(["dashboard", "common", "product"]);
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -24,13 +26,13 @@ export default function WishlistPage() {
 
   return (
     <div>
-      <h2 className="font-display text-xl font-bold mb-6">Wishlist</h2>
+      <h2 className="font-display text-xl font-bold mb-6">{t("dashboard.wishlist")}</h2>
       {items.length === 0 ? (
         <div className="text-center py-16 border border-border rounded-xl">
           <Heart className="w-10 h-10 mx-auto text-muted-foreground mb-3" />
-          <p className="text-muted-foreground">Your wishlist is empty</p>
+          <p className="text-muted-foreground">{t("common.noResults")}</p>
           <Button asChild variant="outline" className="mt-4 rounded-full">
-            <Link to="/shop">Browse Products</Link>
+            <Link to="/shop">{t("common.viewAll")}</Link>
           </Button>
         </div>
       ) : (
@@ -59,4 +61,3 @@ export default function WishlistPage() {
     </div>
   );
 }
-

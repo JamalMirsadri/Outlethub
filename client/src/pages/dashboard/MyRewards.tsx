@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { getMyRewards, redeemLoyaltyReward, type LoyaltyCustomerRewardsResponse } from "@/api/loyalty";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -51,23 +52,24 @@ function formatRewardType(value: string) {
     .replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
-function formatCouponAssignmentSource(value: "REWARD" | "DIRECT" | "MEMBERSHIP" | "PUBLIC") {
-  switch (value) {
-    case "DIRECT":
-      return "Assigned";
-    case "MEMBERSHIP":
-      return "Membership";
-    case "PUBLIC":
-      return "Available";
-    default:
-      return "Reward";
-  }
-}
-
 export default function MyRewards() {
+  const { t } = useTranslation();
   const [data, setData] = useState(EMPTY_REWARDS);
   const [loading, setLoading] = useState(true);
   const [redeemingRewardId, setRedeemingRewardId] = useState("");
+
+  const formatCouponAssignmentSource = (value: "REWARD" | "DIRECT" | "MEMBERSHIP" | "PUBLIC") => {
+    switch (value) {
+      case "DIRECT":
+        return "Assigned";
+      case "MEMBERSHIP":
+        return "Membership";
+      case "PUBLIC":
+        return "Available";
+      default:
+        return "Reward";
+    }
+  };
 
   const load = async ({ silent = false } = {}) => {
     if (!silent) {
@@ -78,8 +80,8 @@ export default function MyRewards() {
       setData(await getMyRewards());
     } catch (error) {
       toast({
-        title: "Unable to load rewards",
-        description: error instanceof Error ? error.message : "Please try again.",
+        title: t("common.somethingWentWrong"),
+        description: error instanceof Error ? error.message : t("common.tryAgain"),
         variant: "destructive",
       });
     } finally {
@@ -118,10 +120,10 @@ export default function MyRewards() {
     <div className="space-y-8">
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
-          <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Loyalty Program</p>
-          <h2 className="mt-2 font-display text-3xl font-semibold">My Rewards</h2>
+          <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">{t("dashboard.membershipProgress")}</p>
+          <h2 className="mt-2 font-display text-3xl font-semibold">{t("dashboard.myRewardsTitle")}</h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            Track your points, unlock higher membership levels, and redeem exclusive OutletHub rewards.
+            {t("dashboard.myRewardsSubtitle")}
           </p>
         </div>
         <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2">
@@ -131,16 +133,16 @@ export default function MyRewards() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Current Points" value={data.account.currentPoints} hint="Available to redeem right now" />
-        <StatCard label="Total Earned" value={data.account.totalEarnedPoints} hint="Points from completed orders" />
-        <StatCard label="Total Spent" value={data.account.totalSpentPoints} hint="Redeemed and deducted points" />
+        <StatCard label={t("dashboard.currentPoints")} value={data.account.currentPoints} hint={t("dashboard.currentPointsDesc")} />
+        <StatCard label={t("dashboard.totalEarned")} value={data.account.totalEarnedPoints} hint={t("dashboard.totalEarnedDesc")} />
+        <StatCard label={t("dashboard.totalSpent")} value={data.account.totalSpentPoints} hint={t("dashboard.totalSpentDesc")} />
         <StatCard
-          label="Next Level"
-          value={data.progress.nextLevel?.title || "Top Level"}
+          label={t("dashboard.nextLevel")}
+          value={data.progress.nextLevel?.title || t("dashboard.topTier")}
           hint={
             data.progress.nextLevel
-              ? `${data.progress.pointsToNextLevel} points to go`
-              : "You already reached the highest level"
+              ? t("dashboard.nextLevelPoints", { points: data.progress.pointsToNextLevel })
+              : t("dashboard.highestTier")
           }
         />
       </div>
@@ -148,10 +150,10 @@ export default function MyRewards() {
       <div className="luxe-panel p-6">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
-            <h3 className="text-xl font-semibold">Membership Progress</h3>
+            <h3 className="text-xl font-semibold">{t("dashboard.membershipProgress")}</h3>
             <p className="text-sm text-muted-foreground">
               {data.account.membershipLevel?.title || "Bronze"} level
-              {data.progress.nextLevel ? ` • Next: ${data.progress.nextLevel.title}` : " • Highest tier unlocked"}
+              {data.progress.nextLevel ? ` • Next: ${data.progress.nextLevel.title}` : ` • ${t("dashboard.highestTier")}`}
             </p>
           </div>
           {data.account.membershipLevel ? (
@@ -198,12 +200,12 @@ export default function MyRewards() {
         <div className="luxe-panel p-6">
           <div className="flex items-center gap-2">
             <Gift className="h-5 w-5 text-[hsl(var(--accent))]" />
-            <h3 className="text-xl font-semibold">Rewards Available</h3>
+            <h3 className="text-xl font-semibold">{t("dashboard.rewardsAvailable")}</h3>
           </div>
           <div className="mt-5 space-y-4">
             {unlockedRewards.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-border p-6 text-sm text-muted-foreground">
-                No rewards are unlocked yet.
+                {t("dashboard.noRewardsUnlocked")}
               </div>
             ) : (
               unlockedRewards.map((reward) => (
@@ -233,13 +235,13 @@ export default function MyRewards() {
                           const result = await redeemLoyaltyReward(reward.id);
                           await load({ silent: true });
                           toast({
-                            title: "Reward redeemed",
+                            title: t("common.success"),
                             description: `${reward.title} redeemed successfully. Coupon: ${result.coupon.code}`,
                           });
                         } catch (error) {
                           toast({
-                            title: "Unable to redeem reward",
-                            description: error instanceof Error ? error.message : "Please try again.",
+                            title: t("common.errorOccurred"),
+                            description: error instanceof Error ? error.message : t("common.tryAgain"),
                             variant: "destructive",
                           });
                         } finally {
@@ -252,7 +254,7 @@ export default function MyRewards() {
                       ) : (
                         <Gem className="mr-2 h-4 w-4" />
                       )}
-                      {reward.isRedeemable ? "Redeem" : "Not Enough Points"}
+                      {reward.isRedeemable ? t("common.confirm") : t("common.disabled")}
                     </Button>
                   </div>
                 </div>
@@ -264,12 +266,12 @@ export default function MyRewards() {
         <div className="luxe-panel p-6">
           <div className="flex items-center gap-2">
             <Lock className="h-5 w-5 text-muted-foreground" />
-            <h3 className="text-xl font-semibold">Locked Rewards</h3>
+            <h3 className="text-xl font-semibold">{t("dashboard.lockedRewards")}</h3>
           </div>
           <div className="mt-5 space-y-4">
             {lockedRewards.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-border p-6 text-sm text-muted-foreground">
-                All current rewards are already unlocked for your level.
+                {t("dashboard.allUnlocked")}
               </div>
             ) : (
               lockedRewards.map((reward) => (
@@ -282,7 +284,7 @@ export default function MyRewards() {
                   </div>
                   {reward.description ? <p className="mt-2 text-sm text-muted-foreground">{reward.description}</p> : null}
                   <p className="mt-4 text-sm text-muted-foreground">
-                    Unlock this reward by reaching the required membership level.
+                    {t("dashboard.membershipAccess")}
                   </p>
                 </div>
               ))
@@ -295,12 +297,12 @@ export default function MyRewards() {
         <div className="luxe-panel p-6">
           <div className="flex items-center gap-2">
             <Gift className="h-5 w-5 text-[hsl(var(--accent))]" />
-            <h3 className="text-xl font-semibold">My Coupons</h3>
+            <h3 className="text-xl font-semibold">{t("dashboard.myCoupons")}</h3>
           </div>
           <div className="mt-5 space-y-4">
             {data.issuedCoupons.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-border p-6 text-sm text-muted-foreground">
-                Your assigned and redeemed coupons will appear here.
+                {t("dashboard.myCouponsEmpty")}
               </div>
             ) : (
               data.issuedCoupons.map((coupon) => (
@@ -311,11 +313,11 @@ export default function MyRewards() {
                         <p className="font-medium">{coupon.code}</p>
                         <Badge variant="outline">{formatCouponAssignmentSource(coupon.assignmentSource)}</Badge>
                         {coupon.isUsedByCustomer ? (
-                          <Badge variant="outline">Used</Badge>
+                          <Badge variant="outline">{t("common.inactive")}</Badge>
                         ) : coupon.isAvailableToCustomer ? (
-                          <Badge>Available</Badge>
+                          <Badge>{t("common.active")}</Badge>
                         ) : (
-                          <Badge variant="secondary">Unavailable</Badge>
+                          <Badge variant="secondary">{t("common.disabled")}</Badge>
                         )}
                         {coupon.freeShipping ? <Badge variant="secondary">Free Shipping</Badge> : null}
                       </div>
@@ -326,7 +328,7 @@ export default function MyRewards() {
                             : coupon.assignmentSource === "DIRECT"
                               ? "Directly assigned coupon"
                               : "Available coupon")}
-                        {coupon.endsAt ? ` • Expires ${moment(coupon.endsAt).format("MMM D, YYYY")}` : " • No expiry"}
+                        {coupon.endsAt ? ` • Expires ${moment(coupon.endsAt).format("MMM D, YYYY")}` : ` • ${t("common.none")} expiry`}
                       </p>
                       {coupon.description ? <p className="mt-2 text-sm text-muted-foreground">{coupon.description}</p> : null}
                     </div>
@@ -352,12 +354,12 @@ export default function MyRewards() {
         <div className="luxe-panel p-6">
           <div className="flex items-center gap-2">
             <Award className="h-5 w-5 text-[hsl(var(--accent))]" />
-            <h3 className="text-xl font-semibold">Reward History</h3>
+            <h3 className="text-xl font-semibold">{t("dashboard.rewardHistory")}</h3>
           </div>
           <div className="mt-5 space-y-4">
             {data.redemptions.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-border p-6 text-sm text-muted-foreground">
-                You have not redeemed any rewards yet.
+                {t("dashboard.rewardHistoryEmpty")}
               </div>
             ) : (
               data.redemptions.map((redemption) => (
@@ -381,12 +383,12 @@ export default function MyRewards() {
         <div className="luxe-panel p-6">
           <div className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-[hsl(var(--accent))]" />
-            <h3 className="text-xl font-semibold">Point History</h3>
+            <h3 className="text-xl font-semibold">{t("dashboard.pointHistory")}</h3>
           </div>
           <div className="mt-5 space-y-4">
             {data.history.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-border p-6 text-sm text-muted-foreground">
-                Your loyalty history will appear here after your first completed order or reward redemption.
+                {t("dashboard.pointHistoryEmpty")}
               </div>
             ) : (
               data.history.map((entry) => (

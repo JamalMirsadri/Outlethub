@@ -1,23 +1,25 @@
 import React, { useState } from "react";
 import { Link, useLocation, Outlet } from "react-router-dom";
 import { Package, Heart, Bell, User, MapPin, CreditCard, ChevronLeft, Menu, X, Gift, Users } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import Navbar from "@/components/landing/Navbar";
 
-const NAV_ITEMS = [
-  { icon: Package, label: "Orders", path: "/dashboard" },
-  { icon: Bell, label: "Notifications", path: "/notifications" },
-  { icon: Heart, label: "Wishlist", path: "/dashboard/wishlist" },
-  { icon: Bell, label: "Price Alerts", path: "/dashboard/alerts" },
-  { icon: Gift, label: "My Rewards", path: "/dashboard/rewards" },
-  { icon: Users, label: "My Referrals", path: "/dashboard/referrals" },
-  { icon: User, label: "Profile", path: "/dashboard/profile" },
-  { icon: MapPin, label: "Addresses", path: "/dashboard/addresses" },
-  { icon: CreditCard, label: "Payments", path: "/dashboard/payments" },
-];
-
 export default function DashboardLayout() {
+  const { t } = useTranslation();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const NAV_ITEMS = [
+    { icon: Package, label: t("dashboard.orders"), path: "/dashboard" },
+    { icon: Bell, label: t("dashboard.notifications"), path: "/notifications" },
+    { icon: Heart, label: t("dashboard.wishlist"), path: "/dashboard/wishlist" },
+    { icon: Bell, label: t("dashboard.alerts"), path: "/dashboard/alerts" },
+    { icon: Gift, label: t("dashboard.rewards"), path: "/dashboard/rewards" },
+    { icon: Users, label: t("dashboard.referrals"), path: "/dashboard/referrals" },
+    { icon: User, label: t("dashboard.profile"), path: "/dashboard/profile" },
+    { icon: MapPin, label: t("dashboard.addresses"), path: "/dashboard/addresses" },
+    { icon: CreditCard, label: t("dashboard.payments"), path: "/dashboard/payments" },
+  ];
 
   return (
     <div className="min-h-screen">
@@ -26,9 +28,9 @@ export default function DashboardLayout() {
         <div className="flex items-center justify-between mb-8">
           <div>
             <Link to="/" className="text-sm text-muted-foreground hover:text-foreground transition-colors inline-flex items-center gap-1 mb-2">
-              <ChevronLeft className="w-3 h-3" /> Home
+              <ChevronLeft className="w-3 h-3" /> {t("common.viewAll")}
             </Link>
-            <h1 className="font-display text-3xl font-semibold lg:text-4xl">My Account</h1>
+            <h1 className="font-display text-3xl font-semibold lg:text-4xl">{t("dashboard.myAccount")}</h1>
           </div>
           <button onClick={() => setSidebarOpen(!sidebarOpen)} className="lg:hidden p-2 rounded-lg hover:bg-secondary">
             {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}

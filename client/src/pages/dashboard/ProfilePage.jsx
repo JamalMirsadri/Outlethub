@@ -4,8 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { User } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 export default function ProfilePage() {
+  const { t } = useTranslation(["dashboard", "common", "product"]);
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -20,25 +22,24 @@ export default function ProfilePage() {
 
   return (
     <div>
-      <h2 className="font-display text-xl font-bold mb-6">Profile</h2>
+      <h2 className="font-display text-xl font-bold mb-6">{t("dashboard.profile")}</h2>
       <div className="max-w-md space-y-6">
         <div className="w-20 h-20 rounded-full bg-secondary flex items-center justify-center">
           <User className="w-8 h-8 text-muted-foreground" />
         </div>
         <div>
-          <Label className="text-xs tracking-widest text-muted-foreground">FULL NAME</Label>
+          <Label className="text-xs tracking-widest text-muted-foreground">{t("common.name")}</Label>
           <Input value={user?.fullName || ""} readOnly className="mt-1.5 bg-secondary border-0" />
         </div>
         <div>
-          <Label className="text-xs tracking-widest text-muted-foreground">EMAIL</Label>
+          <Label className="text-xs tracking-widest text-muted-foreground">{t("common.email")}</Label>
           <Input value={user?.email || ""} readOnly className="mt-1.5 bg-secondary border-0" />
         </div>
         <div>
-          <Label className="text-xs tracking-widest text-muted-foreground">ROLE</Label>
+          <Label className="text-xs tracking-widest text-muted-foreground">{t("dashboard.level")}</Label>
           <Input value={user?.role || ""} readOnly className="mt-1.5 bg-secondary border-0" />
         </div>
       </div>
     </div>
   );
 }
-

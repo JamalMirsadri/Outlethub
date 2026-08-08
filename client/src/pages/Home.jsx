@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, Headphones, RotateCcw, ShieldCheck, Truck } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { appClient } from "@/api/appClient";
 import { http } from "@/services/http";
 import Navbar from "@/components/landing/Navbar";
@@ -22,6 +23,7 @@ const TRUST_ICON_MAP = {
 };
 
 export default function Home() {
+  const { t } = useTranslation();
   const { settings } = useSiteContent();
   const [trendingProducts, setTrendingProducts] = useState([]);
   const [catalogProducts, setCatalogProducts] = useState([]);
@@ -108,11 +110,11 @@ export default function Home() {
         <section className="py-12">
           <div className="mb-8 flex items-center justify-between">
             <h2 className="font-display text-3xl font-semibold uppercase tracking-tight">
-              {settings.homeSections.newArrivalsTitle}
+              {settings.homeSections.newArrivalsTitle || t("home.newArrivalsTitle")}
             </h2>
             <Button asChild variant="ghost" className="rounded-full px-0">
               <Link to={settings.homeSections.newArrivalsCtaHref}>
-                {settings.homeSections.newArrivalsCtaLabel} <ArrowRight className="ml-2 h-4 w-4" />
+                {settings.homeSections.newArrivalsCtaLabel || t("home.newArrivalsCta")} <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
             </Button>
           </div>
@@ -138,7 +140,7 @@ export default function Home() {
 
         <section className="py-8">
           <h2 className="mb-8 text-center font-display text-3xl font-semibold uppercase tracking-tight">
-            {settings.homeSections.categoriesTitle}
+            {settings.homeSections.categoriesTitle || t("home.categoriesTitle")}
           </h2>
           <div className="grid gap-4 md:grid-cols-4">
             {categoryCards.map((category) => (
@@ -175,11 +177,11 @@ export default function Home() {
         <section className="py-12">
           <div className="mb-8 flex items-center justify-between">
             <h2 className="font-display text-3xl font-semibold uppercase tracking-tight">
-              {settings.homeSections.bestSellersTitle}
+              {settings.homeSections.bestSellersTitle || t("home.bestsellersTitle")}
             </h2>
             <Button asChild variant="ghost" className="rounded-full px-0">
               <Link to={settings.homeSections.bestSellersCtaHref}>
-                {settings.homeSections.bestSellersCtaLabel} <ArrowRight className="ml-2 h-4 w-4" />
+                {settings.homeSections.bestSellersCtaLabel || t("home.bestsellersCta")} <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
             </Button>
           </div>

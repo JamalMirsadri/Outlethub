@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { http } from "@/services/http";
 import { Search, SlidersHorizontal, X, ChevronDown } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -26,6 +27,7 @@ const COLORS = [
 const PAGE_SIZE = 12;
 
 export default function Shop() {
+  const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
   const [products, setProducts] = useState([]);
   const [brands, setBrands] = useState([]);
@@ -150,15 +152,15 @@ export default function Shop() {
         {/* Header */}
         <div className="luxe-panel mb-8 flex flex-col gap-4 px-6 py-7 md:flex-row md:items-end md:justify-between lg:px-8">
           <div>
-            <p className="luxe-eyebrow mb-3">Outlet Catalog</p>
-            <h1 className="luxe-heading text-3xl lg:text-5xl">Shop</h1>
-            <p className="mt-2 text-sm text-muted-foreground">{pagination.total || filtered.length} products</p>
+            <p className="luxe-eyebrow mb-3">{t("shop.eyebrow")}</p>
+            <h1 className="luxe-heading text-3xl lg:text-5xl">{t("shop.title")}</h1>
+            <p className="mt-2 text-sm text-muted-foreground">{t("shop.productsCount", { count: pagination.total || filtered.length })}</p>
           </div>
           <div className="flex items-center gap-3 w-full md:w-auto">
             <div className="relative flex-1 md:w-72">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
-                placeholder="Search products or brands..."
+                placeholder={t("shop.searchPlaceholder")}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pl-10 h-11 rounded-full bg-background border-border/70"
@@ -170,13 +172,13 @@ export default function Shop() {
             </Button>
             <Select value={sortBy} onValueChange={setSortBy}>
               <SelectTrigger className="w-40 h-11 rounded-full hidden md:flex">
-                <SelectValue placeholder="Sort by" />
+                <SelectValue placeholder={t("shop.sortBy")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="newest">Newest</SelectItem>
-                <SelectItem value="price_low">Price: Low to High</SelectItem>
-                <SelectItem value="price_high">Price: High to Low</SelectItem>
-                <SelectItem value="discount">Biggest Discount</SelectItem>
+                <SelectItem value="newest">{t("shop.newest")}</SelectItem>
+                <SelectItem value="price_low">{t("shop.priceLowHigh")}</SelectItem>
+                <SelectItem value="price_high">{t("shop.priceHighLow")}</SelectItem>
+                <SelectItem value="discount">{t("shop.biggestDiscount")}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -186,7 +188,7 @@ export default function Shop() {
           {/* Sidebar Filters */}
           <aside className={`${showFilters ? 'fixed inset-0 z-50 bg-background p-6 overflow-y-auto' : 'hidden'} lg:block lg:relative lg:w-60 lg:flex-shrink-0`}>
             <div className="flex justify-between items-center mb-6 lg:mb-0">
-              <h3 className="font-semibold text-sm tracking-wide lg:hidden">FILTERS</h3>
+              <h3 className="font-semibold text-sm tracking-wide lg:hidden">{t("shop.filters")}</h3>
               <button onClick={() => setShowFilters(false)} className="lg:hidden"><X className="w-5 h-5" /></button>
             </div>
 
@@ -194,13 +196,13 @@ export default function Shop() {
 
             {activeFilters > 0 && (
               <button onClick={clearFilters} className="text-xs text-[hsl(var(--accent))] font-semibold mb-6 hover:underline">
-                Clear all filters ({activeFilters})
+                {t("shop.clearFiltersWithCount", { count: activeFilters })}
               </button>
             )}
 
             {/* Categories */}
             <div className="mb-8">
-              <h4 className="text-xs font-semibold tracking-widest text-muted-foreground mb-3">CATEGORY</h4>
+              <h4 className="text-xs font-semibold tracking-widest text-muted-foreground mb-3">{t("shop.category")}</h4>
               <div className="space-y-2">
                 {categories.map(c => (
                   <button key={c.id} onClick={() => handleCategoryChange(c.slug)}
@@ -213,7 +215,7 @@ export default function Shop() {
 
             {/* Brands */}
             <div className="mb-8">
-              <h4 className="text-xs font-semibold tracking-widest text-muted-foreground mb-3">BRAND</h4>
+              <h4 className="text-xs font-semibold tracking-widest text-muted-foreground mb-3">{t("shop.brand")}</h4>
               <div className="space-y-2">
                 {brands.map(b => (
                   <label key={b.id} className="flex items-center gap-2.5 cursor-pointer group">
@@ -228,12 +230,12 @@ export default function Shop() {
 
             {/* Discount */}
             <div className="mb-8">
-              <h4 className="text-xs font-semibold tracking-widest text-muted-foreground mb-3">MIN DISCOUNT</h4>
+              <h4 className="text-xs font-semibold tracking-widest text-muted-foreground mb-3">{t("shop.minDiscount")}</h4>
               <div className="space-y-2">
                 {[10, 20, 30, 40, 50].map(d => (
                   <button key={d} onClick={() => setDiscountRange(discountRange === d ? 0 : d)}
                     className={`block text-sm w-full text-left py-1 transition-colors ${discountRange === d ? "text-[hsl(var(--accent))] font-medium" : "text-muted-foreground hover:text-foreground"}`}>
-                    {d}%+ off
+                    {t("shop.discountRange", { percent: d })}
                   </button>
                 ))}
               </div>
@@ -241,7 +243,7 @@ export default function Shop() {
 
             {/* Sizes */}
             <div className="mb-8">
-              <h4 className="text-xs font-semibold tracking-widest text-muted-foreground mb-3">SIZE</h4>
+              <h4 className="text-xs font-semibold tracking-widest text-muted-foreground mb-3">{t("shop.size")}</h4>
               <div className="flex flex-wrap gap-2">
                 {SIZES.map(s => (
                   <button key={s} onClick={() => toggleSize(s)}
@@ -254,7 +256,7 @@ export default function Shop() {
 
             {/* Colors */}
             <div className="mb-8">
-              <h4 className="text-xs font-semibold tracking-widest text-muted-foreground mb-3">COLOR</h4>
+              <h4 className="text-xs font-semibold tracking-widest text-muted-foreground mb-3">{t("shop.color")}</h4>
               <div className="flex flex-wrap gap-2">
                 {COLORS.map(c => (
                   <button key={c.name} onClick={() => toggleColor(c.name)} title={c.name}
@@ -266,7 +268,7 @@ export default function Shop() {
             </div>
 
             <Button className="w-full rounded-full lg:hidden" onClick={() => setShowFilters(false)}>
-              Show {filtered.length} Results
+              {t("shop.showAllProducts")}
             </Button>
             </div>
           </aside>
@@ -288,8 +290,9 @@ export default function Shop() {
               </div>
             ) : filtered.length === 0 ? (
               <div className="text-center py-20">
-                <p className="text-muted-foreground">No products found matching your criteria.</p>
-                <Button variant="outline" onClick={clearFilters} className="mt-4 rounded-full">Clear Filters</Button>
+                <p className="text-muted-foreground">{t("shop.noProducts")}</p>
+                <p className="text-sm text-muted-foreground mt-2">{t("shop.tryClearingFilters")}</p>
+                <Button variant="outline" onClick={clearFilters} className="mt-4 rounded-full">{t("shop.clearFilters")}</Button>
               </div>
             ) : (
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-4 lg:gap-6">
@@ -307,10 +310,10 @@ export default function Shop() {
                   disabled={page <= 1}
                   onClick={() => setPage((current) => Math.max(1, current - 1))}
                 >
-                  Previous
+                  {t("common.previous")}
                 </Button>
                 <span className="text-sm text-muted-foreground">
-                  Page {page} of {pagination.totalPages}
+                  {t("shop.page")} {page} {t("shop.of")} {pagination.totalPages}
                 </span>
                 <Button
                   variant="outline"
@@ -318,7 +321,7 @@ export default function Shop() {
                   disabled={page >= pagination.totalPages}
                   onClick={() => setPage((current) => Math.min(pagination.totalPages, current + 1))}
                 >
-                  Next
+                  {t("common.next")}
                 </Button>
               </div>
             )}

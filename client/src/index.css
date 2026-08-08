@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;450;500;600;700&family=Playfair+Display:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;450;500;600;700&family=Playfair+Display:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Vazirmatn:wght@300;400;500;600;700;800&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -35,6 +35,7 @@
     --font-body: 'Inter', sans-serif;
     --font-display: 'Playfair Display', serif;
     --font-mono: 'JetBrains Mono', monospace;
+    --font-fa: 'Vazirmatn', 'Inter', sans-serif;
     --sidebar-background: 224 34% 13%;
     --sidebar-foreground: 44 44% 92%;
     --sidebar-primary: 43 74% 60%;
@@ -84,6 +85,21 @@
 @layer base {
   * {
     @apply border-border outline-ring/50;
+  }
+  html {
+    font-feature-settings: "cv11", "ss01";
+  }
+  [data-language="fa"] {
+    font-family: var(--font-fa);
+  }
+  [data-language="fa"] [class*="font-display"] {
+    font-family: var(--font-fa);
+  }
+  [data-language="fa"] [class*="font-heading"] {
+    font-family: var(--font-fa);
+  }
+  [data-language="fa"] [class*="font-body"] {
+    font-family: var(--font-fa);
   }
   body {
     @apply bg-background text-foreground font-body antialiased;

@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, ArrowRight, CheckCircle2, CreditCard, MapPin, PackageCheck, Truck } from "lucide-react";
 
@@ -22,15 +23,6 @@ import { useCart } from "@/contexts/CartContext";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { formatCurrency, shouldShowTomanAmounts } from "@/lib/currency";
 
-const STEP_TITLES = [
-  "Cart Review",
-  "Shipping Address",
-  "Shipping Method",
-  "Payment Method",
-  "Order Review",
-  "Place Order",
-];
-
 const EMPTY_ADDRESS_FORM = {
   fullName: "",
   phone: "",
@@ -44,10 +36,20 @@ const EMPTY_ADDRESS_FORM = {
 };
 
 export default function Checkout() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { user } = useAuth();
   const { refreshCart } = useCart();
   const { preferredCurrency, supportedCurrencies, setPreferredCurrency, convertAmount } = useCurrency();
+
+  const STEP_TITLES = [
+    t("cart.cartItems"),
+    t("checkout.shippingAddress"),
+    t("checkout.shippingMethod"),
+    t("checkout.paymentMethod"),
+    t("checkout.shippingAddress"),
+    t("checkout.placeOrder"),
+  ];
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [placingOrder, setPlacingOrder] = useState(false);
@@ -89,8 +91,8 @@ export default function Checkout() {
     loadSummary()
       .catch((error) => {
         toast({
-          title: "Checkout failed to load",
-          description: error instanceof Error ? error.message : "Please try again.",
+          title: t("common.errorOccurred"),
+          description: error instanceof Error ? error.message : t("cart.pleaseTryAgain"),
           variant: "destructive",
         });
       })
@@ -157,13 +159,13 @@ export default function Checkout() {
       setSelectedBillingAddressId(created.id);
       await persistShippingSelection(created.countryCode, null);
       toast({
-        title: "Address saved",
-        description: "Checkout can now continue with the new address.",
+        title: t("common.success"),
+        description: t("common.save"),
       });
     } catch (error) {
       toast({
-        title: "Address save failed",
-        description: error instanceof Error ? error.message : "Please try again.",
+        title: t("common.errorOccurred"),
+        description: error instanceof Error ? error.message : t("cart.pleaseTryAgain"),
         variant: "destructive",
       });
     }
@@ -171,11 +173,11 @@ export default function Checkout() {
 
   const nextStep = () => {
     if (step === 1 && !selectedShippingAddressId) {
-      toast({ title: "Select a shipping address first", variant: "destructive" });
+      toast({ title: t("checkout.shippingAddress"), variant: "destructive" });
       return;
     }
     if (step === 2 && !selectedShippingMethodId) {
-      toast({ title: "Select a shipping method first", variant: "destructive" });
+      toast({ title: t("checkout.shippingMethod"), variant: "destructive" });
       return;
     }
     setStep((current) => Math.min(current + 1, STEP_TITLES.length - 1));
@@ -183,7 +185,7 @@ export default function Checkout() {
 
   const placeOrder = async () => {
     if (!selectedShippingAddressId) {
-      toast({ title: "Shipping address is required", variant: "destructive" });
+      toast({ title: t("checkout.shippingAddress"), variant: "destructive" });
       return;
     }
 
@@ -208,14 +210,14 @@ export default function Checkout() {
       await refreshCart().catch(() => undefined);
 
       toast({
-        title: "Order placed",
-        description: `Order ${order.orderNumber} is now pending.`,
+        title: t("checkout.orderSuccess"),
+        description: `${t("checkout.orderSuccessDesc")} ${order.orderNumber}`,
       });
       navigate("/dashboard/payments");
     } catch (error) {
       toast({
-        title: "Order placement failed",
-        description: error instanceof Error ? error.message : "Please try again.",
+        title: t("common.errorOccurred"),
+        description: error instanceof Error ? error.message : t("cart.pleaseTryAgain"),
         variant: "destructive",
       });
     } finally {
@@ -245,10 +247,10 @@ export default function Checkout() {
         <main className="pt-24 max-w-[960px] mx-auto px-6 lg:px-10 pb-16">
           <div className="rounded-3xl border border-border bg-card p-10 text-center">
             <PackageCheck className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-            <h1 className="font-display text-3xl font-bold mb-3">Your cart is empty</h1>
-            <p className="text-muted-foreground mb-8">Add products to the cart before starting checkout.</p>
+            <h1 className="font-display text-3xl font-bold mb-3">{t("cart.emptyTitle")}</h1>
+            <p className="text-muted-foreground mb-8">{t("cart.emptySubtitle")}</p>
             <Button asChild className="rounded-full">
-              <Link to="/cart">Return to cart</Link>
+              <Link to="/cart">{t("checkout.backToCart")}</Link>
             </Button>
           </div>
         </main>
@@ -272,8 +274,8 @@ export default function Checkout() {
   const applyPromotion = async () => {
     if (!promotionCode.trim()) {
       toast({
-        title: "Enter a promotion code",
-        description: "Add a valid code before applying it.",
+        title: t("checkout.promoCodeRequired"),
+        description: t("checkout.promoCodeInvalid"),
         variant: "destructive",
       });
       return;
@@ -285,13 +287,13 @@ export default function Checkout() {
       await applyCheckoutPromotionCode(promotionCode);
       await loadSummary();
       toast({
-        title: "Promotion applied",
-        description: "The checkout total was updated successfully.",
+        title: t("checkout.promoApplied"),
+        description: t("checkout.promoApplied"),
       });
     } catch (error) {
       toast({
-        title: "Promotion code is invalid",
-        description: error instanceof Error ? error.message : "Please try a different code.",
+        title: t("checkout.promoCodeInvalid"),
+        description: error instanceof Error ? error.message : t("cart.pleaseTryAgain"),
         variant: "destructive",
       });
     } finally {
@@ -307,13 +309,13 @@ export default function Checkout() {
       await loadSummary();
       setPromotionCode("");
       toast({
-        title: "Promotion removed",
-        description: "The checkout summary returned to the standard total.",
+        title: t("common.remove"),
+        description: t("common.remove"),
       });
     } catch (error) {
       toast({
-        title: "Unable to remove promotion",
-        description: error instanceof Error ? error.message : "Please try again.",
+        title: t("common.errorOccurred"),
+        description: error instanceof Error ? error.message : t("cart.pleaseTryAgain"),
         variant: "destructive",
       });
     } finally {
@@ -328,10 +330,10 @@ export default function Checkout() {
         <div className="mb-8">
           <Link to="/cart" className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground mb-4">
             <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to cart
+            {t("checkout.backToCart")}
           </Link>
-          <h1 className="font-display text-3xl lg:text-5xl font-bold">Checkout</h1>
-          <p className="text-sm text-muted-foreground mt-3">Complete the 6-step order flow and create a pending order snapshot.</p>
+          <h1 className="font-display text-3xl lg:text-5xl font-bold">{t("checkout.title")}</h1>
+          <p className="text-sm text-muted-foreground mt-3">{t("checkout.eyebrow")}</p>
         </div>
 
         <div className="grid gap-6 xl:grid-cols-[1.25fr,0.75fr]">
@@ -350,7 +352,7 @@ export default function Checkout() {
                     }`}
                     onClick={() => setStep(index)}
                   >
-                    <p className="text-xs text-muted-foreground mb-2">Step {index + 1}</p>
+                    <p className="text-xs text-muted-foreground mb-2">{t("shop.page")} {index + 1}</p>
                     <p className="text-sm font-medium">{title}</p>
                   </button>
                 ))}
@@ -359,7 +361,7 @@ export default function Checkout() {
 
             {step === 0 ? (
               <section className="rounded-2xl border border-border bg-card p-6">
-                <h2 className="font-semibold text-lg mb-4">Cart Review</h2>
+                <h2 className="font-semibold text-lg mb-4">{t("cart.cartItems")}</h2>
                 <div className="space-y-4">
                   {summary.cart.items.map((item) => (
                     <div key={item.id} className="flex gap-4 items-start border-b border-border pb-4 last:border-0 last:pb-0">
@@ -372,10 +374,10 @@ export default function Checkout() {
                         <p className="text-sm text-muted-foreground mt-1">Qty {item.quantity}</p>
                         <div className="mt-2 flex flex-wrap gap-2">
                           <span className="rounded-full bg-secondary px-3 py-1 text-[11px] text-muted-foreground">
-                            Size: {item.size || "Not selected"}
+                            {t("cart.size")}: {item.size || t("product.notSelected")}
                           </span>
                           <span className="rounded-full bg-secondary px-3 py-1 text-[11px] text-muted-foreground">
-                            Color: {item.color || "Not selected"}
+                            {t("cart.color")}: {item.color || t("product.notSelected")}
                           </span>
                         </div>
                       </div>
@@ -392,23 +394,23 @@ export default function Checkout() {
               <section className="rounded-2xl border border-border bg-card p-6">
                 <div className="flex items-center justify-between mb-4">
                   <div>
-                    <h2 className="font-semibold text-lg">Shipping Address</h2>
-                    <p className="text-sm text-muted-foreground mt-1">Choose an existing address or add a new one.</p>
+                    <h2 className="font-semibold text-lg">{t("checkout.shippingAddress")}</h2>
+                    <p className="text-sm text-muted-foreground mt-1">{t("checkout.contact")}</p>
                   </div>
                   <Button variant="outline" className="rounded-full" onClick={() => setShowAddressForm((current) => !current)}>
-                    {showAddressForm ? "Close form" : "Add address"}
+                    {showAddressForm ? t("common.close") : t("common.add")}
                   </Button>
                 </div>
 
                 {showAddressForm ? (
                   <div className="grid gap-4 md:grid-cols-2 mb-6">
                     {[
-                      ["fullName", "Full Name"],
-                      ["phone", "Phone"],
-                      ["city", "City"],
-                      ["postalCode", "Postal Code"],
-                      ["addressLine1", "Address Line 1"],
-                      ["addressLine2", "Address Line 2"],
+                      ["fullName", t("checkout.firstName") + " & " + t("checkout.lastName")],
+                      ["phone", t("checkout.phone")],
+                      ["city", t("checkout.city")],
+                      ["postalCode", t("checkout.postalCode")],
+                      ["addressLine1", t("checkout.addressLine1")],
+                      ["addressLine2", t("checkout.addressLine2")],
                     ].map(([key, label]) => (
                       <div key={key} className={key === "addressLine1" || key === "addressLine2" ? "md:col-span-2" : ""}>
                         <Label className="text-xs">{label}</Label>
@@ -420,7 +422,7 @@ export default function Checkout() {
                       </div>
                     ))}
                     <div>
-                      <Label className="text-xs">Country</Label>
+                      <Label className="text-xs">{t("checkout.country")}</Label>
                       <Select
                         value={addressForm.countryCode}
                         onValueChange={(value) => setAddressForm((current) => ({ ...current, countryCode: value }))}
@@ -434,7 +436,7 @@ export default function Checkout() {
                       </Select>
                     </div>
                     <div className="flex items-end">
-                      <Button onClick={handleSaveAddress} className="w-full rounded-full">Save address</Button>
+                      <Button onClick={handleSaveAddress} className="w-full rounded-full">{t("common.save")}</Button>
                     </div>
                   </div>
                 ) : null}
@@ -465,10 +467,10 @@ export default function Checkout() {
 
             {step === 2 ? (
               <section className="rounded-2xl border border-border bg-card p-6">
-                <h2 className="font-semibold text-lg mb-4">Shipping Method</h2>
+                <h2 className="font-semibold text-lg mb-4">{t("checkout.shippingMethod")}</h2>
                 <div className="space-y-3">
                   {availableShippingMethods.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">No active shipping methods for this destination yet.</p>
+                    <p className="text-sm text-muted-foreground">{t("common.noResults")}</p>
                   ) : (
                     availableShippingMethods.map((method) => (
                       <button
@@ -486,11 +488,11 @@ export default function Checkout() {
                             <p className="font-medium">{method.name}</p>
                             <p className="text-sm text-muted-foreground mt-1">
                               {method.originCountryCode ? `${method.originCountryCode} -> ` : ""}
-                              {method.countryCode} | {method.deliveryEstimate || `${method.minDeliveryDays}-${method.maxDeliveryDays} days`}
+                              {method.countryCode} | {method.deliveryEstimate || `${method.minDeliveryDays}-${method.maxDeliveryDays} ${t("checkout.shippingStandard")}`}
                             </p>
                             {method.minWeightKg !== null || method.maxWeightKg !== null ? (
                               <p className="text-xs text-muted-foreground mt-1">
-                                Weight range {method.minWeightKg ?? 0}kg - {method.maxWeightKg ?? "up"}kg
+                                {t("checkout.shippingMethod")} {method.minWeightKg ?? 0}kg - {method.maxWeightKg ?? "up"}kg
                               </p>
                             ) : null}
                           </div>
@@ -505,10 +507,10 @@ export default function Checkout() {
 
             {step === 3 ? (
               <section className="rounded-2xl border border-border bg-card p-6">
-                <h2 className="font-semibold text-lg mb-4">Payment Method</h2>
+                <h2 className="font-semibold text-lg mb-4">{t("checkout.paymentMethod")}</h2>
                 <div className="mb-5 grid gap-4 md:grid-cols-2">
                   <div>
-                    <Label className="text-xs">Display Currency</Label>
+                    <Label className="text-xs">{t("cart.displayCurrency")}</Label>
                     <Select value={displayCurrency} onValueChange={(value) => void setPreferredCurrency(value)} disabled={isIranDelivery}>
                       <SelectTrigger className="mt-1">
                         <SelectValue />
@@ -521,7 +523,7 @@ export default function Checkout() {
                     </Select>
                     {isIranDelivery ? (
                       <p className="mt-2 text-xs text-muted-foreground">
-                        Iran delivery uses the saved EUR to TOMAN FX rate.
+                        {t("checkout.shippingExpress")}
                       </p>
                     ) : null}
                   </div>
@@ -543,7 +545,7 @@ export default function Checkout() {
                         <div>
                           <p className="font-medium">{provider.displayName}</p>
                           <p className="text-sm text-muted-foreground">
-                            {provider.supportsReceipts ? "Receipt upload enabled" : "Provider adapter ready for activation."}
+                            {provider.supportsReceipts ? t("checkout.creditCard") : t("checkout.stripe")}
                           </p>
                         </div>
                       </div>
@@ -552,7 +554,7 @@ export default function Checkout() {
                 </div>
                 {paymentProvider === "BANK_TRANSFER" ? (
                   <div className="mt-5 rounded-2xl bg-secondary/40 p-4">
-                    <p className="text-xs text-muted-foreground mb-3">Active Bank Accounts</p>
+                    <p className="text-xs text-muted-foreground mb-3">{t("checkout.paymentMethod")}</p>
                     <div className="space-y-3">
                       {summary.bankAccounts.map((account) => (
                         <div key={account.id} className="rounded-xl border border-border bg-card p-4">
@@ -565,7 +567,7 @@ export default function Checkout() {
                   </div>
                 ) : null}
                 <div className="mt-5">
-                  <Label className="text-xs">Payment Label</Label>
+                  <Label className="text-xs">{t("checkout.paymentMethod")}</Label>
                   <Input value={paymentMethodLabel} onChange={(event) => setPaymentMethodLabel(event.target.value)} className="mt-1" />
                 </div>
               </section>
@@ -573,10 +575,10 @@ export default function Checkout() {
 
             {step === 4 || step === 5 ? (
               <section className="rounded-2xl border border-border bg-card p-6">
-                <h2 className="font-semibold text-lg mb-4">Order Review</h2>
+                <h2 className="font-semibold text-lg mb-4">{t("checkout.shippingAddress")}</h2>
                 <div className="grid gap-5 md:grid-cols-2">
                   <div className="rounded-2xl bg-secondary/40 p-4">
-                    <p className="text-xs text-muted-foreground mb-2">Shipping Address</p>
+                    <p className="text-xs text-muted-foreground mb-2">{t("checkout.shippingAddress")}</p>
                     {selectedShippingAddress ? (
                       <>
                         <p className="font-medium">{selectedShippingAddress.fullName}</p>
@@ -585,18 +587,18 @@ export default function Checkout() {
                         <p className="text-sm text-muted-foreground">{selectedShippingAddress.countryCode}</p>
                       </>
                     ) : (
-                      <p className="text-sm text-muted-foreground">No address selected.</p>
+                      <p className="text-sm text-muted-foreground">{t("product.notSelected")}</p>
                     )}
                   </div>
                   <div className="rounded-2xl bg-secondary/40 p-4">
-                    <p className="text-xs text-muted-foreground mb-2">Fulfillment</p>
-                    <p className="font-medium">{selectedShippingMethod?.name || "No shipping method selected"}</p>
+                    <p className="text-xs text-muted-foreground mb-2">{t("checkout.shippingMethod")}</p>
+                    <p className="font-medium">{selectedShippingMethod?.name || t("product.notSelected")}</p>
                     <p className="text-sm text-muted-foreground mt-1">{paymentMethodLabel}</p>
-                    <p className="text-sm text-muted-foreground mt-1">Estimated cart weight {summary.cart.items.reduce((sum, item) => sum + item.quantity, 0)}kg</p>
+                    <p className="text-sm text-muted-foreground mt-1">{t("checkout.shippingMethod")} {summary.cart.items.reduce((sum, item) => sum + item.quantity, 0)}kg</p>
                   </div>
                 </div>
                 <div className="mt-5">
-                  <Label className="text-xs">Customer Notes</Label>
+                  <Label className="text-xs">{t("checkout.contact")}</Label>
                   <Textarea value={customerNotes} onChange={(event) => setCustomerNotes(event.target.value)} className="mt-1" />
                 </div>
               </section>
@@ -605,16 +607,16 @@ export default function Checkout() {
             <div className="flex items-center justify-between">
               <Button variant="outline" className="rounded-full" onClick={() => setStep((current) => Math.max(0, current - 1))} disabled={step === 0}>
                 <ArrowLeft className="w-4 h-4 mr-2" />
-                Previous
+                {t("common.previous")}
               </Button>
               {step < STEP_TITLES.length - 1 ? (
                 <Button className="rounded-full" onClick={nextStep}>
-                  Next
+                  {t("common.next")}
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
               ) : (
                 <Button className="rounded-full" onClick={placeOrder} disabled={placingOrder}>
-                  {placingOrder ? "Placing order..." : "Place Order"}
+                  {placingOrder ? t("checkout.processingOrder") : t("checkout.placeOrder")}
                   <Truck className="w-4 h-4 ml-2" />
                 </Button>
               )}
@@ -623,18 +625,18 @@ export default function Checkout() {
 
           <aside className="space-y-6">
             <div className="rounded-2xl border border-border bg-card p-6 xl:sticky xl:top-28">
-              <h2 className="font-semibold text-lg mb-4">Order Summary</h2>
+              <h2 className="font-semibold text-lg mb-4">{t("cart.orderSummary")}</h2>
               <div className="mb-5 rounded-2xl border border-border bg-secondary/20 p-4">
-                <Label className="text-xs">Promotion Code</Label>
+                <Label className="text-xs">{t("checkout.promotionCode")}</Label>
                 <div className="mt-2 flex gap-2">
                   <Input
                     value={promotionCode}
                     onChange={(event) => setPromotionCode(event.target.value)}
-                    placeholder="Enter promotion code"
+                    placeholder={t("checkout.promotionCode")}
                     disabled={promotionBusy}
                   />
                   <Button type="button" onClick={applyPromotion} disabled={promotionBusy} className="rounded-full">
-                    {promotionBusy ? "Applying..." : "Apply"}
+                    {promotionBusy ? t("common.loading") : t("checkout.applyPromo")}
                   </Button>
                 </div>
                 {promotion?.status === "applied" ? (
@@ -643,125 +645,125 @@ export default function Checkout() {
                       <div>
                         <p className="font-medium">{promotion.code}</p>
                         <p className="text-xs text-muted-foreground">
-                          Saving {formatCurrency(promotion.savingsAmount, currency)} on this checkout.
+                          {t("checkout.savings")} {formatCurrency(promotion.savingsAmount, currency)}
                         </p>
                       </div>
                       <Button type="button" variant="outline" size="sm" onClick={removePromotion} disabled={promotionBusy}>
-                        Remove
+                        {t("common.remove")}
                       </Button>
                     </div>
                   </div>
                 ) : null}
                 {promotion?.status === "invalid" ? (
                   <div className="mt-3 rounded-xl border border-destructive/40 bg-destructive/10 p-3">
-                    <p className="text-sm font-medium">Promotion unavailable</p>
-                    <p className="mt-1 text-xs text-muted-foreground">{promotion.message || "This code is no longer valid for the current cart."}</p>
+                    <p className="text-sm font-medium">{t("checkout.promoCodeInvalid")}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{promotion.message || t("common.tryAgain")}</p>
                   </div>
                 ) : null}
               </div>
               <div className="space-y-3 text-sm">
                 <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Subtotal</span>
+                  <span className="text-muted-foreground">{t("checkout.subtotal")}</span>
                   <span>{formatCurrency(summary.cart.subtotalAmount, currency)}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Product price before website fee and VAT</span>
+                  <span className="text-muted-foreground">{t("product.supplierCost")}</span>
                   <span>{formatCurrency(productPriceBeforeMarginAndVat, currency)}</span>
                 </div>
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span>Subtotal ({displayCurrency})</span>
+                  <span>{t("checkout.subtotal")} ({displayCurrency})</span>
                   <span>{formatCurrency(convertAmount(summary.cart.subtotalAmount, currency, displayCurrency), displayCurrency)}</span>
                 </div>
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span>Product price before website fee and VAT ({displayCurrency})</span>
+                  <span>{t("product.supplierCost")} ({displayCurrency})</span>
                   <span>{formatCurrency(convertAmount(productPriceBeforeMarginAndVat, currency, displayCurrency), displayCurrency)}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Shipping</span>
+                  <span className="text-muted-foreground">{t("checkout.shipping")}</span>
                   <span>{formatCurrency(summary.cart.shippingAmount, currency)}</span>
                 </div>
                 {promotion?.status === "applied" && promotion.shippingDiscountAmount > 0 ? (
                   <div className="flex items-center justify-between text-xs text-emerald-400">
-                    <span>Shipping Discount</span>
+                    <span>{t("checkout.shipping")} {t("checkout.savings")}</span>
                     <span>-{formatCurrency(promotion.shippingDiscountAmount, currency)}</span>
                   </div>
                 ) : null}
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span>Shipping ({displayCurrency})</span>
+                  <span>{t("checkout.shipping")} ({displayCurrency})</span>
                   <span>{formatCurrency(convertAmount(summary.cart.shippingAmount, currency, displayCurrency), displayCurrency)}</span>
                 </div>
                 {promotion?.status === "applied" && promotion.discountAmount > 0 ? (
                   <div className="flex items-center justify-between text-sm text-emerald-400">
-                    <span>Promotion Discount</span>
+                    <span>{t("checkout.promotionCode")} {t("checkout.savings")}</span>
                     <span>-{formatCurrency(promotion.discountAmount, currency)}</span>
                   </div>
                 ) : null}
                 <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Website Fee</span>
+                  <span className="text-muted-foreground">{t("checkout.tax")}</span>
                   <span>{formatCurrency(websiteMarginAmount, currency)}</span>
                 </div>
                 {isIranDelivery ? (
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span>Website Fee ({displayCurrency})</span>
+                    <span>{t("checkout.tax")} ({displayCurrency})</span>
                     <span>{formatCurrency(convertAmount(websiteMarginAmount, currency, displayCurrency), displayCurrency)}</span>
                   </div>
                 ) : null}
                 <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Handling</span>
+                  <span className="text-muted-foreground">{t("cart.shipping")}</span>
                   <span>{formatCurrency(summary.cart.handlingAmount, currency)}</span>
                 </div>
                 {isIranDelivery ? (
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span>Handling ({displayCurrency})</span>
+                    <span>{t("cart.shipping")} ({displayCurrency})</span>
                     <span>{formatCurrency(convertAmount(summary.cart.handlingAmount, currency, displayCurrency), displayCurrency)}</span>
                   </div>
                 ) : null}
                 <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Payment fee</span>
+                  <span className="text-muted-foreground">{t("cart.shipping")}</span>
                   <span>{formatCurrency(summary.cart.paymentFeeAmount, currency)}</span>
                 </div>
                 {isIranDelivery ? (
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span>Payment fee ({displayCurrency})</span>
+                    <span>{t("cart.shipping")} ({displayCurrency})</span>
                     <span>{formatCurrency(convertAmount(summary.cart.paymentFeeAmount, currency, displayCurrency), displayCurrency)}</span>
                   </div>
                 ) : null}
                 <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">VAT</span>
+                  <span className="text-muted-foreground">{t("cart.vat")}</span>
                   <span>{formatCurrency(summary.cart.taxAmount, currency)}</span>
                 </div>
                 {isIranDelivery ? (
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span>VAT ({displayCurrency})</span>
+                    <span>{t("cart.vat")} ({displayCurrency})</span>
                     <span>{formatCurrency(convertAmount(summary.cart.taxAmount, currency, displayCurrency), displayCurrency)}</span>
                   </div>
                 ) : null}
                 <div className="flex items-center justify-between font-semibold text-base pt-3 border-t border-border">
-                  <span>Total</span>
+                  <span>{t("checkout.total")}</span>
                   <span>{formatCurrency(summary.cart.totalAmount, currency)}</span>
                 </div>
                 {promotion?.status === "applied" ? (
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span>Total Before Promotion</span>
+                    <span>{t("checkout.total")} {t("checkout.promotionCode")}</span>
                     <span>{formatCurrency(promotion.totalBeforeDiscount, currency)}</span>
                   </div>
                 ) : null}
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Exchange Rate</span>
+                  <span className="text-muted-foreground">{t("cart.total")}</span>
                   <span>1 {currency} {"->"} {convertAmount(1, currency, displayCurrency)} {displayCurrency}</span>
                 </div>
                 <div className="flex items-center justify-between font-semibold text-base">
-                  <span>Total ({displayCurrency})</span>
+                  <span>{t("checkout.total")} ({displayCurrency})</span>
                   <span>{formatCurrency(convertAmount(summary.cart.totalAmount, currency, displayCurrency), displayCurrency)}</span>
                 </div>
                 {promotion?.status === "applied" ? (
                   <div className="rounded-2xl border border-[hsl(var(--accent))]/30 bg-[hsl(var(--accent))]/10 p-4 mt-4">
-                    <p className="text-xs text-muted-foreground mb-2">Promotion Savings</p>
+                    <p className="text-xs text-muted-foreground mb-2">{t("checkout.savings")}</p>
                     <p className="font-mono text-lg font-semibold">{formatCurrency(promotion.savingsAmount, currency)}</p>
                   </div>
                 ) : null}
                 <div className="rounded-2xl bg-secondary/40 p-4 mt-4">
-                  <p className="text-xs text-muted-foreground mb-2">Website Fee</p>
+                  <p className="text-xs text-muted-foreground mb-2">{t("checkout.tax")}</p>
                   <p className="font-mono text-lg font-semibold">{formatCurrency(websiteMarginAmount, currency)}</p>
                 </div>
               </div>

@@ -1,13 +1,16 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Search, ShoppingBag, Heart, User, Sun, Moon, Menu, X } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useTheme } from "@/components/ThemeProvider";
+import LanguageSwitcher from "@/components/i18n/LanguageSwitcher";
 import { useCart } from "@/contexts/CartContext";
 import { useSiteContent } from "@/contexts/SiteContentContext";
 import { http } from "@/services/http";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function Navbar() {
+  const { t } = useTranslation();
   const { theme, toggleTheme } = useTheme();
   const { itemCount } = useCart();
   const { settings } = useSiteContent();
@@ -49,14 +52,14 @@ export default function Navbar() {
     .filter(Boolean);
 
   const mobileMenuItems = [
-    { label: settings.header.shopLabel.toUpperCase(), to: "/shop" },
+    { label: (settings.header.shopLabel || t("nav.shopLabel")).toUpperCase(), to: "/shop" },
     ...menuCategories.map((category) => ({
       label: category.name.toUpperCase(),
       to: `/shop?category=${encodeURIComponent(category.slug)}`,
     })),
-    { label: settings.header.cartLabel.toUpperCase(), to: "/cart" },
-    { label: settings.header.accountLabel.toUpperCase(), to: "/dashboard" },
-    { label: settings.header.wishlistLabel.toUpperCase(), to: "/dashboard/wishlist" },
+    { label: (settings.header.cartLabel || t("nav.cartLabel")).toUpperCase(), to: "/cart" },
+    { label: (settings.header.accountLabel || t("nav.accountLabel")).toUpperCase(), to: "/dashboard" },
+    { label: (settings.header.wishlistLabel || t("nav.wishlistLabel")).toUpperCase(), to: "/dashboard/wishlist" },
   ];
 
   return (
@@ -91,21 +94,21 @@ export default function Navbar() {
 
         <div className="luxe-shell">
           <div className="flex h-20 items-center justify-between gap-4">
-            <Link to="/" className="flex items-center gap-3">
-              <span className="flex flex-col">
-                <span className="font-display text-[30px] font-semibold leading-none tracking-[-0.05em] text-[hsl(var(--accent))]">
-                  {settings.header.logoTop}
+              <Link to="/" className="flex items-center gap-3">
+                <span className="flex flex-col">
+                  <span className="font-display text-[30px] font-semibold leading-none tracking-[-0.05em] text-[hsl(var(--accent))]">
+                    {settings.header.logoTop || "OUTLETHUBS"}
+                  </span>
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.34em] text-muted-foreground">
+                    {settings.header.logoBottom || "LUXE HUBS"}
+                  </span>
                 </span>
-                <span className="text-[10px] font-semibold uppercase tracking-[0.34em] text-muted-foreground">
-                  {settings.header.logoBottom}
-                </span>
-              </span>
-            </Link>
-
-            <div className="hidden flex-1 items-center justify-center gap-8 lg:flex">
-              <Link to="/shop" className="text-[12px] font-semibold tracking-[0.2em] text-foreground/80 hover:text-[hsl(var(--accent))] transition-colors">
-                {settings.header.shopLabel.toUpperCase()}
               </Link>
+
+              <div className="hidden flex-1 items-center justify-center gap-8 lg:flex">
+                <Link to="/shop" className="text-[12px] font-semibold tracking-[0.2em] text-foreground/80 hover:text-[hsl(var(--accent))] transition-colors">
+                  {(settings.header.shopLabel || t("nav.shopLabel")).toUpperCase()}
+                </Link>
               {menuCategories.map((category) => (
                 <Link
                   key={category.id}
@@ -123,8 +126,9 @@ export default function Navbar() {
                 className="hidden h-11 w-[260px] items-center gap-3 rounded-full border border-border bg-card/75 px-4 text-sm text-muted-foreground shadow-sm transition hover:border-[hsl(var(--accent))/0.45] lg:flex"
               >
                 <Search className="h-4 w-4" />
-                <span>{settings.header.searchPlaceholder}</span>
+                <span>{settings.header.searchPlaceholder || t("nav.searchPlaceholder")}</span>
               </Link>
+              <LanguageSwitcher compact />
               <button onClick={toggleTheme} className="rounded-full border border-border bg-card/80 p-2.5 hover:border-[hsl(var(--accent))/0.55]">
                 {theme === "dark" ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
               </button>
@@ -162,10 +166,10 @@ export default function Navbar() {
               <div className="mb-10 flex items-center justify-between">
                 <span className="flex flex-col">
                   <span className="font-display text-3xl font-semibold tracking-[-0.05em] text-[hsl(var(--accent))]">
-                    {settings.header.logoTop}
+                    {settings.header.logoTop || "OUTLETHUBS"}
                   </span>
                   <span className="text-[10px] font-semibold uppercase tracking-[0.34em] text-muted-foreground">
-                    {settings.header.logoBottom}
+                    {settings.header.logoBottom || "LUXE HUBS"}
                   </span>
                 </span>
                 <button onClick={() => setMobileOpen(false)} className="rounded-full border border-border p-2.5">
@@ -178,7 +182,7 @@ export default function Navbar() {
                 className="mb-8 flex h-12 items-center gap-3 rounded-full border border-border bg-card px-4 text-sm text-muted-foreground"
               >
                 <Search className="h-4 w-4" />
-                <span>{settings.header.searchPlaceholder}</span>
+                <span>{settings.header.searchPlaceholder || t("nav.searchPlaceholder")}</span>
               </Link>
               <div className="flex flex-col gap-6">
                 {mobileMenuItems.map((item, i) => (

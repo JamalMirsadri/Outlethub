@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { appClient } from "@/api/appClient";
 import { http } from "@/services/http";
 import { Heart, ShoppingBag, Bell, ChevronLeft, ChevronRight, Minus, Plus, Check, Shield, Truck, RotateCcw, ZoomIn, ZoomOut } from "lucide-react";
@@ -19,6 +20,7 @@ import { PRODUCT_PLACEHOLDER_IMAGE } from "@/lib/placeholders";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 
 export default function ProductDetail() {
+  const { t } = useTranslation();
   const { id, slug } = useParams();
   const [product, setProduct] = useState(null);
   const [related, setRelated] = useState([]);
@@ -158,7 +160,7 @@ export default function ProductDetail() {
   if (!product) return (
     <div className="min-h-screen flex items-center justify-center">
       <Navbar />
-      <p className="text-muted-foreground">Product not found.</p>
+      <p className="text-muted-foreground">{t("common.noResults")}</p>
     </div>
   );
 
@@ -244,8 +246,8 @@ export default function ProductDetail() {
   const handleAddToCart = async () => {
     if (!product.id) {
       toast({
-        title: "Product unavailable",
-        description: "This product cannot be added right now.",
+        title: t("common.error"),
+        description: t("common.somethingWentWrong"),
         variant: "destructive",
       });
       return;
@@ -253,8 +255,8 @@ export default function ProductDetail() {
 
     if (availableColors.length > 0 && !selectedColor) {
       toast({
-        title: "Select a color",
-        description: "Choose a color before adding this product to your cart.",
+        title: t("product.selectColor"),
+        description: t("product.selectColor"),
         variant: "destructive",
       });
       return;
@@ -262,8 +264,8 @@ export default function ProductDetail() {
 
     if (availableSizes.length > 0 && !selectedSize) {
       toast({
-        title: "Select a size",
-        description: "Choose an available size before adding this product to your cart.",
+        title: t("product.selectSize"),
+        description: t("product.selectSize"),
         variant: "destructive",
       });
       return;
@@ -271,8 +273,8 @@ export default function ProductDetail() {
 
     if (availableSizes.length > 0 && selectedVariantStock <= 0) {
       toast({
-        title: "Selected variant is out of stock",
-        description: "Please choose another available size or color.",
+        title: t("product.outOfStock"),
+        description: t("product.notSelected"),
         variant: "destructive",
       });
       return;
@@ -287,13 +289,13 @@ export default function ProductDetail() {
         quantity,
       });
       toast({
-        title: "Added to cart",
-        description: `${quantity} item${quantity > 1 ? "s" : ""} added to your cart.`,
+        title: t("product.addToCart"),
+        description: `${quantity} ${t("cart.items")}`,
       });
     } catch (error) {
       toast({
-        title: "Add to cart failed",
-        description: error instanceof Error ? error.message : "Please try again.",
+        title: t("common.errorOccurred"),
+        description: error instanceof Error ? error.message : t("cart.pleaseTryAgain"),
         variant: "destructive",
       });
     } finally {
@@ -322,7 +324,7 @@ export default function ProductDetail() {
       <div className="luxe-shell pt-28 pb-16">
         {/* Breadcrumb */}
         <Link to="/products" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors mb-8">
-          <ChevronLeft className="w-4 h-4" /> Back to Shop
+          <ChevronLeft className="w-4 h-4" /> {t("common.back")} {t("nav.shop")}
         </Link>
 
         <div className="grid lg:grid-cols-2 gap-8 lg:gap-16">
@@ -337,7 +339,7 @@ export default function ProductDetail() {
                 type="button"
                 onClick={openGallery}
                 className="absolute inset-0 z-10 flex items-center justify-center"
-                aria-label="Open product image gallery"
+                aria-label={t("product.images")}
               >
                 <img src={images[selectedImage]} alt={product.title} className="h-full w-full object-contain bg-white/5 p-2" />
               </button>
@@ -350,7 +352,7 @@ export default function ProductDetail() {
                       showPreviousImage();
                     }}
                     className="absolute left-3 top-1/2 z-20 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-background/80 text-foreground transition hover:bg-background"
-                    aria-label="Previous image"
+                    aria-label={t("common.previous")}
                   >
                     <ChevronLeft className="h-5 w-5" />
                   </button>
@@ -361,14 +363,14 @@ export default function ProductDetail() {
                       showNextImage();
                     }}
                     className="absolute right-3 top-1/2 z-20 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-background/80 text-foreground transition hover:bg-background"
-                    aria-label="Next image"
+                    aria-label={t("common.next")}
                   >
                     <ChevronRight className="h-5 w-5" />
                   </button>
                 </>
               ) : null}
               <div className="pointer-events-none absolute bottom-3 right-3 z-20 rounded-full bg-background/80 px-3 py-1 text-xs text-muted-foreground">
-                Click to zoom
+                {t("common.view")}
               </div>
             </div>
             {images.length > 1 && (
@@ -409,15 +411,15 @@ export default function ProductDetail() {
             </div>
             <div className="mb-6 space-y-2">
               <p className="text-sm text-muted-foreground">
-                Original retail price: {formatCurrency(convertAmount(originalPrice, currency, displayCurrency), displayCurrency)}
+                {t("product.originalPrice")}: {formatCurrency(convertAmount(originalPrice, currency, displayCurrency), displayCurrency)}
               </p>
               {hasOutletPrice ? (
                 <>
                   <p className="text-sm text-muted-foreground">
-                    Outlet price: {formatCurrency(convertAmount(outletPrice, currency, displayCurrency), displayCurrency)}
+                    {t("product.outletPrice")}: {formatCurrency(convertAmount(outletPrice, currency, displayCurrency), displayCurrency)}
                   </p>
                   <p className="text-sm text-[hsl(var(--accent))] font-medium">
-                    You save {formatCurrency(convertAmount(savings, currency, displayCurrency), displayCurrency)} vs original retail price
+                    {t("product.youSave")} {formatCurrency(convertAmount(savings, currency, displayCurrency), displayCurrency)}
                   </p>
                 </>
               ) : null}
@@ -425,12 +427,12 @@ export default function ProductDetail() {
             <div className="mb-6 rounded-[22px] border border-border/70 bg-background/60 p-4">
               <div className="space-y-2 text-sm">
                 <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Original Retail Price</span>
+                  <span className="text-muted-foreground">{t("product.originalPrice")}</span>
                   <span>{formatCurrency(convertAmount(originalPrice, currency, displayCurrency), displayCurrency)}</span>
                 </div>
                 {hasOutletPrice ? (
                   <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Outlet Price</span>
+                    <span className="text-muted-foreground">{t("product.outletPrice")}</span>
                     <span>{formatCurrency(convertAmount(outletPrice, currency, displayCurrency), displayCurrency)}</span>
                   </div>
                 ) : null}
@@ -438,14 +440,14 @@ export default function ProductDetail() {
             </div>
 
             <p className="text-sm text-muted-foreground leading-relaxed mb-8">
-              {product.description || "Premium quality from the official outlet store. Authentic product with brand tags and packaging included."}
+              {product.description || t("product.details")}
             </p>
 
             {/* Size */}
             {availableSizes.length > 0 && (
               <div className="mb-6">
                 <p className="text-xs font-semibold tracking-widest text-muted-foreground mb-3">
-                  SIZE {selectedColor ? `- ${selectedColor}` : ""}
+                  {t("product.size")} {selectedColor ? `- ${selectedColor}` : ""}
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {availableSizes.map(s => (
@@ -457,7 +459,7 @@ export default function ProductDetail() {
                 </div>
                 {normalizedVariants.length > 0 ? (
                   <p className="mt-2 text-xs text-muted-foreground">
-                    Showing only sizes available for the selected color.
+                    {t("product.selectColor")}
                   </p>
                 ) : null}
               </div>
@@ -466,7 +468,7 @@ export default function ProductDetail() {
             {/* Color */}
             {availableColors.length > 0 && (
               <div className="mb-6">
-                <p className="text-xs font-semibold tracking-widest text-muted-foreground mb-3">COLOR — {selectedColor || "Select"}</p>
+                <p className="text-xs font-semibold tracking-widest text-muted-foreground mb-3">{t("product.color")} — {selectedColor || t("product.notSelected")}</p>
                 <div className="flex gap-2">
                   {availableColors.map(c => (
                     <button key={c} onClick={() => setSelectedColor(c)}
@@ -481,7 +483,7 @@ export default function ProductDetail() {
 
             {/* Quantity */}
             <div className="mb-8">
-              <p className="text-xs font-semibold tracking-widest text-muted-foreground mb-3">QUANTITY</p>
+              <p className="text-xs font-semibold tracking-widest text-muted-foreground mb-3">{t("cart.quantity")}</p>
               <div className="flex items-center gap-3">
                 <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-10 h-10 rounded-lg border border-border flex items-center justify-center hover:bg-secondary transition-colors">
                   <Minus className="w-4 h-4" />
@@ -502,12 +504,12 @@ export default function ProductDetail() {
                 disabled={isAddingToCart || (availableSizes.length > 0 ? selectedVariantStock <= 0 : product.stock <= 0)}
               >
                 <ShoppingBag className="w-4 h-4 mr-2" />
-                {isAddingToCart ? "ADDING..." : "ADD TO BAG"}
+                {isAddingToCart ? t("common.loading") : t("product.addToCart")}
               </Button>
-              <Button variant="outline" size="icon" className="h-14 w-14 rounded-full" onClick={() => setLiked(!liked)}>
+              <Button variant="outline" size="icon" className="h-14 w-14 rounded-full" onClick={() => setLiked(!liked)} aria-label={t("product.addToWishlist")}>
                 <Heart className={`w-5 h-5 ${liked ? "fill-red-500 text-red-500" : ""}`} />
               </Button>
-              <Button variant="outline" size="icon" className="h-14 w-14 rounded-full">
+              <Button variant="outline" size="icon" className="h-14 w-14 rounded-full" aria-label={t("product.share")}>
                 <Bell className="w-5 h-5" />
               </Button>
             </div>
@@ -519,12 +521,12 @@ export default function ProductDetail() {
                 {(availableSizes.length > 0 ? selectedVariantStock : product.stock) > 0 ? (
                   <span>
                     {availableSizes.length > 0 && selectedSize
-                      ? `${selectedVariantStock} in stock for ${selectedColor} / ${selectedSize}`
-                      : `${product.stock} in stock`}
+                      ? `${selectedVariantStock} ${t("product.inStock")}`
+                      : `${product.stock} ${t("product.inStock")}`}
                   </span>
                 ) : (
                   <span className="text-destructive">
-                    {availableSizes.length > 0 ? "Selected size is out of stock" : "Out of stock"}
+                    {availableSizes.length > 0 ? t("product.lowStock") : t("product.outOfStock")}
                   </span>
                 )}
               </div>
@@ -533,9 +535,9 @@ export default function ProductDetail() {
             {/* Trust signals */}
             <div className="grid grid-cols-3 gap-4">
               {[
-                { icon: Shield, label: "Authentic" },
-                { icon: Truck, label: "Free Shipping" },
-                { icon: RotateCcw, label: "30-Day Returns" },
+                { icon: Shield, label: t("product.secureCheckout") },
+                { icon: Truck, label: t("product.estimatedDelivery") },
+                { icon: RotateCcw, label: t("product.returnsPolicy") },
               ].map(({ icon: Icon, label }) => (
                 <div key={label} className="rounded-[18px] border border-border/70 bg-background/60 p-3 text-center">
                   <Icon className="w-4 h-4 mx-auto mb-1 text-muted-foreground" />
@@ -553,7 +555,7 @@ export default function ProductDetail() {
           viewport={{ once: true }}
           className="mt-20"
         >
-          <h2 className="font-display text-2xl font-bold mb-6">Price History</h2>
+          <h2 className="font-display text-2xl font-bold mb-6">{t("product.details")}</h2>
           <div className="luxe-panel p-6">
             <ResponsiveContainer width="100%" height={200}>
               <LineChart data={priceHistory}>
@@ -565,7 +567,7 @@ export default function ProductDetail() {
                   tickFormatter={(value) => formatCurrency(convertAmount(Number(value), currency, displayCurrency), displayCurrency)}
                 />
                 <Tooltip
-                  formatter={(value) => [formatCurrency(convertAmount(Number(value), currency, displayCurrency), displayCurrency), "Price"]}
+                  formatter={(value) => [formatCurrency(convertAmount(Number(value), currency, displayCurrency), displayCurrency), t("product.finalPrice")]}
                   contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }}
                 />
                 <Line type="monotone" dataKey="price" stroke="hsl(150, 100%, 50%)" strokeWidth={2} dot={{ fill: "hsl(150, 100%, 50%)", r: 4 }} />
@@ -582,7 +584,7 @@ export default function ProductDetail() {
             viewport={{ once: true }}
             className="mt-20"
           >
-            <h2 className="font-display text-2xl font-bold mb-6">More from {product.brand}</h2>
+            <h2 className="font-display text-2xl font-bold mb-6">{t("product.relatedProducts")}</h2>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 lg:gap-6">
               {related.map((p, i) => <ProductCard key={p.id} product={p} index={i} />)}
             </div>
@@ -602,7 +604,7 @@ export default function ProductDetail() {
           <div className="relative">
             <div className="mb-3 flex items-center justify-between gap-3 pr-10">
               <p className="text-sm text-muted-foreground">
-                Image {selectedImage + 1} of {images.length}
+                {t("product.images")} {selectedImage + 1} {t("shop.of")} {images.length}
               </p>
               <Button
                 type="button"
@@ -612,7 +614,7 @@ export default function ProductDetail() {
                 className="rounded-full"
               >
                 {isZoomed ? <ZoomOut className="mr-2 h-4 w-4" /> : <ZoomIn className="mr-2 h-4 w-4" />}
-                {isZoomed ? "Zoom Out" : "Zoom In"}
+                {isZoomed ? t("common.view") : t("common.view")}
               </Button>
             </div>
             <div className="relative flex min-h-[70vh] items-center justify-center overflow-hidden rounded-xl bg-black/40">
@@ -628,7 +630,7 @@ export default function ProductDetail() {
                     type="button"
                     onClick={showPreviousImage}
                     className="absolute left-3 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-background/80 text-foreground transition hover:bg-background"
-                    aria-label="Previous image"
+                    aria-label={t("common.previous")}
                   >
                     <ChevronLeft className="h-5 w-5" />
                   </button>
@@ -636,7 +638,7 @@ export default function ProductDetail() {
                     type="button"
                     onClick={showNextImage}
                     className="absolute right-3 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-background/80 text-foreground transition hover:bg-background"
-                    aria-label="Next image"
+                    aria-label={t("common.next")}
                   >
                     <ChevronRight className="h-5 w-5" />
                   </button>

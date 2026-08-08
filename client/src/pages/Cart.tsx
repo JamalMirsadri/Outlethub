@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { ArrowRight, Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
 
@@ -12,24 +13,25 @@ import { useCart } from "@/contexts/CartContext";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { formatCurrency, shouldShowTomanAmounts } from "@/lib/currency";
 
-const COUNTRY_OPTIONS = [
-  { code: "PT", label: "Portugal" },
-  { code: "ES", label: "Spain" },
-  { code: "IR", label: "Iran" },
-];
-
 export default function Cart() {
+  const { t } = useTranslation();
   const { cart, cartReady, isLoadingCart, isMutatingCart, updateItemQuantity, removeItem, clearItems, changeCountry } =
     useCart();
   const { preferredCurrency, supportedCurrencies, setPreferredCurrency, convertAmount } = useCurrency();
+
+  const COUNTRY_OPTIONS = [
+    { code: "PT", label: t("countries.portugal") },
+    { code: "ES", label: t("countries.spain") },
+    { code: "IR", label: t("countries.iran") },
+  ];
 
   const handleQuantityChange = async (itemId: string, quantity: number) => {
     try {
       await updateItemQuantity(itemId, quantity);
     } catch (error: unknown) {
       toast({
-        title: "Cart update failed",
-        description: error instanceof Error ? error.message : "Please try again.",
+        title: t("cart.cartUpdateFailed"),
+        description: error instanceof Error ? error.message : t("cart.pleaseTryAgain"),
         variant: "destructive",
       });
     }
@@ -39,13 +41,13 @@ export default function Cart() {
     try {
       await removeItem(itemId);
       toast({
-        title: "Item removed",
-        description: "The product was removed from your cart.",
+        title: t("cart.itemRemoved"),
+        description: t("cart.itemRemovedDesc"),
       });
     } catch (error: unknown) {
       toast({
-        title: "Remove failed",
-        description: error instanceof Error ? error.message : "Please try again.",
+        title: t("cart.removeFailed"),
+        description: error instanceof Error ? error.message : t("cart.pleaseTryAgain"),
         variant: "destructive",
       });
     }
@@ -55,13 +57,13 @@ export default function Cart() {
     try {
       await clearItems();
       toast({
-        title: "Cart cleared",
-        description: "Your cart is now empty.",
+        title: t("cart.cartCleared"),
+        description: t("cart.cartClearedDesc"),
       });
     } catch (error: unknown) {
       toast({
-        title: "Clear cart failed",
-        description: error instanceof Error ? error.message : "Please try again.",
+        title: t("cart.clearCartFailed"),
+        description: error instanceof Error ? error.message : t("cart.pleaseTryAgain"),
         variant: "destructive",
       });
     }
@@ -72,8 +74,8 @@ export default function Cart() {
       await changeCountry({ countryCode });
     } catch (error: unknown) {
       toast({
-        title: "Shipping zone update failed",
-        description: error instanceof Error ? error.message : "Please try again.",
+        title: t("cart.shippingUpdateFailed"),
+        description: error instanceof Error ? error.message : t("cart.pleaseTryAgain"),
         variant: "destructive",
       });
     }
@@ -97,17 +99,17 @@ export default function Cart() {
       <main className="luxe-shell pt-28 pb-16">
         <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between mb-10">
           <div>
-            <p className="luxe-eyebrow mb-3">Cart</p>
-            <h1 className="luxe-heading text-3xl lg:text-5xl">Your bag</h1>
+            <p className="luxe-eyebrow mb-3">{t("cart.eyebrow")}</p>
+            <h1 className="luxe-heading text-3xl lg:text-5xl">{t("cart.title")}</h1>
             <p className="text-sm text-muted-foreground mt-3">
-              Verified against the persisted backend cart with shipping and VAT totals.
+              {t("cart.subtitle")}
             </p>
           </div>
           <div className="w-full md:w-56">
-            <p className="text-xs font-semibold tracking-widest text-muted-foreground mb-3">Shipping zone</p>
+            <p className="text-xs font-semibold tracking-widest text-muted-foreground mb-3">{t("cart.shippingZone")}</p>
             <Select value={cart.countryCode} onValueChange={handleCountryChange} disabled={isLoadingCart || isMutatingCart}>
               <SelectTrigger className="h-11">
-                <SelectValue placeholder="Select country" />
+                <SelectValue placeholder={t("cart.selectCountry")} />
               </SelectTrigger>
               <SelectContent>
                 {COUNTRY_OPTIONS.map((country) => (
@@ -119,10 +121,10 @@ export default function Cart() {
             </Select>
           </div>
           <div className="w-full md:w-56">
-            <p className="text-xs font-semibold tracking-widest text-muted-foreground mb-3">Display currency</p>
+            <p className="text-xs font-semibold tracking-widest text-muted-foreground mb-3">{t("cart.displayCurrency")}</p>
             <Select value={displayCurrency} onValueChange={(value) => void setPreferredCurrency(value)} disabled={showTomanAmounts}>
               <SelectTrigger className="h-11">
-                <SelectValue placeholder="Select currency" />
+                <SelectValue placeholder={t("cart.selectCurrency")} />
               </SelectTrigger>
               <SelectContent>
                 {supportedCurrencies.map((entry) => (
@@ -157,12 +159,12 @@ export default function Cart() {
               <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-secondary">
                 <ShoppingBag className="w-7 h-7" />
               </div>
-              <h2 className="font-display text-2xl font-bold mb-3">Your cart is empty</h2>
+              <h2 className="font-display text-2xl font-bold mb-3">{t("cart.emptyTitle")}</h2>
               <p className="text-sm text-muted-foreground mb-8">
-                Add a product to verify persistence, guest cart behavior, and the live navbar badge.
+                {t("cart.emptySubtitle")}
               </p>
               <Button asChild size="lg" className="rounded-full px-8">
-                <Link to="/shop">Continue shopping</Link>
+                <Link to="/shop">{t("cart.continueShopping")}</Link>
               </Button>
             </CardContent>
           </Card>
@@ -170,9 +172,9 @@ export default function Cart() {
           <div className="grid gap-6 lg:grid-cols-[1.5fr,0.9fr]">
             <Card className="border-border/60 bg-card/85 shadow-[0_18px_45px_hsl(var(--foreground)/0.05)]">
               <CardHeader className="flex flex-row items-center justify-between space-y-0">
-                <CardTitle className="text-xl">Cart items</CardTitle>
+                <CardTitle className="text-xl">{t("cart.cartItems")}</CardTitle>
                 <Button variant="ghost" onClick={handleClearCart} disabled={isMutatingCart}>
-                  Clear cart
+                  {t("cart.clearCart")}
                 </Button>
               </CardHeader>
               <CardContent className="space-y-6">
@@ -187,7 +189,7 @@ export default function Cart() {
                           <img src={item.imageUrl} alt={item.title} className="h-full w-full object-cover" />
                         ) : (
                           <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
-                            No image
+                            {t("cart.noImage")}
                           </div>
                         )}
                       </Link>
@@ -204,22 +206,22 @@ export default function Cart() {
                               {item.title}
                             </Link>
                             <p className="text-sm text-muted-foreground mt-2">
-                              Supplier cost {formatCurrency(item.supplierCost, currency)}
+                              {t("product.supplierCost")} {formatCurrency(item.supplierCost, currency)}
                             </p>
                             <div className="mt-2 flex flex-wrap gap-2">
                               <span className="rounded-full bg-secondary px-3 py-1 text-[11px] text-muted-foreground">
-                                Size: {item.size || "Not selected"}
+                                {t("cart.size")}: {item.size || t("product.notSelected")}
                               </span>
                               <span className="rounded-full bg-secondary px-3 py-1 text-[11px] text-muted-foreground">
-                                Color: {item.color || "Not selected"}
+                                {t("cart.color")}: {item.color || t("product.notSelected")}
                               </span>
                             </div>
                             <p className="text-xs text-muted-foreground mt-1">
-                              Final {formatCurrency(convertAmount(item.customerPaid, currency, displayCurrency), displayCurrency)}
+                              {t("product.finalPrice")} {formatCurrency(convertAmount(item.customerPaid, currency, displayCurrency), displayCurrency)}
                             </p>
                             {showTomanAmounts ? (
                               <p className="text-xs text-muted-foreground mt-1">
-                                EUR {formatCurrency(item.customerPaid, currency)}
+                                {t("currency.eur")} {formatCurrency(item.customerPaid, currency)}
                               </p>
                             ) : null}
                             {item.sourceUrl ? (
@@ -229,7 +231,7 @@ export default function Cart() {
                                 rel="noreferrer"
                                 className="inline-block mt-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
                               >
-                                View source product
+                                {t("product.viewSource")}
                               </a>
                             ) : null}
                           </div>
@@ -264,7 +266,7 @@ export default function Cart() {
                             disabled={isMutatingCart}
                           >
                             <Trash2 className="w-4 h-4 mr-2" />
-                            Remove
+                            {t("common.remove")}
                           </Button>
                         </div>
                       </div>
@@ -277,101 +279,101 @@ export default function Cart() {
 
             <Card className="h-fit border-border/60 bg-card/85 shadow-[0_18px_45px_hsl(var(--foreground)/0.05)] lg:sticky lg:top-28">
               <CardHeader>
-                <CardTitle className="text-xl">Order summary</CardTitle>
+                <CardTitle className="text-xl">{t("cart.orderSummary")}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Items ({cart.itemCount})</span>
+                  <span className="text-muted-foreground">{t("cart.items")} ({cart.itemCount})</span>
                   <span>{formatCurrency(cart.subtotalAmount, currency)}</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Product price before website fee and VAT</span>
+                  <span className="text-muted-foreground">{t("product.supplierCost")}</span>
                   <span>{formatCurrency(productPriceBeforeMarginAndVat, currency)}</span>
                 </div>
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span>Items ({displayCurrency})</span>
+                  <span>{t("cart.subtotal")} ({displayCurrency})</span>
                   <span>{formatCurrency(convertAmount(cart.subtotalAmount, currency, displayCurrency), displayCurrency)}</span>
                 </div>
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span>Product price before website fee and VAT ({displayCurrency})</span>
+                  <span>{t("product.supplierCost")} ({displayCurrency})</span>
                   <span>{formatCurrency(convertAmount(productPriceBeforeMarginAndVat, currency, displayCurrency), displayCurrency)}</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Website Fee</span>
+                  <span className="text-muted-foreground">{t("checkout.tax")}</span>
                   <span>{formatCurrency(websiteMarginAmount, currency)}</span>
                 </div>
                 {showTomanAmounts ? (
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span>Website Fee ({displayCurrency})</span>
+                    <span>{t("checkout.tax")} ({displayCurrency})</span>
                     <span>{formatCurrency(convertAmount(websiteMarginAmount, currency, displayCurrency), displayCurrency)}</span>
                   </div>
                 ) : null}
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Shipping</span>
+                  <span className="text-muted-foreground">{t("cart.shipping")}</span>
                   <span>{formatCurrency(cart.shippingAmount, currency)}</span>
                 </div>
                 {showTomanAmounts ? (
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span>Shipping ({displayCurrency})</span>
+                    <span>{t("cart.shipping")} ({displayCurrency})</span>
                     <span>{formatCurrency(convertAmount(cart.shippingAmount, currency, displayCurrency), displayCurrency)}</span>
                   </div>
                 ) : null}
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Handling</span>
+                  <span className="text-muted-foreground">{t("cart.shipping")}</span>
                   <span>{formatCurrency(cart.handlingAmount, currency)}</span>
                 </div>
                 {showTomanAmounts ? (
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span>Handling ({displayCurrency})</span>
+                    <span>{t("cart.shipping")} ({displayCurrency})</span>
                     <span>{formatCurrency(convertAmount(cart.handlingAmount, currency, displayCurrency), displayCurrency)}</span>
                   </div>
                 ) : null}
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Payment fee</span>
+                  <span className="text-muted-foreground">{t("cart.shipping")}</span>
                   <span>{formatCurrency(cart.paymentFeeAmount, currency)}</span>
                 </div>
                 {showTomanAmounts ? (
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span>Payment fee ({displayCurrency})</span>
+                    <span>{t("cart.shipping")} ({displayCurrency})</span>
                     <span>{formatCurrency(convertAmount(cart.paymentFeeAmount, currency, displayCurrency), displayCurrency)}</span>
                   </div>
                 ) : null}
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">VAT</span>
+                  <span className="text-muted-foreground">{t("cart.vat")}</span>
                   <span>{formatCurrency(cart.taxAmount, currency)}</span>
                 </div>
                 {showTomanAmounts ? (
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span>VAT ({displayCurrency})</span>
+                    <span>{t("cart.vat")} ({displayCurrency})</span>
                     <span>{formatCurrency(convertAmount(cart.taxAmount, currency, displayCurrency), displayCurrency)}</span>
                   </div>
                 ) : null}
                 <Separator />
                 <div className="flex items-center justify-between">
-                  <span className="font-semibold">Total</span>
+                  <span className="font-semibold">{t("cart.total")}</span>
                   <span className="font-semibold text-xl">{formatCurrency(cart.totalAmount, currency)}</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Total ({displayCurrency})</span>
+                  <span className="text-muted-foreground">{t("cart.total")} ({displayCurrency})</span>
                   <span>{formatCurrency(convertAmount(cart.totalAmount, currency, displayCurrency), displayCurrency)}</span>
                 </div>
                 {showTomanAmounts ? (
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span>Exchange Rate</span>
+                    <span>{t("cart.total")}</span>
                     <span>1 {currency} {"->"} {convertAmount(1, currency, displayCurrency)} {displayCurrency}</span>
                   </div>
                 ) : null}
                 <p className="text-xs text-muted-foreground">
-                  Currency conversion and payment selection continue in checkout.
+                  {t("checkout.title")}
                 </p>
                 <Button asChild className="w-full rounded-full h-12">
                   <Link to="/checkout">
-                    Proceed to checkout
+                    {t("cart.proceedToCheckout")}
                     <ArrowRight className="w-4 h-4 ml-2" />
                   </Link>
                 </Button>
                 <Button asChild variant="outline" className="w-full rounded-full h-12">
-                  <Link to="/shop">Continue shopping</Link>
+                  <Link to="/shop">{t("cart.continueShopping")}</Link>
                 </Button>
               </CardContent>
             </Card>

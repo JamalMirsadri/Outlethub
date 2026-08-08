@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,6 +13,7 @@ import { toast } from "@/components/ui/use-toast";
 import { register, resendVerification, verifyEmail } from "@/services/auth.service";
 
 export default function Register() {
+  const { t } = useTranslation();
   const [searchParams] = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -36,7 +38,7 @@ export default function Register() {
     event.preventDefault();
     setError("");
     if (password !== confirmPassword) {
-      setError("Passwords do not match");
+      setError(t("common.passwordMismatch"));
       return;
     }
 
@@ -55,7 +57,7 @@ export default function Register() {
       });
       setShowOtp(true);
     } catch (requestError: unknown) {
-      setError(requestError instanceof Error ? requestError.message : "Registration failed");
+      setError(requestError instanceof Error ? requestError.message : t("auth.registerFailed"));
     } finally {
       registerRequestRef.current = false;
       setLoading(false);
@@ -75,7 +77,7 @@ export default function Register() {
       await mergeGuestCart().catch(() => undefined);
       window.location.href = "/";
     } catch (requestError: unknown) {
-      setError(requestError instanceof Error ? requestError.message : "Invalid verification code");
+      setError(requestError instanceof Error ? requestError.message : t("common.somethingWentWrong"));
     } finally {
       verifyRequestRef.current = false;
       setLoading(false);
@@ -92,26 +94,26 @@ export default function Register() {
     try {
       await resendVerification(email);
       toast({
-        title: "Code sent",
-        description: "Check your email for the new code.",
+        title: t("common.success"),
+        description: t("auth.resetEmailSent"),
       });
     } catch (requestError: unknown) {
-      setError(requestError instanceof Error ? requestError.message : "Failed to resend code");
+      setError(requestError instanceof Error ? requestError.message : t("common.somethingWentWrong"));
     } finally {
       resendRequestRef.current = false;
     }
   };
 
   const handleGoogle = (): void => {
-    setError("Google sign-in is not available in the independent backend yet.");
+    setError(t("auth.googleUnavailable"));
   };
 
   if (showOtp) {
     return (
       <AuthLayout
         icon={Mail}
-        title="Verify your email"
-        subtitle={`We sent a code to ${email}`}
+        title={t("common.confirm")}
+        subtitle={t("auth.resetEmailSent")}
       >
         {error && (
           <div className="mb-4 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
@@ -144,16 +146,16 @@ export default function Register() {
           {loading ? (
             <>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Verifying...
+              {t("common.processing")}
             </>
           ) : (
-            "Verify"
+            t("common.confirm")
           )}
         </Button>
         <p className="text-center text-sm text-muted-foreground mt-4">
-          Didn't receive the code?{" "}
+          {t("common.tryAgain")}{" "}
           <button onClick={handleResend} className="text-primary font-medium hover:underline">
-            Resend
+            {t("common.retry")}
           </button>
         </p>
       </AuthLayout>
@@ -163,13 +165,13 @@ export default function Register() {
   return (
     <AuthLayout
       icon={UserPlus}
-      title="Create your account"
-      subtitle="Sign up to get started"
+      title={t("auth.registerTitle")}
+      subtitle={t("auth.registerSubtitle")}
       footer={
         <>
-          Already have an account?{" "}
+          {t("auth.accountExists")}{" "}
           <Link to="/login" className="text-primary font-medium hover:underline">
-            Log in
+            {t("auth.loginHere")}
           </Link>
         </>
       }
@@ -181,7 +183,7 @@ export default function Register() {
         type="button"
       >
         <GoogleIcon className="w-5 h-5 mr-2" />
-        Continue with Google
+        {t("auth.continueWithGoogle")}
       </Button>
 
       <div className="relative mb-6">
@@ -189,7 +191,7 @@ export default function Register() {
           <div className="w-full border-t border-border" />
         </div>
         <div className="relative flex justify-center text-xs uppercase">
-          <span className="bg-card px-3 text-muted-foreground">or</span>
+          <span className="bg-card px-3 text-muted-foreground">{t("common.or")}</span>
         </div>
       </div>
 
@@ -201,7 +203,7 @@ export default function Register() {
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="email">Email</Label>
+          <Label htmlFor="email">{t("common.email")}</Label>
           <div className="relative">
             <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
             <Input
@@ -209,7 +211,7 @@ export default function Register() {
               type="email"
               autoComplete="email"
               autoFocus
-              placeholder="you@example.com"
+              placeholder={t("auth.emailPlaceholder")}
               value={email}
               onChange={(event: ChangeEvent<HTMLInputElement>) => setEmail(event.target.value)}
               className="pl-10 h-12"
@@ -218,14 +220,14 @@ export default function Register() {
           </div>
         </div>
         <div className="space-y-2">
-          <Label htmlFor="password">Password</Label>
+          <Label htmlFor="password">{t("auth.password")}</Label>
           <div className="relative">
             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
             <Input
               id="password"
               type="password"
               autoComplete="new-password"
-              placeholder="••••••••"
+              placeholder={t("auth.passwordPlaceholder")}
               value={password}
               onChange={(event: ChangeEvent<HTMLInputElement>) => setPassword(event.target.value)}
               className="pl-10 h-12"
@@ -234,14 +236,14 @@ export default function Register() {
           </div>
         </div>
         <div className="space-y-2">
-          <Label htmlFor="confirm">Confirm Password</Label>
+          <Label htmlFor="confirm">{t("auth.confirmPassword")}</Label>
           <div className="relative">
             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
             <Input
               id="confirm"
               type="password"
               autoComplete="new-password"
-              placeholder="••••••••"
+              placeholder={t("auth.passwordPlaceholder")}
               value={confirmPassword}
               onChange={(event: ChangeEvent<HTMLInputElement>) =>
                 setConfirmPassword(event.target.value)
@@ -252,12 +254,12 @@ export default function Register() {
           </div>
         </div>
         <div className="space-y-2">
-          <Label htmlFor="referralCode">Referral Code</Label>
+          <Label htmlFor="referralCode">{t("auth.referralCode")}</Label>
           <Input
             id="referralCode"
             type="text"
             autoComplete="off"
-            placeholder="Optional"
+            placeholder={t("auth.referralCodeOptional")}
             value={referralCode}
             onChange={(event: ChangeEvent<HTMLInputElement>) =>
               setReferralCode(event.target.value.toUpperCase())
@@ -269,10 +271,10 @@ export default function Register() {
           {loading ? (
             <>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Creating account...
+              {t("auth.creatingAccount")}
             </>
           ) : (
-            "Create account"
+            t("auth.createAccount")
           )}
         </Button>
       </form>

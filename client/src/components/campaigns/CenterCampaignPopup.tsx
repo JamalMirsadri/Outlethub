@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ExternalLink } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 
 import { getActiveCenterPopup, type CampaignRecord } from "@/api/campaigns";
 import { Button } from "@/components/ui/button";
@@ -28,6 +29,7 @@ function isExternalLink(value: string) {
 
 export default function CenterCampaignPopup() {
   const location = useLocation();
+  const { t } = useTranslation();
   const [campaign, setCampaign] = useState<CampaignRecord | null>(null);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
@@ -85,7 +87,7 @@ export default function CenterCampaignPopup() {
     }
   };
 
-  const ctaLabel = campaign.link ? "Open Campaign" : "Close";
+  const ctaLabel = campaign.link ? t("campaigns.cta") : t("campaigns.closePopup");
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -101,10 +103,10 @@ export default function CenterCampaignPopup() {
 
         <div className="space-y-4 p-6 sm:p-8">
           <div className="space-y-2">
-            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[hsl(var(--accent))]">Campaign Center</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[hsl(var(--accent))]">{t("campaigns.centerEyebrow")}</p>
             <DialogTitle className="font-display text-2xl font-semibold sm:text-3xl">{campaign.title}</DialogTitle>
             <p className="text-sm leading-7 text-muted-foreground sm:text-base">
-              {campaign.description || "Discover the latest campaign highlights curated for OutletHub visitors."}
+              {campaign.description || t("campaigns.defaultDescription")}
             </p>
           </div>
 
@@ -132,7 +134,7 @@ export default function CenterCampaignPopup() {
             )}
 
             <Button variant="outline" size="lg" onClick={() => handleOpenChange(false)}>
-              Dismiss
+              {t("common.close")}
             </Button>
           </div>
         </div>

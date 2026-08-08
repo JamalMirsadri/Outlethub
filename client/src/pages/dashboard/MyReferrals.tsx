@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { getMyReferrals, type CustomerReferralOverviewResponse, type ReferralTreeNode } from "@/api/referrals";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -55,7 +56,7 @@ function formatTrigger(trigger: string) {
     .replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
-function ReferralTreeItem({ node }: { node: ReferralTreeNode }) {
+function ReferralTreeItem({ node, t }: { node: ReferralTreeNode; t: ReturnType<typeof useTranslation>["t"] }) {
   const hasChildren = node.children.length > 0;
 
   if (!hasChildren) {
@@ -66,16 +67,16 @@ function ReferralTreeItem({ node }: { node: ReferralTreeNode }) {
             <div>
               <div className="flex flex-wrap items-center gap-2">
                 <p className="font-medium">{node.name}</p>
-                <Badge variant="outline">Level {node.level}</Badge>
+                <Badge variant="outline">{t("dashboard.level")} {node.level}</Badge>
               </div>
               <p className="mt-1 text-sm text-muted-foreground">
-                Joined {moment(node.joinedAt).format("MMM D, YYYY")} • {node.purchaseCount} delivered order
+                {t("dashboard.memberSince")} {moment(node.joinedAt).format("MMM D, YYYY")} • {node.purchaseCount} delivered order
                 {node.purchaseCount === 1 ? "" : "s"}
               </p>
             </div>
             <div className="flex flex-wrap gap-2 text-xs">
-              <Badge>{node.generatedPoints} pts generated</Badge>
-              {node.pendingPoints > 0 ? <Badge variant="secondary">{node.pendingPoints} pts pending</Badge> : null}
+              <Badge>{node.generatedPoints} pts {t("dashboard.generatedPoints").toLowerCase()}</Badge>
+              {node.pendingPoints > 0 ? <Badge variant="secondary">{node.pendingPoints} pts {t("dashboard.pendingPoints").toLowerCase()}</Badge> : null}
             </div>
           </div>
         </div>
@@ -95,23 +96,23 @@ function ReferralTreeItem({ node }: { node: ReferralTreeNode }) {
                   <ChevronDown className="hidden h-4 w-4 data-[state=open]:block" />
                   <span className="font-medium">{node.name}</span>
                 </CollapsibleTrigger>
-                <Badge variant="outline">Level {node.level}</Badge>
+                <Badge variant="outline">{t("dashboard.level")} {node.level}</Badge>
                 <Badge variant="secondary">{node.children.length} direct</Badge>
               </div>
               <p className="mt-1 text-sm text-muted-foreground">
-                Joined {moment(node.joinedAt).format("MMM D, YYYY")} • {node.purchaseCount} delivered order
+                {t("dashboard.memberSince")} {moment(node.joinedAt).format("MMM D, YYYY")} • {node.purchaseCount} delivered order
                 {node.purchaseCount === 1 ? "" : "s"}
               </p>
             </div>
             <div className="flex flex-wrap gap-2 text-xs">
-              <Badge>{node.generatedPoints} pts generated</Badge>
-              {node.pendingPoints > 0 ? <Badge variant="secondary">{node.pendingPoints} pts pending</Badge> : null}
+              <Badge>{node.generatedPoints} pts {t("dashboard.generatedPoints").toLowerCase()}</Badge>
+              {node.pendingPoints > 0 ? <Badge variant="secondary">{node.pendingPoints} pts {t("dashboard.pendingPoints").toLowerCase()}</Badge> : null}
             </div>
           </div>
         </div>
         <CollapsibleContent className="space-y-3 pt-3">
           {node.children.map((child) => (
-            <ReferralTreeItem key={child.id} node={child} />
+            <ReferralTreeItem key={child.id} node={child} t={t} />
           ))}
         </CollapsibleContent>
       </Collapsible>
@@ -120,6 +121,7 @@ function ReferralTreeItem({ node }: { node: ReferralTreeNode }) {
 }
 
 export default function MyReferrals() {
+  const { t } = useTranslation();
   const [data, setData] = useState(EMPTY_OVERVIEW);
   const [loading, setLoading] = useState(true);
   const [copyingKey, setCopyingKey] = useState("");
@@ -131,8 +133,8 @@ export default function MyReferrals() {
       setData(await getMyReferrals());
     } catch (error) {
       toast({
-        title: "Unable to load referrals",
-        description: error instanceof Error ? error.message : "Please try again.",
+        title: t("common.somethingWentWrong"),
+        description: error instanceof Error ? error.message : t("common.tryAgain"),
         variant: "destructive",
       });
     } finally {
@@ -176,13 +178,13 @@ export default function MyReferrals() {
     try {
       await navigator.clipboard.writeText(value);
       toast({
-        title: key === "code" ? "Referral code copied" : "Referral link copied",
+        title: t("common.copied"),
         description: value,
       });
     } catch (error) {
       toast({
-        title: "Copy failed",
-        description: error instanceof Error ? error.message : "Please copy manually.",
+        title: t("common.errorOccurred"),
+        description: error instanceof Error ? error.message : t("common.tryAgain"),
         variant: "destructive",
       });
     } finally {
@@ -207,10 +209,10 @@ export default function MyReferrals() {
     <div className="space-y-8">
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
-          <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Referral Program</p>
-          <h2 className="mt-2 font-display text-3xl font-semibold">My Referrals</h2>
+          <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">{t("dashboard.referralEarnings")}</p>
+          <h2 className="mt-2 font-display text-3xl font-semibold">{t("dashboard.myReferralsTitle")}</h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            Share your code, follow your network growth, and monitor how your referral tree generates loyalty points.
+            {t("dashboard.myReferralsSubtitle")}
           </p>
         </div>
         <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2">
@@ -223,11 +225,11 @@ export default function MyReferrals() {
         <div className="luxe-panel p-6">
           <div className="flex items-center gap-2">
             <Users className="h-5 w-5 text-[hsl(var(--accent))]" />
-            <h3 className="text-xl font-semibold">Referral Identity</h3>
+            <h3 className="text-xl font-semibold">{t("dashboard.profile")}</h3>
           </div>
           <div className="mt-5 grid gap-4 md:grid-cols-2">
             <div className="rounded-2xl border border-border bg-card p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Referral Code</p>
+              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">{t("dashboard.referralCode")}</p>
               <p className="mt-3 text-2xl font-semibold">{data.profile.referralCode}</p>
               <Button
                 variant="outline"
@@ -236,12 +238,12 @@ export default function MyReferrals() {
                 disabled={!data.profile.referralCode || copyingKey === "code"}
               >
                 {copyingKey === "code" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Copy className="mr-2 h-4 w-4" />}
-                Copy Code
+                {t("dashboard.copyCode")}
               </Button>
             </div>
             <div className="rounded-2xl border border-border bg-card p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Referral Link</p>
-              <p className="mt-3 break-all text-sm text-muted-foreground">{referralLink || "Unavailable"}</p>
+              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">{t("dashboard.referralLink")}</p>
+              <p className="mt-3 break-all text-sm text-muted-foreground">{referralLink || t("common.none")}</p>
               <Button
                 variant="outline"
                 className="mt-4 w-full"
@@ -249,7 +251,7 @@ export default function MyReferrals() {
                 disabled={!referralLink || copyingKey === "link"}
               >
                 {copyingKey === "link" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Link2 className="mr-2 h-4 w-4" />}
-                Copy Link
+                {t("dashboard.copyLink")}
               </Button>
             </div>
           </div>
@@ -258,23 +260,23 @@ export default function MyReferrals() {
         <div className="luxe-panel p-6">
           <div className="flex items-center gap-2">
             <Network className="h-5 w-5 text-[hsl(var(--accent))]" />
-            <h3 className="text-xl font-semibold">Program Snapshot</h3>
+            <h3 className="text-xl font-semibold">{t("dashboard.overview")}</h3>
           </div>
           <div className="mt-5 grid gap-3 sm:grid-cols-2">
             <div className="rounded-2xl border border-border bg-card p-4">
-              <p className="text-sm text-muted-foreground">Direct referrals</p>
+              <p className="text-sm text-muted-foreground">{t("dashboard.totalReferrals")}</p>
               <p className="mt-2 text-2xl font-semibold">{data.summary.directReferralCount}</p>
             </div>
             <div className="rounded-2xl border border-border bg-card p-4">
-              <p className="text-sm text-muted-foreground">Successful purchases</p>
+              <p className="text-sm text-muted-foreground">{t("dashboard.successfulPurchases")}</p>
               <p className="mt-2 text-2xl font-semibold">{data.summary.successfulPurchaseCount}</p>
             </div>
             <div className="rounded-2xl border border-border bg-card p-4">
-              <p className="text-sm text-muted-foreground">Points received</p>
+              <p className="text-sm text-muted-foreground">{t("dashboard.pointsEarned")}</p>
               <p className="mt-2 text-2xl font-semibold">{data.summary.pointsReceived}</p>
             </div>
             <div className="rounded-2xl border border-border bg-card p-4">
-              <p className="text-sm text-muted-foreground">Points pending</p>
+              <p className="text-sm text-muted-foreground">{t("dashboard.pendingPoints")}</p>
               <p className="mt-2 text-2xl font-semibold">{data.summary.pointsPending}</p>
             </div>
           </div>
@@ -282,22 +284,22 @@ export default function MyReferrals() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Direct Referrals" value={data.summary.directReferralCount} hint="Customers you referred directly" />
-        <StatCard label="Network Size" value={data.summary.networkReferralCount} hint="Total downline across all levels" />
-        <StatCard label="Earned Points" value={data.summary.pointsReceived} hint="Already posted to loyalty history" />
-        <StatCard label="Pending Points" value={data.summary.pointsPending} hint="Waiting for order completion" />
+        <StatCard label={t("dashboard.totalReferrals")} value={data.summary.directReferralCount} hint="Customers you referred directly" />
+        <StatCard label={t("dashboard.referralTree").replace("Your ", "")} value={data.summary.networkReferralCount} hint="Total downline across all levels" />
+        <StatCard label={t("dashboard.pointsEarned")} value={data.summary.pointsReceived} hint="Already posted to loyalty history" />
+        <StatCard label={t("dashboard.pendingPoints")} value={data.summary.pointsPending} hint="Waiting for order completion" />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-2">
         <div className="luxe-panel p-6">
           <div className="flex items-center gap-2">
             <Users className="h-5 w-5 text-[hsl(var(--accent))]" />
-            <h3 className="text-xl font-semibold">Direct Referrals</h3>
+            <h3 className="text-xl font-semibold">{t("dashboard.totalReferrals")}</h3>
           </div>
           <div className="mt-5 space-y-4">
             {data.directReferrals.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-border p-6 text-sm text-muted-foreground">
-                Your direct referrals will appear here after someone signs up using your code.
+                {t("dashboard.noReferralsYet")}
               </div>
             ) : (
               data.directReferrals.map((item) => (
@@ -318,12 +320,12 @@ export default function MyReferrals() {
         <div className="luxe-panel p-6">
           <div className="flex items-center gap-2">
             <CheckCircle2 className="h-5 w-5 text-[hsl(var(--accent))]" />
-            <h3 className="text-xl font-semibold">Pending Earnings</h3>
+            <h3 className="text-xl font-semibold">{t("dashboard.pendingPoints")}</h3>
           </div>
           <div className="mt-5 space-y-4">
             {pendingHistory.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-border p-6 text-sm text-muted-foreground">
-                No referral earnings are waiting right now.
+                {t("common.none")} referral earnings are waiting right now.
               </div>
             ) : (
               pendingHistory.map((entry) => (
@@ -352,15 +354,15 @@ export default function MyReferrals() {
         <div className="luxe-panel p-6">
           <div className="flex items-center gap-2">
             <GitBranch className="h-5 w-5 text-[hsl(var(--accent))]" />
-            <h3 className="text-xl font-semibold">Referral Tree</h3>
+            <h3 className="text-xl font-semibold">{t("dashboard.referralTree")}</h3>
           </div>
           <div className="mt-5 space-y-3">
             {data.tree.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-border p-6 text-sm text-muted-foreground">
-                Your referral tree will expand here as your network grows.
+                {t("dashboard.noReferralsYet")}
               </div>
             ) : (
-              data.tree.map((node) => <ReferralTreeItem key={node.id} node={node} />)
+              data.tree.map((node) => <ReferralTreeItem key={node.id} node={node} t={t} />)
             )}
           </div>
         </div>
@@ -368,12 +370,12 @@ export default function MyReferrals() {
         <div className="luxe-panel p-6">
           <div className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-[hsl(var(--accent))]" />
-            <h3 className="text-xl font-semibold">Referral Earnings History</h3>
+            <h3 className="text-xl font-semibold">{t("dashboard.referralEarnings")}</h3>
           </div>
           <div className="mt-5 space-y-4">
             {awardedHistory.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-border p-6 text-sm text-muted-foreground">
-                Completed referral rewards will appear here after your network generates qualifying events.
+                {t("dashboard.earningsEmpty")}
               </div>
             ) : (
               awardedHistory.map((entry) => (
@@ -382,7 +384,7 @@ export default function MyReferrals() {
                     <div>
                       <div className="flex flex-wrap items-center gap-2">
                         <p className="font-medium">{entry.sourceUser.name}</p>
-                        <Badge variant="outline">Level {entry.levelNumber}</Badge>
+                        <Badge variant="outline">{t("dashboard.level")} {entry.levelNumber}</Badge>
                         <Badge variant="secondary">{formatTrigger(entry.trigger)}</Badge>
                       </div>
                       <p className="mt-1 text-sm text-muted-foreground">
@@ -394,7 +396,7 @@ export default function MyReferrals() {
                     <div className="text-left md:text-right">
                       <p className="font-semibold text-emerald-500">+{entry.pointsAwarded}</p>
                       {entry.basePoints !== null ? (
-                        <p className="text-xs text-muted-foreground">Base points {entry.basePoints}</p>
+                        <p className="text-xs text-muted-foreground">{t("dashboard.totalPoints").replace("points", "").trim()} {t("dashboard.availableNow").toLowerCase().split(" ")[0]} {entry.basePoints}</p>
                       ) : null}
                     </div>
                   </div>
