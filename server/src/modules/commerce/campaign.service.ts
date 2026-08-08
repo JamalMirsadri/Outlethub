@@ -1,4 +1,4 @@
-import { CampaignDisplayType, CampaignStatus } from "@prisma/client";
+import { CampaignDisplayType, CampaignPopupDisplayMode, CampaignStatus } from "@prisma/client";
 
 import { prisma } from "../../config/prisma.js";
 import { ApiError } from "../../utils/api-error.js";
@@ -13,6 +13,8 @@ function mapCampaign(campaign: {
   status: CampaignStatus;
   startsAt: Date | null;
   endsAt: Date | null;
+  popupDisplayMode: CampaignPopupDisplayMode;
+  maxDisplaysPerUser: number | null;
   createdAt: Date;
   updatedAt: Date;
 }) {
@@ -26,6 +28,8 @@ function mapCampaign(campaign: {
     status: campaign.status,
     startsAt: campaign.startsAt,
     endsAt: campaign.endsAt,
+    popupDisplayMode: campaign.popupDisplayMode,
+    maxDisplaysPerUser: campaign.maxDisplaysPerUser,
     createdAt: campaign.createdAt,
     updatedAt: campaign.updatedAt,
   };
@@ -96,6 +100,8 @@ export class CampaignService {
     status?: CampaignStatus;
     startsAt?: string | null;
     endsAt?: string | null;
+    popupDisplayMode?: CampaignPopupDisplayMode;
+    maxDisplaysPerUser?: number | null;
   }) {
     validateCampaignSchedule(input);
 
@@ -109,6 +115,8 @@ export class CampaignService {
         status: input.status ?? CampaignStatus.DRAFT,
         startsAt: input.startsAt ? new Date(input.startsAt) : null,
         endsAt: input.endsAt ? new Date(input.endsAt) : null,
+        popupDisplayMode: input.popupDisplayMode ?? CampaignPopupDisplayMode.ONCE,
+        maxDisplaysPerUser: input.maxDisplaysPerUser ?? null,
       },
     });
 
@@ -126,6 +134,8 @@ export class CampaignService {
       status: CampaignStatus;
       startsAt: string | null;
       endsAt: string | null;
+      popupDisplayMode: CampaignPopupDisplayMode;
+      maxDisplaysPerUser: number | null;
     }>,
   ) {
     const existing = await prisma.campaign.findUnique({
@@ -153,6 +163,8 @@ export class CampaignService {
         startsAt:
           input.startsAt === undefined ? undefined : input.startsAt === null ? null : new Date(input.startsAt),
         endsAt: input.endsAt === undefined ? undefined : input.endsAt === null ? null : new Date(input.endsAt),
+        popupDisplayMode: input.popupDisplayMode,
+        maxDisplaysPerUser: input.maxDisplaysPerUser,
       },
     });
 
