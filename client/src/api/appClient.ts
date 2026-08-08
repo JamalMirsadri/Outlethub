@@ -919,6 +919,25 @@ const productEntityClient: EntityClient<EntityRecord> = {
   },
 };
 
+export async function listAdminProductsPage(params?: {
+  page?: number;
+  pageSize?: number;
+  brandId?: string;
+  includeDeleted?: boolean;
+}) {
+  const token = getRequiredToken();
+  const query = buildQueryString({
+    page: params?.page ?? 1,
+    pageSize: params?.pageSize ?? 50,
+    brandId: params?.brandId,
+    includeDeleted: params?.includeDeleted ?? false,
+  });
+
+  return http<ProductListResponse<CatalogProductResponse>>(`/admin/products${query}`, {
+    token,
+  });
+}
+
 function createPlaceholderEntityClient<TRecord extends EntityRecord>(entityName: string): EntityClient<TRecord> {
   return {
     async list() {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { appClient } from "@/api/appClient";
+import { appClient, listAdminProductsPage } from "@/api/appClient";
 import { getProductSourceInfo, updateProductPricingOverride } from "@/api/commerce";
 import {
   getGlobalProductMonitoringSettings,
@@ -46,6 +46,7 @@ const defaultForm = {
 };
 
 const CUSTOM_OPTION_VALUE = "__custom__";
+const ADMIN_EXPORT_PAGE_SIZE = 100;
 
 function parseImageUrls(value) {
   if (typeof value !== "string") {
@@ -140,6 +141,56 @@ function getStorefrontProductUrl(product) {
   }
 
   return new URL(productPath, window.location.origin).toString();
+}
+
+function getExportProductTitle(product) {
+  return product?.title ?? product?.name ?? "";
+}
+
+function getExportProductSourceUrl(product) {
+  return product?.source_url ?? product?.sourceUrl ?? "";
+}
+
+async function fetchAdminProductsForExport(brandIds = []) {
+  const fetchPages = async (brandId) => {
+    const allItems = [];
+    let page = 1;
+    let totalPages = 1;
+
+    do {
+      const response = await listAdminProductsPage({
+        page,
+        pageSize: ADMIN_EXPORT_PAGE_SIZE,
+        brandId,
+        includeDeleted: false,
+      });
+
+      allItems.push(...response.items);
+      totalPages = response.pagination?.totalPages ?? 1;
+      page += 1;
+    } while (page <= totalPages);
+
+    return allItems;
+  };
+
+  if (!Array.isArray(brandIds) || brandIds.length === 0) {
+    return fetchPages(undefined);
+  }
+
+  const itemsByBrand = await Promise.all(brandIds.map((brandId) => fetchPages(brandId)));
+  const uniqueItems = new Map();
+
+  itemsByBrand.flat().forEach((item) => {
+    if (!uniqueItems.has(item.id)) {
+      uniqueItems.set(item.id, item);
+    }
+  });
+
+  return Array.from(uniqueItems.values()).sort((left, right) => {
+    const leftTime = new Date(left.createdAt ?? 0).getTime();
+    const rightTime = new Date(right.createdAt ?? 0).getTime();
+    return rightTime - leftTime;
+  });
 }
 
 function getMonitoringMeta(product) {
@@ -392,6 +443,10 @@ export default function AdminProducts() {
   const [categoryInputMode, setCategoryInputMode] = useState(false);
   const [saving, setSaving] = useState(false);
   const [variantGroups, setVariantGroups] = useState([createVariantGroup()]);
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [exportAllBrands, setExportAllBrands] = useState(true);
+  const [selectedExportBrandIds, setSelectedExportBrandIds] = useState([]);
+  const [exportingCsv, setExportingCsv] = useState(false);
 
   useEffect(() => {
     appClient.entities.Product.list("-created_date", 50).then(setProducts).catch(()=>{}).finally(()=>setLoading(false));
@@ -462,26 +517,62 @@ export default function AdminProducts() {
     return true;
   });
 
-  const exportProductsMapping = () => {
+  const exportProductsMapping = async () => {
+    if (!exportAllBrands && selectedExportBrandIds.length === 0) {
+      toast({
+        title: "Select at least one brand",
+        description: "Choose one or more brands, or switch back to All Brands.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setExportingCsv(true);
+
+    try {
+      const exportProducts = await fetchAdminProductsForExport(
+        exportAllBrands ? [] : selectedExportBrandIds,
+      );
+      const selectedBrandNames = brands
+        .filter((brand) => selectedExportBrandIds.includes(brand.id))
+        .map((brand) => brand.name);
+
     const header = ["Product name", "Source URL", "My site"];
-    const rows = products.map((product) => [
-      product?.title ?? "",
-      product?.source_url ?? "",
+      const rows = exportProducts.map((product) => [
+      getExportProductTitle(product),
+      getExportProductSourceUrl(product),
       getStorefrontProductUrl(product),
     ]);
-    const csvContent = [header, ...rows]
-      .map((row) => row.map(escapeCsvValue).join(","))
-      .join("\r\n");
-    const blob = new Blob([`\uFEFF${csvContent}`], { type: "text/csv;charset=utf-8;" });
-    const objectUrl = URL.createObjectURL(blob);
-    const link = document.createElement("a");
+      const csvContent = [header, ...rows]
+        .map((row) => row.map(escapeCsvValue).join(","))
+        .join("\r\n");
+      const blob = new Blob([`\uFEFF${csvContent}`], { type: "text/csv;charset=utf-8;" });
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement("a");
 
-    link.href = objectUrl;
-    link.download = "Mapping.csv";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(objectUrl);
+      link.href = objectUrl;
+      link.download = "Mapping.csv";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(objectUrl);
+
+      toast({
+        title: "CSV exported",
+        description: exportAllBrands
+          ? `${exportProducts.length} products exported for all brands.`
+          : `${exportProducts.length} products exported for ${selectedBrandNames.join(", ")}.`,
+      });
+      setExportDialogOpen(false);
+    } catch (error) {
+      toast({
+        title: "Failed to export CSV",
+        description: getErrorMessage(error),
+        variant: "destructive",
+      });
+    } finally {
+      setExportingCsv(false);
+    }
   };
 
   const openEdit = async (p) => {
@@ -933,7 +1024,7 @@ export default function AdminProducts() {
             <Clock3 className="w-4 h-4 mr-2" />
             Monitoring Time
           </Button>
-          <Button variant="outline" onClick={exportProductsMapping} className="rounded-full">
+          <Button variant="outline" onClick={() => setExportDialogOpen(true)} className="rounded-full">
             <Download className="w-4 h-4 mr-2" />
             Export CSV
           </Button>
@@ -1093,6 +1184,89 @@ export default function AdminProducts() {
             >
               {globalMonitoringSaving ? "Saving..." : "Save Monitoring Time"}
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={exportDialogOpen} onOpenChange={setExportDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="font-display">Export CSV by Brand</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="rounded-xl border border-border bg-secondary/20 p-4">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="font-medium">All Brands</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Export all products with the current CSV structure and columns.
+                  </p>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={exportAllBrands}
+                  onChange={(event) => {
+                    const nextChecked = event.target.checked;
+                    setExportAllBrands(nextChecked);
+                    if (nextChecked) {
+                      setSelectedExportBrandIds([]);
+                    }
+                  }}
+                />
+              </div>
+            </div>
+
+            <div className={`rounded-xl border border-border p-4 space-y-3 ${exportAllBrands ? "opacity-60" : ""}`}>
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="font-medium">Selected Brands</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Pick one or more brands to export only their products.
+                  </p>
+                </div>
+                <Badge variant="secondary">{selectedExportBrandIds.length}</Badge>
+              </div>
+
+              <div className="max-h-72 space-y-2 overflow-y-auto pr-1">
+                {brands.map((brand) => {
+                  const checked = selectedExportBrandIds.includes(brand.id);
+
+                  return (
+                    <label
+                      key={brand.id}
+                      className={`flex items-center justify-between gap-3 rounded-lg border px-3 py-2 text-sm transition-colors ${
+                        checked ? "border-[hsl(var(--accent))]/40 bg-[hsl(var(--accent))]/10" : "border-border bg-card"
+                      } ${exportAllBrands ? "cursor-not-allowed" : "cursor-pointer hover:bg-secondary/40"}`}
+                    >
+                      <span className="truncate">{brand.name}</span>
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        disabled={exportAllBrands}
+                        onChange={(event) => {
+                          const nextChecked = event.target.checked;
+                          setExportAllBrands(false);
+                          setSelectedExportBrandIds((current) =>
+                            nextChecked
+                              ? [...current, brand.id]
+                              : current.filter((brandId) => brandId !== brand.id),
+                          );
+                        }}
+                      />
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3">
+              <Button variant="outline" onClick={() => setExportDialogOpen(false)} disabled={exportingCsv}>
+                Cancel
+              </Button>
+              <Button onClick={() => void exportProductsMapping()} disabled={exportingCsv}>
+                {exportingCsv ? "Exporting..." : "Export CSV"}
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
