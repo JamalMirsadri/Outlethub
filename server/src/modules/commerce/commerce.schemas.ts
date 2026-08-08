@@ -1,5 +1,6 @@
 import {
   CampaignDisplayType,
+  CampaignPopupDisplayMode,
   CampaignStatus,
   CouponDiscountType,
   CouponStatus,
@@ -202,6 +203,8 @@ const campaignSchemaShape = {
   status: z.nativeEnum(CampaignStatus).optional(),
   startsAt: z.string().datetime().optional().nullable(),
   endsAt: z.string().datetime().optional().nullable(),
+  popupDisplayMode: z.nativeEnum(CampaignPopupDisplayMode).optional(),
+  maxDisplaysPerUser: z.union([z.coerce.number().int().positive(), z.null()]).optional(),
 };
 
 function validateCampaignSchema(
@@ -650,6 +653,21 @@ export const upsertExchangeRateSchema = z.object({
   isActive: z.boolean().optional(),
   notes: optionalNullableString,
 });
+
+export const updatePaymentProviderConfigSchema = z
+  .object({
+    displayName: z.string().trim().min(2).max(120).optional(),
+    isActive: z.boolean().optional(),
+    priority: z.coerce.number().int().nonnegative().optional(),
+    supportsReceipts: z.boolean().optional(),
+    supportsRefunds: z.boolean().optional(),
+    supportsWebhooks: z.boolean().optional(),
+    supportedCurrencies: z.array(z.string().trim().min(3).max(10)).optional(),
+    settings: z.record(z.unknown()).optional(),
+  })
+  .refine((v) => Object.keys(v).length > 0, {
+    message: "At least one field must be provided.",
+  });
 
 export const upsertSourceSchema = z.object({
   id: cuidSchema.optional(),

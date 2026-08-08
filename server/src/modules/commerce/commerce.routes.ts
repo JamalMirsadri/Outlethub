@@ -44,6 +44,7 @@ import {
   updatePricingRuleSchema,
   updateProductPricingOverrideSchema,
   updateTrackingSchema,
+  updatePaymentProviderConfigSchema,
   uploadPaymentReceiptSchema,
   upsertBankAccountSchema,
   upsertSourceSchema,
@@ -325,6 +326,16 @@ commerceRouter.delete(
 commerceRouter.get(
   "/admin/exchange-rates",
   asyncHandler(commerceController.listExchangeRates.bind(commerceController)),
+);
+commerceRouter.get(
+  "/admin/payments/providers",
+  asyncHandler(commerceController.listPaymentProviderConfigs.bind(commerceController)),
+);
+commerceRouter.patch(
+  "/admin/payments/providers/:id",
+  validateParams(entityIdParamsSchema),
+  validateBody(updatePaymentProviderConfigSchema),
+  asyncHandler(commerceController.updatePaymentProviderConfig.bind(commerceController)),
 );
 commerceRouter.post(
   "/admin/exchange-rates",

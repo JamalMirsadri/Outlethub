@@ -532,6 +532,75 @@ export class PaymentsService {
     return providers.map(mapProviderConfiguration);
   }
 
+  public async listAllProviderConfigs() {
+    await this.ensureProviderConfigurations();
+    const providers = await prisma.paymentProviderConfig.findMany({
+      orderBy: [{ priority: "desc" }, { code: "asc" }],
+    });
+    return providers.map((p) => ({
+      id: p.id,
+      code: p.code,
+      displayName: p.displayName,
+      isActive: p.isActive,
+      priority: p.priority,
+      supportsReceipts: p.supportsReceipts,
+      supportsRefunds: p.supportsRefunds,
+      supportsWebhooks: p.supportsWebhooks,
+      supportedCurrencies: p.supportedCurrencies ?? [],
+      settings: p.settings ?? {},
+      createdAt: p.createdAt,
+      updatedAt: p.updatedAt,
+    }));
+  }
+
+  public async updateProviderConfig(id: string, input: {
+    displayName?: string;
+    isActive?: boolean;
+    priority?: number;
+    supportsReceipts?: boolean;
+    supportsRefunds?: boolean;
+    supportsWebhooks?: boolean;
+    supportedCurrencies?: string[];
+    settings?: Record<string, unknown>;
+  }) {
+    const existing = await prisma.paymentProviderConfig.findUnique({ where: { id } });
+    if (!existing) throw new ApiError(404, "Payment provider config not found.");
+
+    const mergedSettings = {
+      ...((existing.settings as Record<string, unknown>) ?? {}),
+      ...(input.settings ?? {}),
+    } as Prisma.InputJsonObject;
+
+    const updated = await prisma.paymentProviderConfig.update({
+      where: { id },
+      data: {
+        displayName: input.displayName ?? undefined,
+        isActive: input.isActive ?? undefined,
+        priority: input.priority ?? undefined,
+        supportsReceipts: input.supportsReceipts ?? undefined,
+        supportsRefunds: input.supportsRefunds ?? undefined,
+        supportsWebhooks: input.supportsWebhooks ?? undefined,
+        supportedCurrencies: input.supportedCurrencies ? (input.supportedCurrencies as unknown as Prisma.InputJsonValue) : undefined,
+        settings: input.settings !== undefined ? mergedSettings : undefined,
+      },
+    });
+
+    return {
+      id: updated.id,
+      code: updated.code,
+      displayName: updated.displayName,
+      isActive: updated.isActive,
+      priority: updated.priority,
+      supportsReceipts: updated.supportsReceipts,
+      supportsRefunds: updated.supportsRefunds,
+      supportsWebhooks: updated.supportsWebhooks,
+      supportedCurrencies: updated.supportedCurrencies ?? [],
+      settings: updated.settings ?? {},
+      createdAt: updated.createdAt,
+      updatedAt: updated.updatedAt,
+    };
+  }
+
   public async initializeOrderPayment(input: {
     userId: string;
     orderId: string;

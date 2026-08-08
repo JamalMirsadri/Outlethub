@@ -529,7 +529,12 @@ export default function Checkout() {
                   </div>
                 </div>
                 <div className="grid gap-3">
-                  {summary.paymentProviders.map((provider) => (
+                  {(summary.paymentProviders.filter((provider) => {
+                    if (!provider.supportedCurrencies || provider.supportedCurrencies.length === 0) {
+                      return true;
+                    }
+                    return provider.supportedCurrencies.includes(displayCurrency);
+                  })).map((provider) => (
                     <button
                       key={provider.id}
                       onClick={() => {
@@ -545,7 +550,9 @@ export default function Checkout() {
                         <div>
                           <p className="font-medium">{provider.displayName}</p>
                           <p className="text-sm text-muted-foreground">
-                            {provider.supportsReceipts ? t("checkout.creditCard") : t("checkout.stripe")}
+                            {provider.settings && typeof provider.settings.description === "string" && provider.settings.description.length > 0
+                              ? provider.settings.description
+                              : provider.supportsReceipts ? t("checkout.creditCard") : t("checkout.stripe")}
                           </p>
                         </div>
                       </div>

@@ -335,8 +335,8 @@ export interface PaymentProviderConfigRecord {
   supportsReceipts: boolean;
   supportsRefunds: boolean;
   supportsWebhooks: boolean;
-  supportedCurrencies: string[] | null;
-  settings: Record<string, unknown> | null;
+  supportedCurrencies: string[];
+  settings: Record<string, unknown>;
   createdAt: string;
   updatedAt: string;
 }
@@ -1097,6 +1097,25 @@ export async function upsertExchangeRate(payload: Partial<ExchangeRateRecord> & 
   const path = payload.id ? `/admin/exchange-rates/${payload.id}` : "/admin/exchange-rates";
   return http<ExchangeRateRecord>(path, {
     method: payload.id ? "PATCH" : "POST",
+    token: getRequiredToken(),
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function listPaymentProviderConfigs() {
+  const response = await http<{ items: PaymentProviderConfigRecord[] }>(
+    "/admin/payments/providers",
+    { token: getRequiredToken() }
+  );
+  return response.items;
+}
+
+export async function updatePaymentProviderConfig(
+  id: string,
+  payload: Partial<Omit<PaymentProviderConfigRecord, "id" | "code" | "createdAt" | "updatedAt">>
+) {
+  return http<PaymentProviderConfigRecord>(`/admin/payments/providers/${id}`, {
+    method: "PATCH",
     token: getRequiredToken(),
     body: JSON.stringify(payload),
   });

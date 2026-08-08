@@ -528,6 +528,17 @@ export class CommerceController {
       .status(statusCode)
       .json(await paymentsService.upsertExchangeRate(requireUserId(request), { ...request.body, id }));
   }
+
+  public async listPaymentProviderConfigs(_request: Request, response: Response) {
+    response.status(200).json({ items: await paymentsService.listAllProviderConfigs() });
+  }
+
+  public async updatePaymentProviderConfig(request: Request, response: Response) {
+    const id = getParam(request, "id");
+    response
+      .status(200)
+      .json(await paymentsService.updateProviderConfig(id, { ...request.body }));
+  }
 }
 
 export const commerceController = new CommerceController();
