@@ -371,42 +371,28 @@ function validateVariantGroups(groups) {
   for (const group of groups) {
     const color = typeof group?.color === "string" ? group.color.trim() : "";
     const items = Array.isArray(group?.items) ? group.items : [];
-    const activeItems = items.filter((item) => {
+    for (const item of items) {
       const size = typeof item?.size === "string" ? item.size.trim() : "";
       const stockValue = typeof item?.stockQuantity === "string" ? item.stockQuantity.trim() : String(item?.stockQuantity ?? "");
-      return Boolean(size || stockValue || color);
-    });
 
-    if (!color && activeItems.length === 0) {
-      continue;
-    }
+      if (!color && !size && !stockValue) {
+        continue;
+      }
 
-    if (!color) {
-      return "Each color group needs a color name.";
-    }
-
-    if (activeItems.length === 0) {
-      return `Add at least one size for ${color}.`;
-    }
-
-    for (const item of activeItems) {
-      const size = typeof item?.size === "string" ? item.size.trim() : "";
       const stockQuantity = Number(item?.stockQuantity);
 
-      if (!size) {
-        return `Each ${color} row needs a size.`;
+      if (stockValue && (!Number.isFinite(stockQuantity) || stockQuantity < 0)) {
+        return `Stock for ${color || "this variant"}${size ? ` / ${size}` : ""} must be a valid number.`;
       }
 
-      if (!Number.isFinite(stockQuantity) || stockQuantity < 0) {
-        return `Stock for ${color} / ${size} must be a valid number.`;
-      }
+      if (color && size) {
+        const key = `${color.toLowerCase()}::${size.toLowerCase()}`;
+        if (seen.has(key)) {
+          return `Duplicate variant found for ${color} / ${size}.`;
+        }
 
-      const key = `${color.toLowerCase()}::${size.toLowerCase()}`;
-      if (seen.has(key)) {
-        return `Duplicate variant found for ${color} / ${size}.`;
+        seen.add(key);
       }
-
-      seen.add(key);
     }
   }
 
@@ -1497,9 +1483,9 @@ export default function AdminProducts() {
             <div className="rounded-xl border border-border p-4 space-y-4">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <Label className="text-xs">Color Size Availability</Label>
+                  <Label className="text-xs">Color Size Availability (Optional)</Label>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Add each color, then add the available sizes and stock for that color.
+                    Add colors, sizes, and stock only if you want to track variants for this product.
                   </p>
                 </div>
                 <Button
@@ -1517,7 +1503,7 @@ export default function AdminProducts() {
                   <div key={group.id} className="rounded-xl border border-border bg-secondary/20 p-3 space-y-3">
                     <div className="flex items-center gap-3">
                       <div className="flex-1">
-                        <Label className="text-xs">Color</Label>
+                        <Label className="text-xs">Color (Optional)</Label>
                         <Input
                           value={group.color}
                           onChange={(e) =>
@@ -1549,7 +1535,7 @@ export default function AdminProducts() {
                       {group.items.map((item, itemIndex) => (
                         <div key={item.id} className="grid grid-cols-[minmax(0,1fr)_120px_40px] gap-2 items-end">
                           <div>
-                            <Label className="text-xs">Size</Label>
+                            <Label className="text-xs">Size (Optional)</Label>
                             <Input
                               value={item.size}
                               onChange={(e) =>
@@ -1571,7 +1557,7 @@ export default function AdminProducts() {
                             />
                           </div>
                           <div>
-                            <Label className="text-xs">Stock</Label>
+                            <Label className="text-xs">Stock (Optional)</Label>
                             <Input
                               type="number"
                               value={item.stockQuantity}
