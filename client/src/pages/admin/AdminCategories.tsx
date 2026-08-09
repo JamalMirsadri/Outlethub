@@ -1,4 +1,4 @@
-import { type ChangeEvent, useEffect, useMemo, useState } from "react";
+import { type ChangeEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { Edit, MoreHorizontal, Plus, Trash2 } from "lucide-react";
 
 import { appClient } from "@/api/appClient";
@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { toast } from "@/components/ui/use-toast";
+import { HttpError } from "@/services/http";
 
 interface CategoryRecord {
   id: string;
@@ -33,20 +35,94 @@ const EMPTY_FORM: CategoryFormState = {
   sortOrder: "0",
 };
 
+function formatFieldLabel(field: string): string {
+  return field
+    .replace(/_/g, " ")
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replace(/^./, (value) => value.toUpperCase());
+}
+
+function getValidationMessages(data: unknown): string[] {
+  if (!data || typeof data !== "object") {
+    return [];
+  }
+
+  const source = data as {
+    formErrors?: unknown;
+    fieldErrors?: Record<string, unknown>;
+  };
+
+  const formErrors = Array.isArray(source.formErrors)
+    ? source.formErrors.filter((value): value is string => typeof value === "string" && value.trim().length > 0)
+    : [];
+  const fieldEntries = source.fieldErrors && typeof source.fieldErrors === "object"
+    ? Object.entries(source.fieldErrors)
+    : [];
+
+  const fieldErrors = fieldEntries.flatMap(([field, value]) => {
+    if (!Array.isArray(value)) {
+      return [];
+    }
+
+    return value
+      .filter((message): message is string => typeof message === "string" && message.trim().length > 0)
+      .map((message) => `${formatFieldLabel(field)}: ${message}`);
+  });
+
+  return [...formErrors, ...fieldErrors];
+}
+
+function getErrorMessage(error: unknown): string {
+  if (error instanceof HttpError) {
+    const validationMessages = getValidationMessages(error.data);
+    if (validationMessages.length > 0) {
+      return validationMessages.join(" ");
+    }
+
+    return error.message || "Unable to save category.";
+  }
+
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return "Unable to save category.";
+}
+
 export default function AdminCategories() {
   const [categories, setCategories] = useState<CategoryRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<CategoryRecord | null>(null);
   const [form, setForm] = useState<CategoryFormState>(EMPTY_FORM);
+  const [saving, setSaving] = useState(false);
+
+  const loadCategories = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
+    if (!silent) {
+      setLoading(true);
+    }
+
+    try {
+      const items = await appClient.entities.Category.list();
+      setCategories(items as unknown as CategoryRecord[]);
+      return items;
+    } catch (error) {
+      toast({
+        title: "Unable to load categories",
+        description: error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      });
+      return [];
+    } finally {
+      if (!silent) {
+        setLoading(false);
+      }
+    }
+  }, []);
 
   useEffect(() => {
-    appClient.entities.Category
-      .list()
-      .then((items) => setCategories(items as unknown as CategoryRecord[]))
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
+    void loadCategories();
+  }, [loadCategories]);
 
   const parentOptions = useMemo(
     () => categories.filter((category) => !editing || category.id !== editing.id),
@@ -71,27 +147,71 @@ export default function AdminCategories() {
   }
 
   async function saveCategory(): Promise<void> {
-    const payload = {
-      name: form.name,
-      description: form.description,
-      parent_id: form.parentId === "none" ? null : form.parentId,
-      sort_order: Number(form.sortOrder),
-    };
-
-    if (editing) {
-      const updated = (await appClient.entities.Category.update(editing.id, payload)) as unknown as CategoryRecord;
-      setCategories((current) => current.map((item) => (item.id === editing.id ? updated : item)));
-    } else {
-      const created = (await appClient.entities.Category.create(payload)) as unknown as CategoryRecord;
-      setCategories((current) => [...current, created]);
+    const name = form.name.trim();
+    if (name.length < 2) {
+      toast({
+        title: "Name is required",
+        description: "Category name must be at least 2 characters.",
+        variant: "destructive",
+      });
+      return;
     }
 
-    setDialogOpen(false);
+    const sortOrder = Number(form.sortOrder);
+    if (!Number.isInteger(sortOrder) || sortOrder < 0) {
+      toast({
+        title: "Sort order is invalid",
+        description: "Sort order must be a non-negative whole number.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const payload = {
+      name,
+      description: form.description.trim(),
+      parent_id: form.parentId === "none" ? null : form.parentId,
+      sort_order: sortOrder,
+    };
+
+    setSaving(true);
+    try {
+      if (editing) {
+        await appClient.entities.Category.update(editing.id, payload);
+      } else {
+        await appClient.entities.Category.create(payload);
+      }
+
+      await loadCategories({ silent: true });
+      setDialogOpen(false);
+      setEditing(null);
+      setForm(EMPTY_FORM);
+      toast({
+        title: editing ? "Category updated" : "Category created",
+      });
+    } catch (error) {
+      toast({
+        title: editing ? "Unable to update category" : "Unable to create category",
+        description: getErrorMessage(error),
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function deleteCategory(id: string): Promise<void> {
-    await appClient.entities.Category.delete(id);
-    setCategories((current) => current.filter((category) => category.id !== id));
+    try {
+      await appClient.entities.Category.delete(id);
+      setCategories((current) => current.filter((category) => category.id !== id));
+      toast({ title: "Category deleted" });
+    } catch (error) {
+      toast({
+        title: "Unable to delete category",
+        description: error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      });
+    }
   }
 
   if (loading) {
@@ -151,12 +271,18 @@ export default function AdminCategories() {
         ))}
       </div>
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Dialog open={dialogOpen} onOpenChange={(open) => !saving && setDialogOpen(open)}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="font-display">{editing ? "Edit" : "Add"} Category</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
+          <form
+            className="space-y-4"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void saveCategory();
+            }}
+          >
             <div>
               <Label className="text-xs">Name</Label>
               <Input
@@ -204,10 +330,10 @@ export default function AdminCategories() {
                 className="mt-1"
               />
             </div>
-            <Button onClick={() => void saveCategory()} className="w-full rounded-full">
-              {editing ? "Update" : "Create"} Category
+            <Button type="submit" disabled={saving} className="w-full rounded-full">
+              {saving ? "Saving..." : editing ? "Update" : "Create"} Category
             </Button>
-          </div>
+          </form>
         </DialogContent>
       </Dialog>
     </div>

@@ -34,11 +34,11 @@ export async function http<T>(path: string, options: RequestOptions = {}): Promi
   }
 
   const data = (await response.json().catch(() => undefined)) as
-    | { message?: string; details?: unknown }
+    | { message?: string; details?: unknown; issues?: unknown }
     | undefined;
 
   if (!response.ok) {
-    throw new HttpError(data?.message ?? "Request failed", response.status, data?.details);
+    throw new HttpError(data?.message ?? "Request failed", response.status, data?.details ?? data?.issues ?? data);
   }
 
   return data as T;
