@@ -365,13 +365,6 @@ async function seedCommerceConfiguration(): Promise<void> {
   });
 
   if (portugalTax) {
-    await prisma.taxSettings.update({
-      where: { id: portugalTax.id },
-      data: {
-        taxPercent: 23,
-        isActive: true,
-      },
-    });
   } else {
     await prisma.taxSettings.create({
       data: {
@@ -391,13 +384,6 @@ async function seedCommerceConfiguration(): Promise<void> {
   });
 
   if (spainTax) {
-    await prisma.taxSettings.update({
-      where: { id: spainTax.id },
-      data: {
-        taxPercent: 21,
-        isActive: true,
-      },
-    });
   } else {
     await prisma.taxSettings.create({
       data: {
@@ -417,17 +403,6 @@ async function seedCommerceConfiguration(): Promise<void> {
   });
 
   if (portugalShipping) {
-    await prisma.shippingMethod.update({
-      where: { id: portugalShipping.id },
-      data: {
-        currency: "EUR",
-        minDeliveryDays: 2,
-        maxDeliveryDays: 4,
-        baseFee: 5.99,
-        freeShippingThreshold: 120,
-        isActive: true,
-      },
-    });
   } else {
     await prisma.shippingMethod.create({
       data: {
@@ -451,17 +426,6 @@ async function seedCommerceConfiguration(): Promise<void> {
   });
 
   if (spainShipping) {
-    await prisma.shippingMethod.update({
-      where: { id: spainShipping.id },
-      data: {
-        currency: "EUR",
-        minDeliveryDays: 3,
-        maxDeliveryDays: 5,
-        baseFee: 8.99,
-        freeShippingThreshold: 150,
-        isActive: true,
-      },
-    });
   } else {
     await prisma.shippingMethod.create({
       data: {
@@ -512,12 +476,7 @@ async function seedCommerceConfiguration(): Promise<void> {
       isActive: true,
     };
 
-    if (existingProfile) {
-      await prisma.shippingMethod.update({
-        where: { id: existingProfile.id },
-        data: payload,
-      });
-    } else {
+    if (!existingProfile) {
       await prisma.shippingMethod.create({
         data: payload,
       });
@@ -528,29 +487,7 @@ async function seedCommerceConfiguration(): Promise<void> {
     orderBy: { createdAt: "asc" },
   });
 
-  if (businessSettings) {
-    await prisma.businessSettings.update({
-      where: { id: businessSettings.id },
-      data: {
-        businessName: "OutletHub",
-        supportEmail: "support@outlethub.local",
-        defaultCurrency: "EUR",
-        defaultCountryCode: "PT",
-        defaultMarginPercent: 18,
-        minimumProfitAmount: 12,
-        portugalShippingFee: 5.99,
-        spainShippingFee: 8.99,
-        iranShippingFee: 25,
-        fixedProfitAmount: 4.99,
-        handlingFee: 1.99,
-        paymentFee: 1.49,
-        vatPercent: 23,
-        freeShippingThreshold: 120,
-        minimumOrderValue: 15,
-        returnPeriodDays: 30,
-      },
-    });
-  } else {
+  if (!businessSettings) {
     await prisma.businessSettings.create({
       data: {
         businessName: "OutletHub",
@@ -579,26 +516,7 @@ async function seedCommerceConfiguration(): Promise<void> {
     },
   });
 
-  if (globalPricingRule) {
-    await prisma.pricingRule.update({
-      where: { id: globalPricingRule.id },
-      data: {
-        targetType: PricingTargetType.GLOBAL,
-        currency: "EUR",
-        marginPercent: 18,
-        fixedFee: 4.99,
-        shippingFee: 5.99,
-        handlingFee: 1.99,
-        paymentFee: 1.49,
-        taxPercent: 23,
-        freeShippingThreshold: 120,
-        minimumOrderValue: 15,
-        isDefault: true,
-        isActive: true,
-        priority: 0,
-      },
-    });
-  } else {
+  if (!globalPricingRule) {
     await prisma.pricingRule.create({
       data: {
         name: "Default Global Pricing",
@@ -659,10 +577,9 @@ async function seedCommerceConfiguration(): Promise<void> {
       notes: "Managed through admin universal source management.",
     };
 
-    await commerceAdminService.upsertSource({
-      id: existingSource?.id,
-      ...payload,
-    });
+    if (!existingSource) {
+      await commerceAdminService.upsertSource(payload);
+    }
   }
 }
 
@@ -692,17 +609,11 @@ async function seedDemoScraperSource(): Promise<void> {
     },
   };
 
-  if (existing) {
-    await prisma.scraperSource.update({
-      where: { id: existing.id },
+  if (!existing) {
+    await prisma.scraperSource.create({
       data: payload,
     });
-    return;
   }
-
-  await prisma.scraperSource.create({
-    data: payload,
-  });
 }
 
 async function seedNikeOutletScraperSource(): Promise<void> {
@@ -731,17 +642,11 @@ async function seedNikeOutletScraperSource(): Promise<void> {
     },
   };
 
-  if (existing) {
-    await prisma.scraperSource.update({
-      where: { id: existing.id },
+  if (!existing) {
+    await prisma.scraperSource.create({
       data: payload,
     });
-    return;
   }
-
-  await prisma.scraperSource.create({
-    data: payload,
-  });
 }
 
 async function main(): Promise<void> {

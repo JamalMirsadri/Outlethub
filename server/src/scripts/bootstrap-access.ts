@@ -55,10 +55,6 @@ async function ensureCommerceConfiguration() {
     });
 
     if (existingTax) {
-      await prisma.taxSettings.update({
-        where: { id: existingTax.id },
-        data: tax,
-      });
       continue;
     }
 
@@ -136,10 +132,6 @@ async function ensureCommerceConfiguration() {
     });
 
     if (existingShippingMethod) {
-      await prisma.shippingMethod.update({
-        where: { id: existingShippingMethod.id },
-        data: shippingMethod,
-      });
       continue;
     }
 
@@ -171,12 +163,7 @@ async function ensureCommerceConfiguration() {
     returnPeriodDays: 30,
   };
 
-  if (businessSettings) {
-    await prisma.businessSettings.update({
-      where: { id: businessSettings.id },
-      data: businessSettingsPayload,
-    });
-  } else {
+  if (!businessSettings) {
     await prisma.businessSettings.create({
       data: businessSettingsPayload,
     });
@@ -207,12 +194,7 @@ async function ensureCommerceConfiguration() {
     priority: 0,
   };
 
-  if (globalPricingRule) {
-    await prisma.pricingRule.update({
-      where: { id: globalPricingRule.id },
-      data: globalPricingRulePayload,
-    });
-  } else {
+  if (!globalPricingRule) {
     await prisma.pricingRule.create({
       data: globalPricingRulePayload,
     });
