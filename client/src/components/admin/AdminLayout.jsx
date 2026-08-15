@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, Outlet } from "react-router-dom";
-import { LayoutDashboard, Package, ShoppingCart, Tag, Layers3, Link2, Upload, Bot, DollarSign, BarChart3, Activity, Bell, History, ChevronLeft, Menu, Sun, Moon, Globe, Truck, ClipboardList, CreditCard, Landmark, Users, FilePenLine, Award, TicketPercent, GitBranch, Megaphone } from "lucide-react";
+import { LayoutDashboard, Package, ShoppingCart, Tag, Layers3, Link2, DollarSign, BarChart3, Activity, Bell, ChevronLeft, Menu, Sun, Moon, Globe, Truck, ClipboardList, CreditCard, Landmark, Users, FilePenLine, Award, TicketPercent, GitBranch, Megaphone } from "lucide-react";
 import { useTheme } from "@/components/ThemeProvider";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
@@ -23,20 +23,11 @@ const NAV_ITEMS = [
   { icon: TicketPercent, label: "Coupons", path: "/admin/coupons" },
   { icon: Award, label: "Loyalty", path: "/admin/loyalty" },
   { icon: GitBranch, label: "Referrals", path: "/admin/referrals" },
-  { icon: Globe, label: "Sources", path: "/admin/sources" },
-  { icon: Bot, label: "Connectors", path: "/admin/connectors" },
-  { icon: Bot, label: "Wizard", path: "/admin/connectors/wizard" },
-  { icon: Activity, label: "Conn. Health", path: "/admin/connectors/health" },
-  { icon: Activity, label: "Diagnostics", path: "/admin/connectors/diagnostics" },
   { icon: Link2, label: "Integrations", path: "/admin/integrations" },
-  { icon: Activity, label: "Imp. Observe", path: "/admin/import-observability" },
-  { icon: Upload, label: "Imports", path: "/admin/imports", matchPrefix: true },
-  { icon: Bot, label: "Scrapers", path: "/admin/scrapers", matchPrefix: true },
   { icon: Activity, label: "Monitoring", path: "/admin/monitoring" },
   { icon: Bell, label: "Alerts", path: "/admin/alerts" },
   { icon: Bell, label: "Ops Center", path: "/admin/notifications" },
   { icon: Bell, label: "Email Tmpl", path: "/admin/email-templates" },
-  { icon: History, label: "Sync History", path: "/admin/sync-history" },
   { icon: BarChart3, label: "Analytics", path: "/admin/analytics" },
 ];
 
@@ -70,22 +61,6 @@ const NAV_SECTIONS = [
     title: "Procurement",
     icon: ClipboardList,
     items: ["/admin/procurement", "/admin/shipping"],
-  },
-  {
-    id: "imports",
-    title: "Imports",
-    icon: Upload,
-    items: [
-      "/admin/sources",
-      "/admin/imports",
-      "/admin/scrapers",
-      "/admin/connectors",
-      "/admin/connectors/wizard",
-      "/admin/connectors/health",
-      "/admin/connectors/diagnostics",
-      "/admin/import-observability",
-      "/admin/sync-history",
-    ],
   },
   {
     id: "finance",

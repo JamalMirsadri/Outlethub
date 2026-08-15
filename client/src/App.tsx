@@ -45,30 +45,13 @@ import AdminBrands from "@/pages/admin/AdminBrands";
 import AdminCategories from "@/pages/admin/AdminCategories";
 import AdminPricing from "@/pages/admin/AdminPricing";
 import AdminShipping from "@/pages/admin/AdminShipping";
-import AdminSources from "@/pages/admin/AdminSources";
 import AdminExchangeRates from "@/pages/admin/AdminExchangeRates";
-import AdminConnectors from "@/pages/admin/AdminConnectors";
-import AdminConnectorWizard from "@/pages/admin/AdminConnectorWizard";
-import AdminConnectorHealth from "@/pages/admin/AdminConnectorHealth";
-import AdminConnectorDiagnostics from "@/pages/admin/AdminConnectorDiagnostics";
-import AdminImportObservability from "@/pages/admin/AdminImportObservability";
 import AdminIntegrations from "@/pages/admin/AdminIntegrations";
-import ImportsLayout from "@/pages/admin/imports/ImportsLayout";
-import ImportsDashboard from "@/pages/admin/imports/ImportsDashboard";
-import ImportsJobs from "@/pages/admin/imports/ImportsJobs";
-import ImportJobDetail from "@/pages/admin/imports/ImportJobDetail";
-import ImportsRules from "@/pages/admin/imports/ImportsRules";
-import ImportsLogs from "@/pages/admin/imports/ImportsLogs";
-import ScrapersLayout from "@/pages/admin/scrapers/ScrapersLayout";
-import ScrapersDashboard from "@/pages/admin/scrapers/ScrapersDashboard";
-import ScrapersSources from "@/pages/admin/scrapers/ScrapersSources";
-import ScrapersRuns from "@/pages/admin/scrapers/ScrapersRuns";
 import AdminAnalytics from "@/pages/admin/AdminAnalytics";
 import AdminMonitoring from "@/pages/admin/AdminMonitoring";
 import AdminAlerts from "@/pages/admin/AdminAlerts";
 import AdminEmailTemplates from "@/pages/admin/AdminEmailTemplates";
 import AdminNotificationsCenter from "@/pages/admin/AdminNotificationsCenter";
-import AdminSyncHistory from "@/pages/admin/AdminSyncHistory";
 import AdminSiteContent from "@/pages/admin/AdminSiteContent";
 import AdminCoupons from "@/pages/admin/AdminCoupons";
 import AdminCampaigns from "@/pages/admin/AdminCampaigns";
@@ -131,30 +114,11 @@ function AppRoutes() {
           <Route path="/admin/coupons" element={<AdminCoupons />} />
           <Route path="/admin/loyalty" element={<AdminLoyalty />} />
           <Route path="/admin/referrals" element={<AdminReferrals />} />
-          <Route path="/admin/sources" element={<AdminSources />} />
-          <Route path="/admin/connectors" element={<AdminConnectors />} />
-          <Route path="/admin/connectors/wizard" element={<AdminConnectorWizard />} />
-          <Route path="/admin/connectors/health" element={<AdminConnectorHealth />} />
-          <Route path="/admin/connectors/diagnostics" element={<AdminConnectorDiagnostics />} />
-          <Route path="/admin/import-observability" element={<AdminImportObservability />} />
           <Route path="/admin/integrations" element={<AdminIntegrations />} />
-          <Route path="/admin/imports" element={<ImportsLayout />}>
-            <Route index element={<ImportsDashboard />} />
-            <Route path="jobs" element={<ImportsJobs />} />
-            <Route path="jobs/:id" element={<ImportJobDetail />} />
-            <Route path="rules" element={<ImportsRules />} />
-            <Route path="logs" element={<ImportsLogs />} />
-          </Route>
-          <Route path="/admin/scrapers" element={<ScrapersLayout />}>
-            <Route index element={<ScrapersDashboard />} />
-            <Route path="sources" element={<ScrapersSources />} />
-            <Route path="runs" element={<ScrapersRuns />} />
-          </Route>
           <Route path="/admin/monitoring" element={<AdminMonitoring />} />
           <Route path="/admin/alerts" element={<AdminAlerts />} />
           <Route path="/admin/notifications" element={<AdminNotificationsCenter />} />
           <Route path="/admin/email-templates" element={<AdminEmailTemplates />} />
-          <Route path="/admin/sync-history" element={<AdminSyncHistory />} />
           <Route path="/admin/analytics" element={<AdminAnalytics />} />
         </Route>
       </Route>
