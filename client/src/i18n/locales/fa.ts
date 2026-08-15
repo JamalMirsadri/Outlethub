@@ -236,7 +236,7 @@ export const fa: TranslationResource = {
     savings: "صرفه‌جویی",
     subtotal: "جمع کالاها",
     shipping: "ارسال",
-    tax: "مالیات",
+    tax: "هزینه ایجنت",
     total: "جمع کل",
     placeOrder: "ثبت سفارش",
     processingOrder: "در حال ثبت سفارش...",

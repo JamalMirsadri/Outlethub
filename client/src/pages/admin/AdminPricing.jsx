@@ -318,7 +318,7 @@ export default function AdminPricing() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="font-display text-2xl font-bold">Pricing Engine</h1>
-          <p className="text-sm text-muted-foreground">Configure margin, PT/ES/IR shipping defaults, minimum profit, VAT, and reusable pricing rules.</p>
+          <p className="text-sm text-muted-foreground">Configure agent cost, PT/ES/IR shipping defaults, minimum profit, VAT, and reusable pricing rules.</p>
         </div>
         <Button onClick={openCreateRule} className="rounded-full">
           <Plus className="mr-1 h-4 w-4" />
@@ -329,7 +329,7 @@ export default function AdminPricing() {
       <div className="rounded-xl border border-border bg-card p-6">
         <h3 className="mb-3 text-sm font-semibold">Pricing Formula</h3>
         <div className="rounded-xl bg-secondary/50 p-4 font-mono text-sm lg:text-base">
-          Final Customer Price = Supplier Price + Margin + Local Shipping + International Shipping + Handling Fee + VAT
+          Final Customer Price = Supplier Price + Agent Cost + Local Shipping + International Shipping + Handling Fee + VAT
         </div>
       </div>
 
@@ -374,7 +374,7 @@ export default function AdminPricing() {
               </Select>
             </div>
             {[
-              ["defaultMarginPercent", "My Margin %"],
+              ["defaultMarginPercent", "Agent Cost %"],
               ["minimumProfitAmount", "Minimum Profit"],
               ["portugalShippingFee", "Portugal Shipping"],
               ["spainShippingFee", "Spain Shipping"],
@@ -401,7 +401,7 @@ export default function AdminPricing() {
           <div className="grid gap-4 md:grid-cols-2">
             {[
               ["supplierPrice", "Supplier Price"],
-              ["marginPercent", "Margin %"],
+              ["marginPercent", "Agent Cost %"],
               ["localShippingFee", "Local Shipping"],
               ["internationalShippingFee", "International Shipping"],
               ["handlingFee", "Handling Fee"],
@@ -421,11 +421,11 @@ export default function AdminPricing() {
               <p className="font-mono text-xl font-bold">{formatCurrency(calculatorResult.customerPrice, businessForm.defaultCurrency || "EUR")}</p>
             </div>
             <div className="rounded-xl bg-secondary/50 p-4">
-              <p className="mb-2 text-xs text-muted-foreground">Profit Amount</p>
+              <p className="mb-2 text-xs text-muted-foreground">Agent Cost Amount</p>
               <p className="font-mono text-xl font-bold">{formatCurrency(calculatorResult.profitAmount, businessForm.defaultCurrency || "EUR")}</p>
             </div>
             <div className="rounded-xl bg-secondary/50 p-4">
-              <p className="mb-2 text-xs text-muted-foreground">Profit %</p>
+              <p className="mb-2 text-xs text-muted-foreground">Agent Cost %</p>
               <p className="font-mono text-xl font-bold">{calculatorResult.profitPercentage.toFixed(2)}%</p>
             </div>
           </div>
@@ -446,7 +446,7 @@ export default function AdminPricing() {
                   {rule.category ? <span>Category: {rule.category.name}</span> : null}
                 </div>
                 <div className="mt-2 flex flex-wrap gap-4 text-xs text-muted-foreground">
-                  <span>Margin {Number(rule.marginPercent ?? 0).toFixed(2)}%</span>
+                  <span>Agent Cost {Number(rule.marginPercent ?? 0).toFixed(2)}%</span>
                   <span>Local {formatCurrency(Number(rule.localShippingFee ?? 0), rule.currency)}</span>
                   <span>International {formatCurrency(Number(rule.shippingFee ?? 0), rule.currency)}</span>
                   <span>Handling {formatCurrency(Number(rule.handlingFee ?? 0), rule.currency)}</span>
@@ -519,7 +519,7 @@ export default function AdminPricing() {
             </div>
             {[
               ["currency", "Currency"],
-              ["marginPercent", "Margin %"],
+              ["marginPercent", "Agent Cost %"],
               ["localShippingFee", "Local Shipping"],
               ["shippingFee", "International Shipping"],
               ["handlingFee", "Handling Fee"],
@@ -560,4 +560,3 @@ export default function AdminPricing() {
     </div>
   );
 }
-

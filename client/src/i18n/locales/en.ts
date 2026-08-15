@@ -234,7 +234,7 @@ export const en = {
     savings: "Savings",
     subtotal: "Subtotal",
     shipping: "Shipping",
-    tax: "Tax",
+    tax: "Agent Cost",
     total: "Total",
     placeOrder: "Place order",
     processingOrder: "Processing your order...",
