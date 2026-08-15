@@ -175,10 +175,14 @@ export class PricingService {
     );
     const freeShippingThreshold = decimal(settings.freeShippingThreshold);
     const countryShippingFee = this.getCountryShippingDefault(settings, countryCode);
+    const selectedShippingFee =
+      shippingMethod?.baseFee !== null && shippingMethod?.baseFee !== undefined
+        ? decimal(shippingMethod.baseFee)
+        : countryShippingFee;
     const shippingAmount =
       subtotalAmount.greaterThanOrEqualTo(freeShippingThreshold) && !freeShippingThreshold.isZero()
         ? new Prisma.Decimal(0)
-        : countryShippingFee;
+        : selectedShippingFee;
     const handlingAmount = decimal(settings.handlingFee);
     const paymentFeeAmount = decimal(settings.paymentFee);
     const taxPercent = decimal(settings.vatPercent);
