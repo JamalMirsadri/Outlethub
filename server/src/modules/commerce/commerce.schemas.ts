@@ -6,7 +6,6 @@ import {
   CouponStatus,
   LoyaltyRewardType,
   PaymentProvider,
-  PricingTargetType,
   ReferralRelationshipStatus,
   ReferralRuleRewardType,
   ReferralTriggerType,
@@ -108,44 +107,6 @@ export const updateBusinessSettingsSchema = z
   });
 
 export const updateSiteContentSettingsSchema = siteContentSettingsSchema;
-
-export const createPricingRuleSchema = z.object({
-  name: z.string().trim().min(2).max(120),
-  targetType: z.nativeEnum(PricingTargetType),
-  brandId: cuidSchema.optional(),
-  categoryId: cuidSchema.optional(),
-  countryCode: z.string().trim().min(2).max(8).optional(),
-  currency: z.string().trim().min(3).max(10).optional(),
-  marginPercent: optionalMoneySchema,
-  localShippingFee: optionalMoneySchema,
-  minimumProfitAmount: optionalMoneySchema,
-  fixedFee: optionalMoneySchema,
-  shippingFee: optionalMoneySchema,
-  handlingFee: optionalMoneySchema,
-  paymentFee: optionalMoneySchema,
-  taxPercent: optionalMoneySchema,
-  freeShippingThreshold: optionalMoneySchema,
-  minimumOrderValue: optionalMoneySchema,
-  isDefault: z.boolean().optional(),
-  isActive: z.boolean().optional(),
-  priority: z.coerce.number().int().min(0).max(1000).optional(),
-});
-
-export const updatePricingRuleSchema = createPricingRuleSchema.partial().extend({
-  brandId: z.union([cuidSchema, z.null()]).optional(),
-  categoryId: z.union([cuidSchema, z.null()]).optional(),
-  countryCode: z.union([z.string().trim().min(2).max(8), z.null()]).optional(),
-  marginPercent: optionalNullableMoneySchema,
-  localShippingFee: optionalNullableMoneySchema,
-  minimumProfitAmount: optionalNullableMoneySchema,
-  fixedFee: optionalNullableMoneySchema,
-  shippingFee: optionalNullableMoneySchema,
-  handlingFee: optionalNullableMoneySchema,
-  paymentFee: optionalNullableMoneySchema,
-  taxPercent: optionalNullableMoneySchema,
-  freeShippingThreshold: optionalNullableMoneySchema,
-  minimumOrderValue: optionalNullableMoneySchema,
-});
 
 export const upsertShippingMethodSchema = z.object({
   id: cuidSchema.optional(),
@@ -678,7 +639,6 @@ export const upsertSourceSchema = z.object({
   region: z.union([z.string().trim().min(2).max(120), z.null()]).optional(),
   sourceType: z.enum(["PLAYWRIGHT", "JSON_FEED", "XML_FEED", "MANUAL_IMPORT"]),
   status: z.enum(["ACTIVE", "DISABLED", "ERROR"]).optional(),
-  pricingRuleId: z.union([cuidSchema, z.null()]).optional(),
   shippingMethodId: z.union([cuidSchema, z.null()]).optional(),
   notes: optionalNullableString,
 });

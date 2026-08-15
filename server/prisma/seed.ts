@@ -1,5 +1,5 @@
 import bcrypt from "bcryptjs";
-import { Prisma, PricingTargetType, ProductSource, ProductStatus, RoleCode, ScraperStatus, ScraperType, StockStatus, SyncFrequency, UserStatus } from "@prisma/client";
+import { Prisma, ProductSource, ProductStatus, RoleCode, ScraperStatus, ScraperType, StockStatus, SyncFrequency, UserStatus } from "@prisma/client";
 
 import { prisma as appPrisma } from "../src/config/prisma.js";
 import { commerceAdminService } from "../src/modules/commerce/commerce-admin.service.js";
@@ -357,44 +357,6 @@ async function seedCommerceConfiguration(): Promise<void> {
     },
   });
 
-  const portugalTax = await prisma.taxSettings.findFirst({
-    where: {
-      countryCode: "PT",
-      name: "Portugal VAT",
-    },
-  });
-
-  if (portugalTax) {
-  } else {
-    await prisma.taxSettings.create({
-      data: {
-        countryCode: "PT",
-        name: "Portugal VAT",
-        taxPercent: 23,
-        isActive: true,
-      },
-    });
-  }
-
-  const spainTax = await prisma.taxSettings.findFirst({
-    where: {
-      countryCode: "ES",
-      name: "Spain VAT",
-    },
-  });
-
-  if (spainTax) {
-  } else {
-    await prisma.taxSettings.create({
-      data: {
-        countryCode: "ES",
-        name: "Spain VAT",
-        taxPercent: 21,
-        isActive: true,
-      },
-    });
-  }
-
   const portugalShipping = await prisma.shippingMethod.findFirst({
     where: {
       countryCode: "PT",
@@ -510,37 +472,6 @@ async function seedCommerceConfiguration(): Promise<void> {
     });
   }
 
-  const globalPricingRule = await prisma.pricingRule.findFirst({
-    where: {
-      name: "Default Global Pricing",
-    },
-  });
-
-  if (!globalPricingRule) {
-    await prisma.pricingRule.create({
-      data: {
-        name: "Default Global Pricing",
-        targetType: PricingTargetType.GLOBAL,
-        currency: "EUR",
-        marginPercent: 18,
-        localShippingFee: 5.99,
-        minimumProfitAmount: 12,
-        shippingFee: 5.99,
-        handlingFee: 1.99,
-        paymentFee: 1.49,
-        taxPercent: 23,
-        freeShippingThreshold: 120,
-        minimumOrderValue: 15,
-        isDefault: true,
-        isActive: true,
-        priority: 0,
-      },
-    });
-  }
-
-  const defaultPricingRule = await prisma.pricingRule.findFirst({
-    where: { name: "Default Global Pricing" },
-  });
   const defaultShippingMethod = await prisma.shippingMethod.findFirst({
     where: { name: "Portugal Standard" },
   });
@@ -572,7 +503,6 @@ async function seedCommerceConfiguration(): Promise<void> {
       region: source.region,
       sourceType: source.sourceType,
       status: "ACTIVE" as const,
-      pricingRuleId: defaultPricingRule?.id ?? null,
       shippingMethodId: defaultShippingMethod?.id ?? null,
       notes: "Managed through admin universal source management.",
     };

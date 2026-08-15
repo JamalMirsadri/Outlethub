@@ -170,19 +170,6 @@ export class CommerceController {
     response.status(200).json(await commerceAdminService.updateBusinessSettings(request.body));
   }
 
-  public async createPricingRule(request: Request, response: Response) {
-    response.status(201).json(await commerceAdminService.createPricingRule(request.body));
-  }
-
-  public async updatePricingRule(request: Request, response: Response) {
-    response.status(200).json(await commerceAdminService.updatePricingRule(getParam(request, "id"), request.body));
-  }
-
-  public async deletePricingRule(request: Request, response: Response) {
-    await commerceAdminService.deletePricingRule(getParam(request, "id"));
-    response.status(204).send();
-  }
-
   public async upsertShippingMethod(request: Request, response: Response) {
     const statusCode = request.body.id ? 200 : 201;
     response.status(statusCode).json(await commerceAdminService.upsertShippingMethod(request.body));

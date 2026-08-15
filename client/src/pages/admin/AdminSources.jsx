@@ -19,7 +19,6 @@ const EMPTY_SOURCE = {
   region: "EUROPE",
   sourceType: "PLAYWRIGHT",
   status: "ACTIVE",
-  pricingRuleId: "none",
   shippingMethodId: "none",
   notes: "",
 };
@@ -62,7 +61,6 @@ export default function AdminSources() {
         region: form.region || null,
         sourceType: form.sourceType,
         status: form.status,
-        pricingRuleId: form.pricingRuleId === "none" ? null : form.pricingRuleId,
         shippingMethodId: form.shippingMethodId === "none" ? null : form.shippingMethodId,
         notes: form.notes || null,
       });
@@ -89,7 +87,6 @@ export default function AdminSources() {
       region: source.region || "EUROPE",
       sourceType: source.sourceType,
       status: source.status,
-      pricingRuleId: source.pricingRuleId || "none",
       shippingMethodId: source.shippingMethodId || "none",
       notes: source.notes || "",
     });
@@ -107,7 +104,6 @@ export default function AdminSources() {
         region: source.region,
         sourceType: source.sourceType,
         status,
-        pricingRuleId: source.pricingRuleId,
         shippingMethodId: source.shippingMethodId,
         notes: source.notes,
       });
@@ -195,7 +191,7 @@ export default function AdminSources() {
                   </p>
                   <p className="mt-2 text-xs text-muted-foreground">{source.website}</p>
                   <p className="mt-2 text-xs text-muted-foreground">
-                    Status {source.status} · Pricing {source.pricingRule?.name || "Unassigned"} · Shipping {source.shippingMethod?.name || "Unassigned"}
+                    Status {source.status} · Shipping {source.shippingMethod?.name || "Unassigned"}
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
@@ -263,17 +259,7 @@ export default function AdminSources() {
               </Select>
             </div>
             <div>
-              <Label className="text-xs">Pricing Rule</Label>
-              <Select value={form.pricingRuleId} onValueChange={(value) => setForm((current) => ({ ...current, pricingRuleId: value }))}>
-                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">None</SelectItem>
-                  {settings.pricingRules.map((rule) => <SelectItem key={rule.id} value={rule.id}>{rule.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label className="text-xs">Shipping Rule</Label>
+              <Label className="text-xs">Shipping Method</Label>
               <Select value={form.shippingMethodId} onValueChange={(value) => setForm((current) => ({ ...current, shippingMethodId: value }))}>
                 <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                 <SelectContent>

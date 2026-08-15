@@ -1,6 +1,5 @@
 import {
   Prisma,
-  PricingTargetType,
   ScraperStatus,
   type BrandSourceStatus,
   type BrandSourceType,
@@ -25,62 +24,6 @@ function toNumber(value: Prisma.Decimal | null | undefined): number | null {
   }
 
   return Number(value);
-}
-
-function mapPricingRule(rule: {
-  id: string;
-  name: string;
-  targetType: PricingTargetType;
-  brandId: string | null;
-  categoryId: string | null;
-  countryCode: string | null;
-  currency: string;
-  marginPercent: Prisma.Decimal | null;
-  localShippingFee: Prisma.Decimal | null;
-  minimumProfitAmount: Prisma.Decimal | null;
-  fixedFee: Prisma.Decimal | null;
-  shippingFee: Prisma.Decimal | null;
-  handlingFee: Prisma.Decimal | null;
-  paymentFee: Prisma.Decimal | null;
-  taxPercent: Prisma.Decimal | null;
-  freeShippingThreshold: Prisma.Decimal | null;
-  minimumOrderValue: Prisma.Decimal | null;
-  isDefault: boolean;
-  isActive: boolean;
-  priority: number;
-  brand?: { id: string; name: string } | null;
-  category?: { id: string; name: string } | null;
-  country?: { code: string; name: string } | null;
-  createdAt: Date;
-  updatedAt: Date;
-}) {
-  return {
-    id: rule.id,
-    name: rule.name,
-    targetType: rule.targetType,
-    brandId: rule.brandId,
-    categoryId: rule.categoryId,
-    countryCode: rule.countryCode,
-    currency: rule.currency,
-    marginPercent: toNumber(rule.marginPercent),
-    localShippingFee: toNumber(rule.localShippingFee),
-    minimumProfitAmount: toNumber(rule.minimumProfitAmount),
-    fixedFee: toNumber(rule.fixedFee),
-    shippingFee: toNumber(rule.shippingFee),
-    handlingFee: toNumber(rule.handlingFee),
-    paymentFee: toNumber(rule.paymentFee),
-    taxPercent: toNumber(rule.taxPercent),
-    freeShippingThreshold: toNumber(rule.freeShippingThreshold),
-    minimumOrderValue: toNumber(rule.minimumOrderValue),
-    isDefault: rule.isDefault,
-    isActive: rule.isActive,
-    priority: rule.priority,
-    brand: rule.brand ?? null,
-    category: rule.category ?? null,
-    country: rule.country ?? null,
-    createdAt: rule.createdAt,
-    updatedAt: rule.updatedAt,
-  };
 }
 
 function mapShippingMethod(method: {
@@ -131,9 +74,7 @@ function mapBrandSource(source: {
   sourceType: BrandSourceType;
   status: BrandSourceStatus;
   notes: string | null;
-  pricingRuleId: string | null;
   shippingMethodId: string | null;
-  pricingRule?: { id: string; name: string } | null;
   shippingMethod?: { id: string; name: string } | null;
   createdAt: Date;
   updatedAt: Date;
@@ -148,9 +89,7 @@ function mapBrandSource(source: {
     sourceType: source.sourceType,
     status: source.status,
     notes: source.notes,
-    pricingRuleId: source.pricingRuleId,
     shippingMethodId: source.shippingMethodId,
-    pricingRule: source.pricingRule ?? null,
     shippingMethod: source.shippingMethod ?? null,
     createdAt: source.createdAt,
     updatedAt: source.updatedAt,
@@ -188,35 +127,12 @@ export class CommerceAdminService {
   }
 
   public async getCommerceSettings() {
-    const [businessSettings, pricingRules, shippingMethods, countries, currencies, taxSettings, sources] = await Promise.all([
+    const [businessSettings, shippingMethods, countries, currencies, sources] = await Promise.all([
       prisma.businessSettings.findFirst({
         include: {
           country: true,
         },
         orderBy: { createdAt: "asc" },
-      }),
-      prisma.pricingRule.findMany({
-        include: {
-          brand: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
-          category: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
-          country: {
-            select: {
-              code: true,
-              name: true,
-            },
-          },
-        },
-        orderBy: [{ priority: "desc" }, { createdAt: "asc" }],
       }),
       prisma.shippingMethod.findMany({
         include: {
@@ -230,20 +146,8 @@ export class CommerceAdminService {
       prisma.currency.findMany({
         orderBy: { code: "asc" },
       }),
-      prisma.taxSettings.findMany({
-        include: {
-          country: true,
-        },
-        orderBy: { countryCode: "asc" },
-      }),
       prisma.brandSource.findMany({
         include: {
-          pricingRule: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
           shippingMethod: {
             select: {
               id: true,
@@ -282,20 +186,9 @@ export class CommerceAdminService {
         createdAt: businessSettings.createdAt,
         updatedAt: businessSettings.updatedAt,
       },
-      pricingRules: pricingRules.map(mapPricingRule),
       shippingMethods: shippingMethods.map(mapShippingMethod),
       countries,
       currencies,
-      taxSettings: taxSettings.map((setting) => ({
-        id: setting.id,
-        countryCode: setting.countryCode,
-        name: setting.name,
-        taxPercent: toNumber(setting.taxPercent),
-        isActive: setting.isActive,
-        country: setting.country,
-        createdAt: setting.createdAt,
-        updatedAt: setting.updatedAt,
-      })),
       sources: sources.map(mapBrandSource),
     };
   }
@@ -379,180 +272,6 @@ export class CommerceAdminService {
       minimumOrderValue: toNumber(updated.minimumOrderValue),
       returnPeriodDays: updated.returnPeriodDays,
     };
-  }
-
-  public async createPricingRule(input: {
-    name: string;
-    targetType: PricingTargetType;
-    brandId?: string;
-    categoryId?: string;
-    countryCode?: string;
-    currency?: string;
-    marginPercent?: number;
-    localShippingFee?: number;
-    minimumProfitAmount?: number;
-    fixedFee?: number;
-    shippingFee?: number;
-    handlingFee?: number;
-    paymentFee?: number;
-    taxPercent?: number;
-    freeShippingThreshold?: number;
-    minimumOrderValue?: number;
-    isDefault?: boolean;
-    isActive?: boolean;
-    priority?: number;
-  }) {
-    const created = await prisma.pricingRule.create({
-      data: {
-        name: input.name,
-        targetType: input.targetType,
-        brandId: input.brandId,
-        categoryId: input.categoryId,
-        countryCode: input.countryCode,
-        currency: input.currency ?? "EUR",
-        marginPercent: input.marginPercent !== undefined ? new Prisma.Decimal(input.marginPercent) : undefined,
-        localShippingFee:
-          input.localShippingFee !== undefined ? new Prisma.Decimal(input.localShippingFee) : undefined,
-        minimumProfitAmount:
-          input.minimumProfitAmount !== undefined ? new Prisma.Decimal(input.minimumProfitAmount) : undefined,
-        fixedFee: input.fixedFee !== undefined ? new Prisma.Decimal(input.fixedFee) : undefined,
-        shippingFee: input.shippingFee !== undefined ? new Prisma.Decimal(input.shippingFee) : undefined,
-        handlingFee: input.handlingFee !== undefined ? new Prisma.Decimal(input.handlingFee) : undefined,
-        paymentFee: input.paymentFee !== undefined ? new Prisma.Decimal(input.paymentFee) : undefined,
-        taxPercent: input.taxPercent !== undefined ? new Prisma.Decimal(input.taxPercent) : undefined,
-        freeShippingThreshold:
-          input.freeShippingThreshold !== undefined
-            ? new Prisma.Decimal(input.freeShippingThreshold)
-            : undefined,
-        minimumOrderValue:
-          input.minimumOrderValue !== undefined ? new Prisma.Decimal(input.minimumOrderValue) : undefined,
-        isDefault: input.isDefault ?? false,
-        isActive: input.isActive ?? true,
-        priority: input.priority ?? 0,
-      },
-      include: {
-        brand: { select: { id: true, name: true } },
-        category: { select: { id: true, name: true } },
-        country: { select: { code: true, name: true } },
-      },
-    });
-
-    await pricingService.repriceCatalogProducts();
-
-    return mapPricingRule(created);
-  }
-
-  public async updatePricingRule(
-    id: string,
-    input: {
-      name?: string;
-      targetType?: PricingTargetType;
-      brandId?: string | null;
-      categoryId?: string | null;
-      countryCode?: string | null;
-      currency?: string;
-      marginPercent?: number | null;
-      localShippingFee?: number | null;
-      minimumProfitAmount?: number | null;
-      fixedFee?: number | null;
-      shippingFee?: number | null;
-      handlingFee?: number | null;
-      paymentFee?: number | null;
-      taxPercent?: number | null;
-      freeShippingThreshold?: number | null;
-      minimumOrderValue?: number | null;
-      isDefault?: boolean;
-      isActive?: boolean;
-      priority?: number;
-    },
-  ) {
-    const updated = await prisma.pricingRule.update({
-      where: { id },
-      data: {
-        name: input.name,
-        targetType: input.targetType,
-        brandId: input.brandId,
-        categoryId: input.categoryId,
-        countryCode: input.countryCode,
-        currency: input.currency,
-        marginPercent:
-          input.marginPercent === null
-            ? null
-            : input.marginPercent !== undefined
-              ? new Prisma.Decimal(input.marginPercent)
-              : undefined,
-        localShippingFee:
-          input.localShippingFee === null
-            ? null
-            : input.localShippingFee !== undefined
-              ? new Prisma.Decimal(input.localShippingFee)
-              : undefined,
-        minimumProfitAmount:
-          input.minimumProfitAmount === null
-            ? null
-            : input.minimumProfitAmount !== undefined
-              ? new Prisma.Decimal(input.minimumProfitAmount)
-              : undefined,
-        fixedFee:
-          input.fixedFee === null ? null : input.fixedFee !== undefined ? new Prisma.Decimal(input.fixedFee) : undefined,
-        shippingFee:
-          input.shippingFee === null
-            ? null
-            : input.shippingFee !== undefined
-              ? new Prisma.Decimal(input.shippingFee)
-              : undefined,
-        handlingFee:
-          input.handlingFee === null
-            ? null
-            : input.handlingFee !== undefined
-              ? new Prisma.Decimal(input.handlingFee)
-              : undefined,
-        paymentFee:
-          input.paymentFee === null
-            ? null
-            : input.paymentFee !== undefined
-              ? new Prisma.Decimal(input.paymentFee)
-              : undefined,
-        taxPercent:
-          input.taxPercent === null
-            ? null
-            : input.taxPercent !== undefined
-              ? new Prisma.Decimal(input.taxPercent)
-              : undefined,
-        freeShippingThreshold:
-          input.freeShippingThreshold === null
-            ? null
-            : input.freeShippingThreshold !== undefined
-              ? new Prisma.Decimal(input.freeShippingThreshold)
-              : undefined,
-        minimumOrderValue:
-          input.minimumOrderValue === null
-            ? null
-            : input.minimumOrderValue !== undefined
-              ? new Prisma.Decimal(input.minimumOrderValue)
-              : undefined,
-        isDefault: input.isDefault,
-        isActive: input.isActive,
-        priority: input.priority,
-      },
-      include: {
-        brand: { select: { id: true, name: true } },
-        category: { select: { id: true, name: true } },
-        country: { select: { code: true, name: true } },
-      },
-    });
-
-    await pricingService.repriceCatalogProducts();
-
-    return mapPricingRule(updated);
-  }
-
-  public async deletePricingRule(id: string) {
-    await prisma.pricingRule.delete({
-      where: { id },
-    });
-
-    await pricingService.repriceCatalogProducts();
   }
 
   public async upsertShippingMethod(input: {
@@ -808,7 +527,6 @@ export class CommerceAdminService {
     region?: string | null;
     sourceType: BrandSourceType;
     status?: BrandSourceStatus;
-    pricingRuleId?: string | null;
     shippingMethodId?: string | null;
     notes?: string | null;
   }) {
@@ -820,7 +538,7 @@ export class CommerceAdminService {
       region: input.region ?? null,
       sourceType: input.sourceType,
       status: input.status ?? "ACTIVE",
-      pricingRuleId: input.pricingRuleId ?? null,
+      pricingRuleId: null,
       shippingMethodId: input.shippingMethodId ?? null,
       notes: input.notes ?? null,
     };
@@ -844,14 +562,12 @@ export class CommerceAdminService {
           where: { id: existingSource.id },
           data: payload,
           include: {
-            pricingRule: { select: { id: true, name: true } },
             shippingMethod: { select: { id: true, name: true } },
           },
         })
       : await prisma.brandSource.create({
           data: payload,
           include: {
-            pricingRule: { select: { id: true, name: true } },
             shippingMethod: { select: { id: true, name: true } },
           },
         });
@@ -863,7 +579,6 @@ export class CommerceAdminService {
   public async listSources() {
     const sources = await prisma.brandSource.findMany({
       include: {
-        pricingRule: { select: { id: true, name: true } },
         shippingMethod: { select: { id: true, name: true } },
       },
       orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],

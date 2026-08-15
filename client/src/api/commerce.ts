@@ -32,7 +32,6 @@ export type ProcurementStatus =
   | "PURCHASED_FROM_SUPPLIER"
   | "RECEIVED_AT_WAREHOUSE"
   | "READY_TO_SHIP";
-export type PricingTargetType = "GLOBAL" | "BRAND" | "CATEGORY";
 export type CouponDiscountType = "PERCENTAGE" | "FIXED_AMOUNT";
 export type CouponStatus = "ACTIVE" | "DISABLED";
 
@@ -133,33 +132,6 @@ export interface CommerceSettingsResponse {
     minimumOrderValue: number | null;
     returnPeriodDays: number;
   };
-  pricingRules: Array<{
-    id: string;
-    name: string;
-    targetType: PricingTargetType;
-    brandId: string | null;
-    categoryId: string | null;
-    countryCode: string | null;
-    currency: string;
-    marginPercent: number | null;
-    localShippingFee: number | null;
-    minimumProfitAmount: number | null;
-    fixedFee: number | null;
-    shippingFee: number | null;
-    handlingFee: number | null;
-    paymentFee: number | null;
-    taxPercent: number | null;
-    freeShippingThreshold: number | null;
-    minimumOrderValue: number | null;
-    isDefault: boolean;
-    isActive: boolean;
-    priority: number;
-    brand: { id: string; name: string } | null;
-    category: { id: string; name: string } | null;
-    country: { code: string; name: string } | null;
-    createdAt: string;
-    updatedAt: string;
-  }>;
   shippingMethods: Array<{
     id: string;
     name: string;
@@ -188,14 +160,6 @@ export interface CommerceSettingsResponse {
     symbol: string;
     isDefault: boolean;
   }>;
-  taxSettings: Array<{
-    id: string;
-    countryCode: string;
-    name: string;
-    taxPercent: number | null;
-    isActive: boolean;
-    country: { code: string; name: string };
-  }>;
   sources: BrandSourceRecord[];
 }
 
@@ -211,9 +175,7 @@ export interface BrandSourceRecord {
   sourceType: "PLAYWRIGHT" | "JSON_FEED" | "XML_FEED" | "MANUAL_IMPORT";
   status: "ACTIVE" | "DISABLED" | "ERROR";
   notes: string | null;
-  pricingRuleId: string | null;
   shippingMethodId: string | null;
-  pricingRule: { id: string; name: string } | null;
   shippingMethod: { id: string; name: string } | null;
   createdAt: string;
   updatedAt: string;
@@ -768,29 +730,6 @@ export async function updateBusinessSettings(payload: Partial<CommerceSettingsRe
     method: "PATCH",
     token: getRequiredToken(),
     body: JSON.stringify(payload),
-  });
-}
-
-export async function createPricingRule(payload: Omit<CommerceSettingsResponse["pricingRules"][number], "id" | "brand" | "category" | "country" | "createdAt" | "updatedAt">) {
-  return http<CommerceSettingsResponse["pricingRules"][number]>("/admin/pricing/rules", {
-    method: "POST",
-    token: getRequiredToken(),
-    body: JSON.stringify(payload),
-  });
-}
-
-export async function updatePricingRule(id: string, payload: Partial<CommerceSettingsResponse["pricingRules"][number]>) {
-  return http<CommerceSettingsResponse["pricingRules"][number]>(`/admin/pricing/rules/${id}`, {
-    method: "PATCH",
-    token: getRequiredToken(),
-    body: JSON.stringify(payload),
-  });
-}
-
-export async function deletePricingRule(id: string) {
-  return http<void>(`/admin/pricing/rules/${id}`, {
-    method: "DELETE",
-    token: getRequiredToken(),
   });
 }
 

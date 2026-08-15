@@ -266,7 +266,7 @@ export default function Checkout() {
     (sum, item) => sum + item.supplierCost * item.quantity,
     0,
   );
-  const websiteMarginAmount = summary.cart.items.reduce(
+  const agentCostAmount = summary.cart.items.reduce(
     (sum, item) => sum + item.profitAmount * item.quantity,
     0,
   );
@@ -706,32 +706,32 @@ export default function Checkout() {
                   </div>
                 ) : null}
                 <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">{t("checkout.tax")}</span>
-                  <span>{formatCurrency(websiteMarginAmount, currency)}</span>
+                  <span className="text-muted-foreground">{t("checkout.agentCost")}</span>
+                  <span>{formatCurrency(agentCostAmount, currency)}</span>
                 </div>
                 {isIranDelivery ? (
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span>{t("checkout.tax")} ({displayCurrency})</span>
-                    <span>{formatCurrency(convertAmount(websiteMarginAmount, currency, displayCurrency), displayCurrency)}</span>
+                    <span>{t("checkout.agentCost")} ({displayCurrency})</span>
+                    <span>{formatCurrency(convertAmount(agentCostAmount, currency, displayCurrency), displayCurrency)}</span>
                   </div>
                 ) : null}
                 <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">{t("cart.shipping")}</span>
+                  <span className="text-muted-foreground">{t("checkout.handlingFee")}</span>
                   <span>{formatCurrency(summary.cart.handlingAmount, currency)}</span>
                 </div>
                 {isIranDelivery ? (
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span>{t("cart.shipping")} ({displayCurrency})</span>
+                    <span>{t("checkout.handlingFee")} ({displayCurrency})</span>
                     <span>{formatCurrency(convertAmount(summary.cart.handlingAmount, currency, displayCurrency), displayCurrency)}</span>
                   </div>
                 ) : null}
                 <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">{t("cart.shipping")}</span>
+                  <span className="text-muted-foreground">{t("checkout.paymentFee")}</span>
                   <span>{formatCurrency(summary.cart.paymentFeeAmount, currency)}</span>
                 </div>
                 {isIranDelivery ? (
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span>{t("cart.shipping")} ({displayCurrency})</span>
+                    <span>{t("checkout.paymentFee")} ({displayCurrency})</span>
                     <span>{formatCurrency(convertAmount(summary.cart.paymentFeeAmount, currency, displayCurrency), displayCurrency)}</span>
                   </div>
                 ) : null}
@@ -770,8 +770,8 @@ export default function Checkout() {
                   </div>
                 ) : null}
                 <div className="rounded-2xl bg-secondary/40 p-4 mt-4">
-                  <p className="text-xs text-muted-foreground mb-2">{t("checkout.tax")}</p>
-                  <p className="font-mono text-lg font-semibold">{formatCurrency(websiteMarginAmount, currency)}</p>
+                  <p className="text-xs text-muted-foreground mb-2">{t("checkout.agentCost")}</p>
+                  <p className="font-mono text-lg font-semibold">{formatCurrency(agentCostAmount, currency)}</p>
                 </div>
               </div>
             </div>

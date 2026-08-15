@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/components/ui/use-toast";
-import { formatCurrency } from "@/lib/currency";
 
 const EMPTY_FORM = {
   id: null,
@@ -114,10 +113,10 @@ export default function AdminShipping() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="font-display text-2xl font-bold">Shipping Engine</h1>
-          <p className="text-sm text-muted-foreground">Configure Portugal, Spain, and Iran shipping routes with weight ranges and delivery estimates.</p>
+          <p className="text-sm text-muted-foreground">Configure shipping routes, supported weight ranges, and delivery estimates. Checkout shipping charges come from Global Business Settings.</p>
         </div>
         <Button className="rounded-full" onClick={() => { setForm(EMPTY_FORM); setOpen(true); }}>
-          Add Shipping Rule
+          Add Shipping Method
         </Button>
       </div>
 
@@ -132,7 +131,7 @@ export default function AdminShipping() {
                   {row.countryCode} · {row.deliveryEstimate || `${row.minDeliveryDays}-${row.maxDeliveryDays} days`}
                 </p>
                 <p className="text-xs text-muted-foreground mt-2">
-                  Weight {row.minWeightKg ?? 0}kg - {row.maxWeightKg ?? "up"}kg · {formatCurrency(row.baseFee, row.currency)}
+                  Weight {row.minWeightKg ?? 0}kg - {row.maxWeightKg ?? "up"}kg
                 </p>
               </div>
               <div className="flex items-center gap-3">
@@ -147,7 +146,7 @@ export default function AdminShipping() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle className="font-display">{form.id ? "Edit" : "Add"} Shipping Rule</DialogTitle>
+            <DialogTitle className="font-display">{form.id ? "Edit" : "Add"} Shipping Method</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 md:grid-cols-2">
             <div className="md:col-span-2">
@@ -179,8 +178,6 @@ export default function AdminShipping() {
               ["maxWeightKg", "Max Weight Kg"],
               ["minDeliveryDays", "Min Delivery Days"],
               ["maxDeliveryDays", "Max Delivery Days"],
-              ["baseFee", "Shipping Cost"],
-              ["freeShippingThreshold", "Free Shipping Threshold"],
               ["deliveryEstimate", "Delivery Estimate"],
             ].map(([key, label]) => (
               <div key={key}>
@@ -188,8 +185,11 @@ export default function AdminShipping() {
                 <Input value={form[key]} onChange={(event) => setForm((current) => ({ ...current, [key]: event.target.value }))} className="mt-1" />
               </div>
             ))}
+            <div className="md:col-span-2 rounded-xl border border-border bg-secondary/30 px-4 py-3 text-sm text-muted-foreground">
+              Shipping charge and free shipping threshold are managed only from Global Business Settings in Admin Pricing.
+            </div>
             <div className="md:col-span-2">
-              <Button className="w-full rounded-full" onClick={saveShipping}>Save Shipping Rule</Button>
+              <Button className="w-full rounded-full" onClick={saveShipping}>Save Shipping Method</Button>
             </div>
           </div>
         </DialogContent>

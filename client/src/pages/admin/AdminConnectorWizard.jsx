@@ -24,7 +24,6 @@ const EMPTY_WIZARD = {
   countryCode: "PT",
   currencyCode: "EUR",
   region: "EUROPE",
-  pricingRuleId: "none",
   shippingMethodId: "none",
   notes: "",
 };
@@ -106,7 +105,6 @@ export default function AdminConnectorWizard() {
         region: wizard.region || null,
         sourceType: "PLAYWRIGHT",
         status: "ACTIVE",
-        pricingRuleId: wizard.pricingRuleId === "none" ? null : wizard.pricingRuleId,
         shippingMethodId: wizard.shippingMethodId === "none" ? null : wizard.shippingMethodId,
         notes: wizard.notes || null,
       });
@@ -235,17 +233,7 @@ export default function AdminConnectorWizard() {
             <Input value={wizard.currencyCode} onChange={(event) => setWizard((current) => ({ ...current, currencyCode: event.target.value.toUpperCase() }))} className="mt-1" />
           </div>
           <div>
-            <Label className="text-xs">Pricing Rule</Label>
-            <Select value={wizard.pricingRuleId} onValueChange={(value) => setWizard((current) => ({ ...current, pricingRuleId: value }))}>
-              <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">None</SelectItem>
-                {(settings?.pricingRules ?? []).map((rule) => <SelectItem key={rule.id} value={rule.id}>{rule.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label className="text-xs">Shipping Rule</Label>
+            <Label className="text-xs">Shipping Method</Label>
             <Select value={wizard.shippingMethodId} onValueChange={(value) => setWizard((current) => ({ ...current, shippingMethodId: value }))}>
               <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
               <SelectContent>

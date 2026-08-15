@@ -17,7 +17,6 @@ import {
   createLoyaltyRewardSchema,
   createReferralRelationshipSchema,
   createReferralRuleSchema,
-  createPricingRuleSchema,
   entityIdParamsSchema,
   manualLoyaltyAdjustmentSchema,
   mergeGuestCartSchema,
@@ -41,7 +40,6 @@ import {
   updateCartCountrySchema,
   updateCartItemSchema,
   updateOrderStatusSchema,
-  updatePricingRuleSchema,
   updateProductPricingOverrideSchema,
   updateTrackingSchema,
   updatePaymentProviderConfigSchema,
@@ -204,22 +202,6 @@ commerceRouter.patch(
   "/admin/pricing/business",
   validateBody(updateBusinessSettingsSchema),
   asyncHandler(commerceController.updateBusinessSettings.bind(commerceController)),
-);
-commerceRouter.post(
-  "/admin/pricing/rules",
-  validateBody(createPricingRuleSchema),
-  asyncHandler(commerceController.createPricingRule.bind(commerceController)),
-);
-commerceRouter.patch(
-  "/admin/pricing/rules/:id",
-  validateParams(entityIdParamsSchema),
-  validateBody(updatePricingRuleSchema),
-  asyncHandler(commerceController.updatePricingRule.bind(commerceController)),
-);
-commerceRouter.delete(
-  "/admin/pricing/rules/:id",
-  validateParams(entityIdParamsSchema),
-  asyncHandler(commerceController.deletePricingRule.bind(commerceController)),
 );
 commerceRouter.get(
   "/admin/campaigns",

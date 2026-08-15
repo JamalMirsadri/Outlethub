@@ -1,5 +1,5 @@
 import bcrypt from "bcryptjs";
-import { Prisma, PricingTargetType, RoleCode, UserStatus } from "@prisma/client";
+import { Prisma, RoleCode, UserStatus } from "@prisma/client";
 
 import { prisma } from "../config/prisma.js";
 import { upsertUserWithReferralCode } from "../utils/referral-code.js";
@@ -38,28 +38,6 @@ async function ensureCommerceConfiguration() {
       where: { code: country.code },
       update: country,
       create: country,
-    });
-  }
-
-  const taxes = [
-    { countryCode: "PT", name: "Portugal VAT", taxPercent: 23, isActive: true },
-    { countryCode: "ES", name: "Spain VAT", taxPercent: 21, isActive: true },
-  ];
-
-  for (const tax of taxes) {
-    const existingTax = await prisma.taxSettings.findFirst({
-      where: {
-        countryCode: tax.countryCode,
-        name: tax.name,
-      },
-    });
-
-    if (existingTax) {
-      continue;
-    }
-
-    await prisma.taxSettings.create({
-      data: tax,
     });
   }
 
@@ -166,37 +144,6 @@ async function ensureCommerceConfiguration() {
   if (!businessSettings) {
     await prisma.businessSettings.create({
       data: businessSettingsPayload,
-    });
-  }
-
-  const globalPricingRule = await prisma.pricingRule.findFirst({
-    where: {
-      name: "Default Global Pricing",
-    },
-  });
-
-  const globalPricingRulePayload = {
-    name: "Default Global Pricing",
-    targetType: PricingTargetType.GLOBAL,
-    currency: "EUR",
-    marginPercent: 18,
-    localShippingFee: 5.99,
-    minimumProfitAmount: 12,
-    fixedFee: 4.99,
-    shippingFee: 5.99,
-    handlingFee: 1.99,
-    paymentFee: 1.49,
-    taxPercent: 23,
-    freeShippingThreshold: 120,
-    minimumOrderValue: 15,
-    isDefault: true,
-    isActive: true,
-    priority: 0,
-  };
-
-  if (!globalPricingRule) {
-    await prisma.pricingRule.create({
-      data: globalPricingRulePayload,
     });
   }
 }

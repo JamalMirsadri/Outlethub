@@ -41,7 +41,6 @@ export interface ProductPricingResult {
   handlingFee: Prisma.Decimal;
   minimumProfitAmount: Prisma.Decimal;
   vatPercent: Prisma.Decimal;
-  pricingRuleId: string | null;
 }
 
 export interface CartPricingItem {
@@ -92,43 +91,11 @@ export class PricingService {
     return settings;
   }
 
-  public async resolvePricingRule(input: { brandId: string; categoryId: string; countryCode?: string | null }) {
-    return prisma.pricingRule.findFirst({
-      where: {
-        isActive: true,
-        OR: [
-          {
-            targetType: "BRAND",
-            brandId: input.brandId,
-            ...(input.countryCode ? { countryCode: input.countryCode } : {}),
-          },
-          {
-            targetType: "CATEGORY",
-            categoryId: input.categoryId,
-            ...(input.countryCode ? { countryCode: input.countryCode } : {}),
-          },
-          {
-            targetType: "GLOBAL",
-            ...(input.countryCode ? { OR: [{ countryCode: input.countryCode }, { countryCode: null }] } : {}),
-          },
-        ],
-      },
-      orderBy: [{ priority: "desc" }, { createdAt: "asc" }],
-    });
-  }
-
   public async calculateProductPricing(input: ProductPricingInput, countryCode?: string | null): Promise<ProductPricingResult> {
-    const [settings, pricingRule] = await Promise.all([
-      this.getBusinessSettings(),
-      this.resolvePricingRule({
-        brandId: input.brandId,
-        categoryId: input.categoryId,
-        countryCode: countryCode ?? null,
-      }),
-    ]);
+    const settings = await this.getBusinessSettings();
 
     const supplierPrice = decimal(input.supplierPrice ?? input.fallbackPrice);
-    const currency = input.currency || pricingRule?.currency || settings.defaultCurrency;
+    const currency = input.currency || settings.defaultCurrency;
 
     if (input.useCustomPricing && input.customPrice !== null && input.customPrice !== undefined) {
       return {
@@ -142,31 +109,19 @@ export class PricingService {
         handlingFee: new Prisma.Decimal(0),
         minimumProfitAmount: new Prisma.Decimal(0),
         vatPercent: new Prisma.Decimal(0),
-        pricingRuleId: pricingRule?.id ?? null,
       };
     }
 
-    const marginPercent = pricingRule?.marginPercent ?? settings.defaultMarginPercent;
+    const marginPercent = settings.defaultMarginPercent;
+    const fixedProfitAmount = decimal(settings.fixedProfitAmount);
     const marginAmount = supplierPrice.mul(marginPercent).div(100);
-    const localShippingFee = pricingRule?.localShippingFee ?? this.getCountryShippingDefault(settings, countryCode);
-    const internationalShippingFee = decimal(pricingRule?.shippingFee ?? this.getCountryShippingDefault(settings));
-    const handlingFee = pricingRule?.handlingFee ?? settings.handlingFee;
-    const minimumProfitAmount = pricingRule?.minimumProfitAmount ?? settings.minimumProfitAmount;
-    const baseProfit = marginAmount.plus(decimal(localShippingFee)).plus(internationalShippingFee).plus(decimal(handlingFee));
+    const minimumProfitAmount = decimal(settings.minimumProfitAmount);
+    const baseProfit = marginAmount.plus(fixedProfitAmount);
     const minimumProfitAdjustment = baseProfit.greaterThanOrEqualTo(decimal(minimumProfitAmount))
       ? new Prisma.Decimal(0)
       : decimal(minimumProfitAmount).minus(baseProfit);
-    const preTaxPrice = supplierPrice
-      .plus(marginAmount)
-      .plus(decimal(localShippingFee))
-      .plus(internationalShippingFee)
-      .plus(decimal(handlingFee))
-      .plus(minimumProfitAdjustment)
-      .toDecimalPlaces(2);
-    const vatPercent = decimal(pricingRule?.taxPercent ?? settings.vatPercent);
-    const vatAmount = preTaxPrice.mul(vatPercent).div(100);
-    const customerPrice = preTaxPrice.plus(vatAmount).toDecimalPlaces(2);
     const profitAmount = baseProfit.plus(minimumProfitAdjustment).toDecimalPlaces(2);
+    const customerPrice = supplierPrice.plus(profitAmount).toDecimalPlaces(2);
 
     return {
       supplierPrice,
@@ -174,12 +129,11 @@ export class PricingService {
       profitAmount,
       currency,
       marginPercent,
-      localShippingFee: decimal(localShippingFee),
-      internationalShippingFee,
-      handlingFee: decimal(handlingFee),
+      localShippingFee: this.getCountryShippingDefault(settings, countryCode),
+      internationalShippingFee: new Prisma.Decimal(0),
+      handlingFee: decimal(settings.handlingFee),
       minimumProfitAmount: decimal(minimumProfitAmount),
-      vatPercent,
-      pricingRuleId: pricingRule?.id ?? null,
+      vatPercent: decimal(settings.vatPercent),
     };
   }
 
@@ -215,29 +169,19 @@ export class PricingService {
             orderBy: [{ originCountryCode: "asc" }, { createdAt: "asc" }],
           })) ?? null;
 
-    const taxSettings =
-      (await prisma.taxSettings.findFirst({
-        where: {
-          countryCode,
-          isActive: true,
-        },
-        orderBy: { createdAt: "asc" },
-      })) ?? null;
-
     const subtotalAmount = input.items.reduce(
       (sum, item) => sum.plus(decimal(item.customerPaid).mul(item.quantity)),
       new Prisma.Decimal(0),
     );
-    const freeShippingThreshold = decimal(
-      shippingMethod?.freeShippingThreshold ?? settings.freeShippingThreshold,
-    );
+    const freeShippingThreshold = decimal(settings.freeShippingThreshold);
+    const countryShippingFee = this.getCountryShippingDefault(settings, countryCode);
     const shippingAmount =
       subtotalAmount.greaterThanOrEqualTo(freeShippingThreshold) && !freeShippingThreshold.isZero()
         ? new Prisma.Decimal(0)
-        : decimal(shippingMethod?.baseFee);
+        : countryShippingFee;
     const handlingAmount = decimal(settings.handlingFee);
     const paymentFeeAmount = decimal(settings.paymentFee);
-    const taxPercent = decimal(taxSettings?.taxPercent ?? settings.vatPercent);
+    const taxPercent = decimal(settings.vatPercent);
     const taxableAmount = subtotalAmount.plus(shippingAmount).plus(handlingAmount).plus(paymentFeeAmount);
     const taxAmount = taxableAmount.mul(taxPercent).div(100).toDecimalPlaces(2);
     const totalAmount = taxableAmount.plus(taxAmount).toDecimalPlaces(2);

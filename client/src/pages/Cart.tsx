@@ -88,7 +88,7 @@ export default function Cart() {
     (sum, item) => sum + item.supplierCost * item.quantity,
     0,
   );
-  const websiteMarginAmount = cart.items.reduce(
+  const agentCostAmount = cart.items.reduce(
     (sum, item) => sum + item.profitAmount * item.quantity,
     0,
   );
@@ -299,13 +299,13 @@ export default function Cart() {
                   <span>{formatCurrency(convertAmount(productPriceBeforeMarginAndVat, currency, displayCurrency), displayCurrency)}</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">{t("checkout.tax")}</span>
-                  <span>{formatCurrency(websiteMarginAmount, currency)}</span>
+                  <span className="text-muted-foreground">{t("checkout.agentCost")}</span>
+                  <span>{formatCurrency(agentCostAmount, currency)}</span>
                 </div>
                 {showTomanAmounts ? (
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span>{t("checkout.tax")} ({displayCurrency})</span>
-                    <span>{formatCurrency(convertAmount(websiteMarginAmount, currency, displayCurrency), displayCurrency)}</span>
+                    <span>{t("checkout.agentCost")} ({displayCurrency})</span>
+                    <span>{formatCurrency(convertAmount(agentCostAmount, currency, displayCurrency), displayCurrency)}</span>
                   </div>
                 ) : null}
                 <div className="flex items-center justify-between text-sm">
@@ -319,22 +319,22 @@ export default function Cart() {
                   </div>
                 ) : null}
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">{t("cart.shipping")}</span>
+                  <span className="text-muted-foreground">{t("checkout.handlingFee")}</span>
                   <span>{formatCurrency(cart.handlingAmount, currency)}</span>
                 </div>
                 {showTomanAmounts ? (
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span>{t("cart.shipping")} ({displayCurrency})</span>
+                    <span>{t("checkout.handlingFee")} ({displayCurrency})</span>
                     <span>{formatCurrency(convertAmount(cart.handlingAmount, currency, displayCurrency), displayCurrency)}</span>
                   </div>
                 ) : null}
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">{t("cart.shipping")}</span>
+                  <span className="text-muted-foreground">{t("checkout.paymentFee")}</span>
                   <span>{formatCurrency(cart.paymentFeeAmount, currency)}</span>
                 </div>
                 {showTomanAmounts ? (
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span>{t("cart.shipping")} ({displayCurrency})</span>
+                    <span>{t("checkout.paymentFee")} ({displayCurrency})</span>
                     <span>{formatCurrency(convertAmount(cart.paymentFeeAmount, currency, displayCurrency), displayCurrency)}</span>
                   </div>
                 ) : null}

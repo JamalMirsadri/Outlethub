@@ -1675,7 +1675,7 @@ export default function AdminProducts() {
               <div className="flex items-center justify-between">
                 <div>
                   <Label>Custom Pricing Override</Label>
-                  <p className="text-xs text-muted-foreground mt-1">If enabled, customer price uses the custom value and ignores the global pricing rule.</p>
+                  <p className="text-xs text-muted-foreground mt-1">If enabled, customer price uses the custom value and ignores the Global Business Settings pricing flow.</p>
                 </div>
                 <input type="checkbox" checked={form.use_custom_pricing} onChange={e=>setForm({...form,use_custom_pricing:e.target.checked})} />
               </div>
