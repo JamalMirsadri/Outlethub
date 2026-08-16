@@ -19,6 +19,10 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? (import.meta.env.DEV ?
 export async function http<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { token, headers, ...restOptions } = options;
 
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("outlethub:auth-activity"));
+  }
+
   const response = await fetch(`${API_BASE_URL}${path}`, {
     credentials: "include",
     headers: {

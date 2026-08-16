@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 
 import { env } from "../../config/env.js";
 import { authService } from "./auth.service.js";
+import { getSessionContext } from "./session.utils.js";
 
 const refreshCookieOptions = {
   httpOnly: true,
@@ -23,7 +24,7 @@ function clearRefreshTokenCookie(response: Response): void {
 
 export class AuthController {
   public async register(request: Request, response: Response): Promise<void> {
-    const result = await authService.register(request.body);
+    const result = await authService.register(request.body, getSessionContext(request));
     setRefreshTokenCookie(response, result.refreshToken);
 
     response.status(201).json({
@@ -33,7 +34,7 @@ export class AuthController {
   }
 
   public async login(request: Request, response: Response): Promise<void> {
-    const result = await authService.login(request.body);
+    const result = await authService.login(request.body, getSessionContext(request));
     setRefreshTokenCookie(response, result.refreshToken);
 
     response.status(200).json({
@@ -44,7 +45,7 @@ export class AuthController {
 
   public async refresh(request: Request, response: Response): Promise<void> {
     const refreshToken = request.cookies[env.REFRESH_TOKEN_COOKIE_NAME] as string | undefined;
-    const result = await authService.refresh(refreshToken ?? "");
+    const result = await authService.refresh(refreshToken ?? "", getSessionContext(request));
     setRefreshTokenCookie(response, result.refreshToken);
 
     response.status(200).json({
@@ -55,8 +56,13 @@ export class AuthController {
 
   public async logout(request: Request, response: Response): Promise<void> {
     const refreshToken = request.cookies[env.REFRESH_TOKEN_COOKIE_NAME] as string | undefined;
-    await authService.logout(refreshToken);
+    await authService.logout(refreshToken, request.auth?.sessionId);
     clearRefreshTokenCookie(response);
+    response.status(204).send();
+  }
+
+  public async activity(request: Request, response: Response): Promise<void> {
+    await authService.touchSession(request.auth!.sessionId);
     response.status(204).send();
   }
 

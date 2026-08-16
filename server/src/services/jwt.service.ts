@@ -4,6 +4,7 @@ import { env } from "../config/env.js";
 
 export interface AccessTokenPayload {
   sub: string;
+  sid: string;
   role: string;
   email: string;
   type: "access";

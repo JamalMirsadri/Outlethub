@@ -1,5 +1,5 @@
 import { useState, type ChangeEvent, type FormEvent } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,7 @@ import { login } from "@/services/auth.service";
 
 export default function Login() {
   const { t } = useTranslation();
+  const location = useLocation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -23,12 +24,15 @@ export default function Login() {
     setLoading(true);
 
     try {
-      await login({
+      const response = await login({
         email,
         password,
       });
       await mergeGuestCart().catch(() => undefined);
-      window.location.href = "/";
+      const redirectTarget = new URLSearchParams(location.search).get("redirect");
+      const fallbackTarget =
+        response.user.role === "ADMIN" || response.user.role === "SUPER_ADMIN" ? "/admin" : "/";
+      window.location.href = redirectTarget || fallbackTarget;
     } catch (requestError: unknown) {
       setError(requestError instanceof Error ? requestError.message : t("auth.invalidCredentials"));
     } finally {

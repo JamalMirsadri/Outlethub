@@ -488,6 +488,7 @@ model RefreshToken {
   userId         String
   tokenHash      String   @unique
   expiresAt      DateTime
+  lastActivityAt DateTime @default(now())
   revokedAt      DateTime?
   replacedByHash String?
   userAgent      String?
@@ -497,6 +498,7 @@ model RefreshToken {
 
   @@index([userId])
   @@index([expiresAt])
+  @@index([lastActivityAt])
 }
 
 model EmailVerificationToken {

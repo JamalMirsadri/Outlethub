@@ -1,12 +1,14 @@
 import React, { useState } from "react";
 import { Link, useLocation, Outlet } from "react-router-dom";
-import { Package, Heart, Bell, User, MapPin, CreditCard, ChevronLeft, Menu, X, Gift, Users } from "lucide-react";
+import { Package, Heart, Bell, User, MapPin, CreditCard, ChevronLeft, Menu, X, Gift, Users, LogOut } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import Navbar from "@/components/landing/Navbar";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function DashboardLayout() {
   const { t } = useTranslation();
   const location = useLocation();
+  const { logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const NAV_ITEMS = [
@@ -50,6 +52,14 @@ export default function DashboardLayout() {
                   </Link>
                 );
               })}
+              <button
+                type="button"
+                onClick={() => void logout({ redirectTo: "/dashboard" })}
+                className="flex w-full items-center gap-3 rounded-[18px] px-4 py-3 text-sm text-muted-foreground transition-all hover:bg-secondary/50 hover:text-foreground"
+              >
+                <LogOut className="w-4 h-4" />
+                {t("auth.signOut")}
+              </button>
             </nav>
           </aside>
           <main className={`flex-1 min-w-0 ${sidebarOpen ? 'hidden lg:block' : ''}`}>

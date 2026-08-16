@@ -55,6 +55,13 @@ export async function refreshSession(): Promise<AuthResponse> {
   return response;
 }
 
+export async function touchSessionActivity(): Promise<void> {
+  await http<void>("/auth/activity", {
+    method: "POST",
+    token: getAccessToken(),
+  });
+}
+
 export async function logout(): Promise<void> {
   try {
     await http<void>("/auth/logout", {

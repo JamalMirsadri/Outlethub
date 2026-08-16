@@ -1,7 +1,7 @@
 import { Router } from "express";
 
 import { asyncHandler } from "../../utils/async-handler.js";
-import { requireAuth } from "../../middleware/auth.middleware.js";
+import { attachOptionalAuth, requireAuth } from "../../middleware/auth.middleware.js";
 import { rateLimit } from "../../middleware/rate-limit.middleware.js";
 import { validateBody } from "../../middleware/validate.middleware.js";
 import { authController } from "./auth.controller.js";
@@ -38,7 +38,15 @@ authRouter.post(
 
 authRouter.post(
   "/logout",
+  attachOptionalAuth,
   asyncHandler(authController.logout.bind(authController)),
+);
+
+authRouter.post(
+  "/activity",
+  rateLimit("auth:activity", 120, 60),
+  requireAuth,
+  asyncHandler(authController.activity.bind(authController)),
 );
 
 authRouter.post(

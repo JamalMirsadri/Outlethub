@@ -14,6 +14,7 @@ import {
 } from "../../services/jwt.service.js";
 import { notificationsService } from "../notifications/notifications.service.js";
 import { referralService } from "../commerce/referral.service.js";
+import { isSessionInactive } from "./session.utils.js";
 import type {
   AdminResetUserPasswordInput,
   AdminUsersQueryInput,
@@ -26,6 +27,11 @@ import type {
   VerifyEmailInput,
 } from "./auth.schemas.js";
 import type { AuthResponse, AuthTokens, AuthUser } from "./auth.types.js";
+
+interface SessionContext {
+  userAgent?: string | null;
+  ipAddress?: string | null;
+}
 
 // #region debug-point A:auth-register
 const DEBUG_SESSION_ID = "payment-runtime-blockers";
@@ -291,7 +297,10 @@ function mapAdminUserDetail(user: AdminUserDetailPayload) {
 }
 
 export class AuthService {
-  public async register(input: RegisterInput): Promise<AuthResponse & { refreshToken: string }> {
+  public async register(
+    input: RegisterInput,
+    sessionContext?: SessionContext,
+  ): Promise<AuthResponse & { refreshToken: string }> {
     const normalizedEmail = input.email.toLowerCase();
 
     // #region debug-point A:register-start
@@ -420,7 +429,7 @@ export class AuthService {
         });
         // #endregion debug-point E:register-notification-error
       }
-      const tokens = await this.issueAuthTokens(user.id, user.email, user.role.code);
+      const tokens = await this.issueAuthTokens(user.id, user.email, user.role.code, sessionContext);
 
       // #region debug-point A:register-success
       reportDebugEvent({
@@ -462,6 +471,7 @@ export class AuthService {
 
   public async login(
     input: LoginInput,
+    sessionContext?: SessionContext,
   ): Promise<AuthResponse & { refreshToken: string }> {
     const user = await prisma.user.findUnique({
       where: { email: input.email.toLowerCase() },
@@ -488,7 +498,7 @@ export class AuthService {
       data: { lastLoginAt: new Date() },
     });
 
-    const tokens = await this.issueAuthTokens(user.id, user.email, user.role.code);
+    const tokens = await this.issueAuthTokens(user.id, user.email, user.role.code, sessionContext);
 
     return {
       user: toAuthUser(user),
@@ -497,7 +507,10 @@ export class AuthService {
     };
   }
 
-  public async refresh(refreshToken: string): Promise<AuthResponse & { refreshToken: string }> {
+  public async refresh(
+    refreshToken: string,
+    sessionContext?: SessionContext,
+  ): Promise<AuthResponse & { refreshToken: string }> {
     if (!refreshToken) {
       throw new ApiError(401, "Refresh token is invalid or expired.");
     }
@@ -526,6 +539,14 @@ export class AuthService {
       throw new ApiError(401, "Refresh token is invalid or expired.");
     }
 
+    if (isSessionInactive(storedToken.lastActivityAt)) {
+      await prisma.refreshToken.update({
+        where: { id: storedToken.id },
+        data: { revokedAt: new Date() },
+      });
+      throw new ApiError(401, "Session expired due to inactivity.");
+    }
+
     if (storedToken.userId !== payload.sub) {
       throw new ApiError(401, "Refresh token subject mismatch.");
     }
@@ -547,6 +568,10 @@ export class AuthService {
       storedToken.user.id,
       storedToken.user.email,
       storedToken.user.role.code,
+      {
+        userAgent: sessionContext?.userAgent ?? storedToken.userAgent,
+        ipAddress: sessionContext?.ipAddress ?? storedToken.ipAddress,
+      },
     );
 
     return {
@@ -556,14 +581,48 @@ export class AuthService {
     };
   }
 
-  public async logout(refreshToken: string | undefined): Promise<void> {
-    if (!refreshToken) {
+  public async logout(refreshToken: string | undefined, sessionId?: string): Promise<void> {
+    const orConditions: Prisma.RefreshTokenWhereInput[] = [];
+
+    if (refreshToken) {
+      orConditions.push({ tokenHash: hashToken(refreshToken) });
+    }
+
+    if (sessionId) {
+      orConditions.push({ id: sessionId });
+    }
+
+    if (orConditions.length === 0) {
       return;
     }
 
     await prisma.refreshToken.updateMany({
-      where: { tokenHash: hashToken(refreshToken), revokedAt: null },
+      where: {
+        revokedAt: null,
+        OR: orConditions,
+      },
       data: { revokedAt: new Date() },
+    });
+  }
+
+  public async touchSession(sessionId: string): Promise<void> {
+    const session = await prisma.refreshToken.findUnique({
+      where: { id: sessionId },
+      select: {
+        id: true,
+        revokedAt: true,
+        expiresAt: true,
+        lastActivityAt: true,
+      },
+    });
+
+    if (!session || session.revokedAt || session.expiresAt <= new Date() || isSessionInactive(session.lastActivityAt)) {
+      throw new ApiError(401, "Session is invalid or expired.");
+    }
+
+    await prisma.refreshToken.update({
+      where: { id: session.id },
+      data: { lastActivityAt: new Date() },
     });
   }
 
@@ -931,24 +990,33 @@ export class AuthService {
     });
   }
 
-  private async issueAuthTokens(userId: string, email: string, role: RoleCode): Promise<AuthTokens> {
-    const accessToken = signAccessToken({
-      sub: userId,
-      email,
-      role,
-    });
-
+  private async issueAuthTokens(
+    userId: string,
+    email: string,
+    role: RoleCode,
+    sessionContext?: SessionContext,
+  ): Promise<AuthTokens> {
     const refreshToken = signRefreshToken({
       sub: userId,
       jti: createRandomToken(16),
     });
 
-    await prisma.refreshToken.create({
+    const refreshSession = await prisma.refreshToken.create({
       data: {
         userId,
         tokenHash: hashToken(refreshToken),
         expiresAt: parseDurationToDate("7d"),
+        lastActivityAt: new Date(),
+        userAgent: sessionContext?.userAgent ?? null,
+        ipAddress: sessionContext?.ipAddress ?? null,
       },
+    });
+
+    const accessToken = signAccessToken({
+      sub: userId,
+      sid: refreshSession.id,
+      email,
+      role,
     });
 
     return {

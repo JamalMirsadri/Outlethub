@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, Outlet } from "react-router-dom";
-import { LayoutDashboard, Package, ShoppingCart, Tag, Layers3, Link2, DollarSign, BarChart3, Activity, Bell, ChevronLeft, Menu, Sun, Moon, Globe, Truck, ClipboardList, CreditCard, Landmark, Users, FilePenLine, Award, TicketPercent, GitBranch, Megaphone } from "lucide-react";
+import { LayoutDashboard, Package, ShoppingCart, Tag, Layers3, Link2, DollarSign, BarChart3, Activity, Bell, ChevronLeft, Menu, Sun, Moon, Globe, Truck, ClipboardList, CreditCard, Landmark, Users, FilePenLine, Award, TicketPercent, GitBranch, Megaphone, LogOut } from "lucide-react";
 import { useTheme } from "@/components/ThemeProvider";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { useAuth } from "@/contexts/AuthContext";
 
 const NAV_ITEMS = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/admin" },
@@ -97,6 +98,7 @@ function isItemActive(item, pathname) {
 export default function AdminLayout() {
   const location = useLocation();
   const { theme, toggleTheme } = useTheme();
+  const { logout } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [openSections, setOpenSections] = useState(DEFAULT_OPEN_SECTIONS);
@@ -197,6 +199,15 @@ export default function AdminLayout() {
               className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-secondary/50 w-full ${collapsed ? "justify-center" : ""}`}>
               {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
               {!collapsed && (theme === "dark" ? "Light Mode" : "Dark Mode")}
+            </button>
+            <button
+              type="button"
+              onClick={() => void logout({ redirectTo: "/admin" })}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-secondary/50 w-full ${collapsed ? "justify-center" : ""}`}
+              title={collapsed ? "Logout" : undefined}
+            >
+              <LogOut className="w-4 h-4" />
+              {!collapsed && "Logout"}
             </button>
             <Link to="/"
               className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-secondary/50 ${collapsed ? "justify-center" : ""}`}>
