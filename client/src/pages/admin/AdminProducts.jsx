@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { appClient, listAdminProductsPage } from "@/api/appClient";
+import React, { useState, useEffect, useRef } from "react";
+import { appClient, importAdminProductsCsv, listAdminProductsPage } from "@/api/appClient";
 import { getProductSourceInfo, updateProductPricingOverride } from "@/api/commerce";
 import {
   getGlobalProductMonitoringSettings,
@@ -9,7 +9,7 @@ import {
   updateProductMonitoringSettings,
 } from "@/api/monitoring";
 import { HttpError } from "@/services/http";
-import { Plus, Search, MoreHorizontal, Edit, Trash2, Eye, EyeOff, RefreshCw, Clock3, Download } from "lucide-react";
+import { Plus, Search, MoreHorizontal, Edit, Trash2, Eye, EyeOff, RefreshCw, Clock3, Download, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -400,6 +400,7 @@ function validateVariantGroups(groups) {
 }
 
 export default function AdminProducts() {
+  const importFileInputRef = useRef(null);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [referenceLoading, setReferenceLoading] = useState(true);
@@ -433,9 +434,27 @@ export default function AdminProducts() {
   const [exportAllBrands, setExportAllBrands] = useState(true);
   const [selectedExportBrandIds, setSelectedExportBrandIds] = useState([]);
   const [exportingCsv, setExportingCsv] = useState(false);
+  const [importingCsv, setImportingCsv] = useState(false);
+  const [importResultDialogOpen, setImportResultDialogOpen] = useState(false);
+  const [importResult, setImportResult] = useState(null);
+
+  const loadProducts = async () => {
+    try {
+      const items = await appClient.entities.Product.list("-created_date", 50);
+      setProducts(items);
+    } catch {
+      toast({
+        title: "Unable to load products",
+        description: "Try again in a moment.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    appClient.entities.Product.list("-created_date", 50).then(setProducts).catch(()=>{}).finally(()=>setLoading(false));
+    void loadProducts();
   }, []);
 
   const loadGlobalSettings = async () => {
@@ -464,23 +483,27 @@ export default function AdminProducts() {
     loadGlobalSettings();
   }, []);
 
+  const loadReferenceData = async () => {
+    try {
+      const [brandItems, categoryItems] = await Promise.all([
+        appClient.entities.Brand.list("-created_date", 200),
+        appClient.entities.Category.list("-created_date", 200),
+      ]);
+      setBrands(brandItems);
+      setCategories(categoryItems);
+    } catch {
+      toast({
+        title: "Unable to load brands and categories",
+        description: "You can still type them manually and try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setReferenceLoading(false);
+    }
+  };
+
   useEffect(() => {
-    Promise.all([
-      appClient.entities.Brand.list("-created_date", 200),
-      appClient.entities.Category.list("-created_date", 200),
-    ])
-      .then(([brandItems, categoryItems]) => {
-        setBrands(brandItems);
-        setCategories(categoryItems);
-      })
-      .catch(() => {
-        toast({
-          title: "Unable to load brands and categories",
-          description: "You can still type them manually and try again.",
-          variant: "destructive",
-        });
-      })
-      .finally(() => setReferenceLoading(false));
+    void loadReferenceData();
   }, []);
 
   useEffect(() => {
@@ -558,6 +581,45 @@ export default function AdminProducts() {
       });
     } finally {
       setExportingCsv(false);
+    }
+  };
+
+  const handleChooseImportFile = () => {
+    importFileInputRef.current?.click();
+  };
+
+  const handleImportCsv = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    setImportingCsv(true);
+
+    try {
+      const content = await file.text();
+      const result = await importAdminProductsCsv({
+        content,
+        fileName: file.name,
+      });
+
+      setImportResult(result);
+      setImportResultDialogOpen(true);
+      await Promise.all([loadProducts(), loadReferenceData()]);
+
+      toast({
+        title: "CSV import finished",
+        description: `${result.summary.imported} imported, ${result.summary.updated} updated, ${result.summary.skipped} skipped, ${result.summary.failed} failed.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Failed to import CSV",
+        description: getErrorMessage(error),
+        variant: "destructive",
+      });
+    } finally {
+      event.target.value = "";
+      setImportingCsv(false);
     }
   };
 
@@ -1002,6 +1064,17 @@ export default function AdminProducts() {
           <p className="text-sm text-muted-foreground">{products.length} total products</p>
         </div>
         <div className="flex items-center gap-3">
+          <input
+            ref={importFileInputRef}
+            type="file"
+            accept=".csv,text/csv"
+            className="hidden"
+            onChange={(event) => void handleImportCsv(event)}
+          />
+          <Button variant="outline" onClick={handleChooseImportFile} className="rounded-full" disabled={importingCsv}>
+            <Upload className={`w-4 h-4 mr-2 ${importingCsv ? "animate-pulse" : ""}`} />
+            {importingCsv ? "Importing..." : "Import CSV"}
+          </Button>
           <Button
             variant="outline"
             onClick={() => setGlobalMonitoringDialogOpen(true)}
@@ -1252,6 +1325,80 @@ export default function AdminProducts() {
               <Button onClick={() => void exportProductsMapping()} disabled={exportingCsv}>
                 {exportingCsv ? "Exporting..." : "Export CSV"}
               </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={importResultDialogOpen} onOpenChange={setImportResultDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="font-display">CSV Import Result</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid gap-3 sm:grid-cols-4">
+              {[
+                { label: "Imported", value: importResult?.summary?.imported ?? 0 },
+                { label: "Updated", value: importResult?.summary?.updated ?? 0 },
+                { label: "Skipped", value: importResult?.summary?.skipped ?? 0 },
+                { label: "Failed", value: importResult?.summary?.failed ?? 0 },
+              ].map((item) => (
+                <div key={item.label} className="rounded-xl border border-border bg-secondary/20 p-4">
+                  <p className="text-xs uppercase tracking-widest text-muted-foreground">{item.label}</p>
+                  <p className="mt-2 font-display text-2xl">{item.value}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="rounded-xl border border-border bg-secondary/20 p-4 text-sm text-muted-foreground">
+              Total rows processed: <span className="font-medium text-foreground">{importResult?.summary?.total ?? 0}</span>
+            </div>
+
+            {importResult?.issues?.length ? (
+              <div className="space-y-3">
+                <div>
+                  <p className="font-medium">Row-level issues</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Skipped and failed rows are listed below with their row number and reason.
+                  </p>
+                </div>
+                <div className="max-h-80 space-y-3 overflow-y-auto pr-1">
+                  {importResult.issues.map((issue) => (
+                    <div key={`${issue.status}-${issue.rowNumber}-${issue.reason}`} className="rounded-xl border border-border p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="font-medium">Row {issue.rowNumber}</p>
+                          <p className="mt-1 text-sm text-muted-foreground">{issue.reason}</p>
+                        </div>
+                        <Badge
+                          variant="secondary"
+                          className={
+                            issue.status === "FAILED"
+                              ? "bg-destructive/10 text-destructive"
+                              : "bg-amber-500/10 text-amber-700"
+                          }
+                        >
+                          {issue.status}
+                        </Badge>
+                      </div>
+                      {(issue.title || issue.sourceUrl) ? (
+                        <div className="mt-3 space-y-1 text-xs text-muted-foreground">
+                          {issue.title ? <p>Title: <span className="text-foreground">{issue.title}</span></p> : null}
+                          {issue.sourceUrl ? <p className="break-all">SourceURL: <span className="text-foreground">{issue.sourceUrl}</span></p> : null}
+                        </div>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="rounded-xl border border-border bg-secondary/20 p-6 text-center text-sm text-muted-foreground">
+                No row-level issues. All processed rows imported or updated cleanly.
+              </div>
+            )}
+
+            <div className="flex justify-end">
+              <Button onClick={() => setImportResultDialogOpen(false)}>Close</Button>
             </div>
           </div>
         </DialogContent>

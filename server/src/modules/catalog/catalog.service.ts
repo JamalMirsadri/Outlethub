@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 import {
   DealLevel,
   Prisma,
@@ -25,6 +27,7 @@ import type {
   createCategorySchema,
   createProductImageSchema,
   createProductSchema,
+  importProductsCsvSchema,
   createProductVariantSchema,
   publicProductListQuerySchema,
   reorderProductImagesSchema,
@@ -42,6 +45,7 @@ type CreateCategoryInput = z.infer<typeof createCategorySchema>;
 type UpdateCategoryInput = z.infer<typeof updateCategorySchema>;
 type CreateProductInput = z.infer<typeof createProductSchema>;
 type UpdateProductInput = z.infer<typeof updateProductSchema>;
+type ImportProductsCsvInput = z.infer<typeof importProductsCsvSchema>;
 type CreateVariantInput = z.infer<typeof createProductVariantSchema>;
 type UpdateVariantInput = z.infer<typeof updateProductVariantSchema>;
 type CreateProductImageInput = z.infer<typeof createProductImageSchema>;
@@ -58,6 +62,86 @@ type ProductWithRelations = Prisma.ProductGetPayload<{
     priceHistory: { orderBy: { capturedAt: "desc" }; take: 20 };
   };
 }>;
+
+const PRODUCT_CSV_REQUIRED_COLUMNS = [
+  "Title",
+  "OriginalPrice",
+  "OutletPrice",
+  "SourceStore",
+  "SourceURL",
+  "Brand",
+  "Category",
+  "ProductImages",
+  "Description",
+  "Color",
+  "Size",
+  "Stock",
+  "Status",
+  "Gender",
+] as const;
+
+const PRODUCT_CSV_IMPORT_BATCH_SIZE = 25;
+
+interface ParsedCsvDocument {
+  headers: string[];
+  rows: string[][];
+}
+
+interface ProductCsvImportRowIssue {
+  rowNumber: number;
+  status: "SKIPPED" | "FAILED";
+  reason: string;
+  sourceUrl: string | null;
+  title: string | null;
+}
+
+interface ProductCsvImportSummary {
+  total: number;
+  imported: number;
+  updated: number;
+  skipped: number;
+  failed: number;
+}
+
+interface ProductCsvImportResult {
+  summary: ProductCsvImportSummary;
+  issues: ProductCsvImportRowIssue[];
+}
+
+interface ProductCsvRow {
+  Title: string;
+  OriginalPrice: string;
+  OutletPrice: string;
+  SourceStore: string;
+  SourceURL: string;
+  Brand: string;
+  Category: string;
+  ProductImages: string;
+  Description: string;
+  Color: string;
+  Size: string;
+  Stock: string;
+  Status: string;
+  Gender: string;
+}
+
+interface NormalizedProductCsvRow {
+  rowNumber: number;
+  title?: string;
+  originalPrice?: number;
+  outletPrice?: number;
+  sourceStore?: string;
+  sourceUrl: string;
+  brand?: string;
+  category?: string;
+  imageUrls?: string[];
+  description?: string;
+  colors?: string[];
+  sizes?: string[];
+  stock?: number;
+  status?: ProductStatus;
+  gender?: string;
+}
 
 function slugify(value: string): string {
   return value
@@ -127,8 +211,368 @@ function resolveDealLevel(discountPercent: number | null | undefined): DealLevel
   return DealLevel.NONE;
 }
 
+function stripUtf8Bom(value: string): string {
+  return value.replace(/^\uFEFF/, "");
+}
+
+function parseCsvDocument(content: string): ParsedCsvDocument {
+  const rows: string[][] = [];
+  let currentField = "";
+  let currentRow: string[] = [];
+  let inQuotes = false;
+
+  const pushField = () => {
+    currentRow.push(currentField);
+    currentField = "";
+  };
+
+  const pushRow = () => {
+    if (currentRow.length === 1 && currentRow[0] === "") {
+      currentRow = [];
+      return;
+    }
+
+    rows.push(currentRow);
+    currentRow = [];
+  };
+
+  for (let index = 0; index < content.length; index += 1) {
+    const character = content[index];
+    const nextCharacter = content[index + 1];
+
+    if (character === '"') {
+      if (inQuotes && nextCharacter === '"') {
+        currentField += '"';
+        index += 1;
+      } else {
+        inQuotes = !inQuotes;
+      }
+      continue;
+    }
+
+    if (character === "," && !inQuotes) {
+      pushField();
+      continue;
+    }
+
+    if ((character === "\n" || character === "\r") && !inQuotes) {
+      if (character === "\r" && nextCharacter === "\n") {
+        index += 1;
+      }
+
+      pushField();
+      pushRow();
+      continue;
+    }
+
+    currentField += character;
+  }
+
+  if (inQuotes) {
+    throw new ApiError(400, "CSV parsing failed because a quoted field was not closed.");
+  }
+
+  pushField();
+  if (currentRow.length > 1 || currentRow[0] !== "") {
+    pushRow();
+  }
+
+  if (rows.length === 0) {
+    throw new ApiError(400, "CSV file is empty.");
+  }
+
+  const headerRow = rows[0];
+  if (!headerRow) {
+    throw new ApiError(400, "CSV file is empty.");
+  }
+
+  const headers = headerRow.map((value, index) => {
+    const normalized = index === 0 ? stripUtf8Bom(value) : value;
+    return normalized.trim();
+  });
+
+  return {
+    headers,
+    rows: rows.slice(1),
+  };
+}
+
+function validateProductCsvHeaders(headers: string[]): void {
+  const missingColumns = PRODUCT_CSV_REQUIRED_COLUMNS.filter((column) => !headers.includes(column));
+
+  if (missingColumns.length > 0) {
+    throw new ApiError(400, `CSV is missing required columns: ${missingColumns.join(", ")}.`);
+  }
+}
+
+function mapCsvRow(headers: string[], values: string[]): ProductCsvRow {
+  const record = headers.reduce<Record<string, string>>((accumulator, header, index) => {
+    accumulator[header] = (values[index] ?? "").trim();
+    return accumulator;
+  }, {});
+
+  return {
+    Title: record.Title ?? "",
+    OriginalPrice: record.OriginalPrice ?? "",
+    OutletPrice: record.OutletPrice ?? "",
+    SourceStore: record.SourceStore ?? "",
+    SourceURL: record.SourceURL ?? "",
+    Brand: record.Brand ?? "",
+    Category: record.Category ?? "",
+    ProductImages: record.ProductImages ?? "",
+    Description: record.Description ?? "",
+    Color: record.Color ?? "",
+    Size: record.Size ?? "",
+    Stock: record.Stock ?? "",
+    Status: record.Status ?? "",
+    Gender: record.Gender ?? "",
+  };
+}
+
+function normalizeCsvString(value: string): string | undefined {
+  const normalized = value.trim();
+  return normalized.length > 0 ? normalized : undefined;
+}
+
+function parseCsvMoney(value: string, fieldName: string, rowNumber: number): number | undefined {
+  const normalized = normalizeCsvString(value);
+  if (!normalized) {
+    return undefined;
+  }
+
+  const sanitized = normalized.replace(/[^0-9,.-]/g, "");
+  if (!sanitized) {
+    throw new ApiError(400, `Row ${rowNumber}: ${fieldName} must be a valid number.`);
+  }
+
+  let decimalValue = sanitized;
+  if (decimalValue.includes(",") && decimalValue.includes(".")) {
+    decimalValue = decimalValue.replace(/,/g, "");
+  } else if (decimalValue.includes(",")) {
+    decimalValue = decimalValue.replace(",", ".");
+  }
+
+  const parsed = Number(decimalValue);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    throw new ApiError(400, `Row ${rowNumber}: ${fieldName} must be a valid non-negative number.`);
+  }
+
+  return parsed;
+}
+
+function parseCsvStock(value: string, rowNumber: number): number | undefined {
+  const normalized = normalizeCsvString(value);
+  if (!normalized) {
+    return undefined;
+  }
+
+  const parsed = Number(normalized);
+  if (!Number.isInteger(parsed) || parsed < 0) {
+    throw new ApiError(400, `Row ${rowNumber}: Stock must be a non-negative integer.`);
+  }
+
+  return parsed;
+}
+
+function normalizeSourceUrl(value: string, rowNumber: number): string {
+  const normalized = normalizeCsvString(value);
+  if (!normalized) {
+    throw new ApiError(400, `Row ${rowNumber}: SourceURL is required.`);
+  }
+
+  let parsedUrl: URL;
+
+  try {
+    parsedUrl = new URL(normalized);
+  } catch {
+    throw new ApiError(400, `Row ${rowNumber}: SourceURL must be a valid URL.`);
+  }
+
+  parsedUrl.hash = "";
+  return parsedUrl.toString();
+}
+
+function parseCsvList(value: string, separator: string | RegExp): string[] | undefined {
+  const normalized = normalizeCsvString(value);
+  if (!normalized) {
+    return undefined;
+  }
+
+  const items = [...new Set(normalized.split(separator).map((item) => item.trim()).filter(Boolean))];
+  return items.length > 0 ? items : undefined;
+}
+
+function parseCsvImageUrls(value: string, rowNumber: number): string[] | undefined {
+  const items = parseCsvList(value, "|");
+  if (!items) {
+    return undefined;
+  }
+
+  return items.map((item) => {
+    try {
+      return new URL(item).toString();
+    } catch {
+      throw new ApiError(400, `Row ${rowNumber}: ProductImages contains an invalid URL.`);
+    }
+  });
+}
+
+function parseCsvStatus(value: string, rowNumber: number): ProductStatus | undefined {
+  const normalized = normalizeCsvString(value);
+  if (!normalized) {
+    return undefined;
+  }
+
+  switch (normalized.toLowerCase()) {
+    case "active":
+    case "published":
+    case "live":
+      return ProductStatus.ACTIVE;
+    case "draft":
+    case "pending":
+      return ProductStatus.DRAFT;
+    case "archived":
+    case "inactive":
+    case "hidden":
+      return ProductStatus.ARCHIVED;
+    default:
+      throw new ApiError(400, `Row ${rowNumber}: Status must be active, draft, or archived.`);
+  }
+}
+
+function deriveStockStatus(stock: number): StockStatus {
+  if (stock <= 0) {
+    return StockStatus.OUT_OF_STOCK;
+  }
+
+  if (stock <= 3) {
+    return StockStatus.LOW_STOCK;
+  }
+
+  return StockStatus.IN_STOCK;
+}
+
+function buildCsvImportSku(sourceUrl: string): string {
+  const digest = createHash("sha1").update(sourceUrl.toLowerCase()).digest("hex").slice(0, 12).toUpperCase();
+  return `CSV-${digest}`;
+}
+
+function arraysEqual(left: string[], right: string[]): boolean {
+  if (left.length !== right.length) {
+    return false;
+  }
+
+  return left.every((value, index) => value === right[index]);
+}
+
 function uniqueValues(values: Array<string | null | undefined>): string[] {
   return [...new Set(values.filter((value): value is string => Boolean(value && value.trim())))];
+}
+
+async function ensureBrandIdByName(name: string): Promise<string> {
+  const normalizedName = name.trim();
+  const existing = await prisma.brand.findFirst({
+    where: {
+      name: {
+        equals: normalizedName,
+        mode: "insensitive",
+      },
+    },
+  });
+
+  if (existing) {
+    return existing.id;
+  }
+
+  const slug = await buildUniqueSlug(normalizedName, async (candidate) => {
+    const conflict = await prisma.brand.findUnique({ where: { slug: candidate } });
+    return Boolean(conflict);
+  });
+
+  const created = await prisma.brand.create({
+    data: {
+      name: normalizedName,
+      slug,
+      isActive: true,
+    },
+  });
+
+  return created.id;
+}
+
+async function ensureCategoryIdByName(name: string): Promise<string> {
+  const normalizedName = name.trim();
+  const existing = await prisma.category.findFirst({
+    where: {
+      name: {
+        equals: normalizedName,
+        mode: "insensitive",
+      },
+    },
+  });
+
+  if (existing) {
+    return existing.id;
+  }
+
+  const slug = await buildUniqueSlug(normalizedName, async (candidate) => {
+    const conflict = await prisma.category.findUnique({ where: { slug: candidate } });
+    return Boolean(conflict);
+  });
+
+  const created = await prisma.category.create({
+    data: {
+      name: normalizedName,
+      slug,
+      sortOrder: 0,
+    },
+  });
+
+  return created.id;
+}
+
+function normalizeProductCsvRow(row: ProductCsvRow, rowNumber: number): NormalizedProductCsvRow {
+  return {
+    rowNumber,
+    title: normalizeCsvString(row.Title),
+    originalPrice: parseCsvMoney(row.OriginalPrice, "OriginalPrice", rowNumber),
+    outletPrice: parseCsvMoney(row.OutletPrice, "OutletPrice", rowNumber),
+    sourceStore: normalizeCsvString(row.SourceStore),
+    sourceUrl: normalizeSourceUrl(row.SourceURL, rowNumber),
+    brand: normalizeCsvString(row.Brand),
+    category: normalizeCsvString(row.Category),
+    imageUrls: parseCsvImageUrls(row.ProductImages, rowNumber),
+    description: normalizeCsvString(row.Description),
+    colors: parseCsvList(row.Color, /\s*,\s*/),
+    sizes: parseCsvList(row.Size, /\s*,\s*/),
+    stock: parseCsvStock(row.Stock, rowNumber),
+    status: parseCsvStatus(row.Status, rowNumber),
+    gender: normalizeCsvString(row.Gender),
+  };
+}
+
+async function replaceProductImages(
+  transaction: Prisma.TransactionClient,
+  productId: string,
+  imageUrls: string[],
+  productName: string,
+): Promise<void> {
+  await transaction.productImage.deleteMany({
+    where: { productId },
+  });
+
+  if (imageUrls.length === 0) {
+    return;
+  }
+
+  await transaction.productImage.createMany({
+    data: imageUrls.map((imageUrl, index) => ({
+      productId,
+      imageUrl,
+      altText: productName,
+      sortOrder: index,
+    })),
+  });
 }
 
 async function resolveCategoryFilterIds(categoryFilter: string): Promise<string[]> {
@@ -780,6 +1224,325 @@ export class CatalogService {
   public async getAdminProduct(id: string) {
     const product = await getProductOrThrow(id);
     return mapProductResponse(product);
+  }
+
+  public async importProductsCsv(input: ImportProductsCsvInput): Promise<ProductCsvImportResult> {
+    const parsedDocument = parseCsvDocument(input.content);
+    validateProductCsvHeaders(parsedDocument.headers);
+
+    const result: ProductCsvImportResult = {
+      summary: {
+        total: parsedDocument.rows.length,
+        imported: 0,
+        updated: 0,
+        skipped: 0,
+        failed: 0,
+      },
+      issues: [],
+    };
+    const seenSourceUrls = new Set<string>();
+
+    for (let startIndex = 0; startIndex < parsedDocument.rows.length; startIndex += PRODUCT_CSV_IMPORT_BATCH_SIZE) {
+      const batch = parsedDocument.rows.slice(startIndex, startIndex + PRODUCT_CSV_IMPORT_BATCH_SIZE);
+
+      for (const [offset, values] of batch.entries()) {
+        const rowNumber = startIndex + offset + 2;
+        const rawRow = mapCsvRow(parsedDocument.headers, values);
+
+        try {
+          const normalizedRow = normalizeProductCsvRow(rawRow, rowNumber);
+
+          if (seenSourceUrls.has(normalizedRow.sourceUrl)) {
+            result.summary.skipped += 1;
+            result.issues.push({
+              rowNumber,
+              status: "SKIPPED",
+              reason: "Duplicate SourceURL detected in this CSV upload.",
+              sourceUrl: normalizedRow.sourceUrl,
+              title: normalizedRow.title ?? null,
+            });
+            continue;
+          }
+
+          seenSourceUrls.add(normalizedRow.sourceUrl);
+          const rowResult = await this.upsertProductFromCsvRow(normalizedRow);
+
+          if (rowResult.status === "imported") {
+            result.summary.imported += 1;
+            continue;
+          }
+
+          if (rowResult.status === "updated") {
+            result.summary.updated += 1;
+            continue;
+          }
+
+          result.summary.skipped += 1;
+          result.issues.push({
+            rowNumber,
+            status: "SKIPPED",
+            reason: rowResult.reason,
+            sourceUrl: normalizedRow.sourceUrl,
+            title: normalizedRow.title ?? null,
+          });
+        } catch (error) {
+          result.summary.failed += 1;
+          result.issues.push({
+            rowNumber,
+            status: "FAILED",
+            reason: error instanceof Error ? error.message : "CSV row import failed.",
+            sourceUrl: normalizeCsvString(rawRow.SourceURL) ?? null,
+            title: normalizeCsvString(rawRow.Title) ?? null,
+          });
+        }
+      }
+    }
+
+    return result;
+  }
+
+  private async upsertProductFromCsvRow(
+    row: NormalizedProductCsvRow,
+  ): Promise<{ status: "imported" | "updated" | "skipped"; reason: string }> {
+    const matches = await prisma.product.findMany({
+      where: {
+        sourceUrl: row.sourceUrl,
+      },
+      include: {
+        images: {
+          orderBy: { sortOrder: "asc" },
+        },
+      },
+      take: 2,
+    });
+
+    if (matches.length > 1) {
+      throw new ApiError(409, `Row ${row.rowNumber}: Multiple products already use this SourceURL.`);
+    }
+
+    const existing = matches[0] ?? null;
+    const name = row.title ?? existing?.name;
+
+    if (!name) {
+      throw new ApiError(400, `Row ${row.rowNumber}: Title is required for new products.`);
+    }
+
+    const brandId = row.brand ? await ensureBrandIdByName(row.brand) : existing?.brandId;
+    if (!brandId) {
+      throw new ApiError(400, `Row ${row.rowNumber}: Brand is required for new products.`);
+    }
+
+    const categoryId = row.category ? await ensureCategoryIdByName(row.category) : existing?.categoryId;
+    if (!categoryId) {
+      throw new ApiError(400, `Row ${row.rowNumber}: Category is required for new products.`);
+    }
+
+    const supplierBasePrice =
+      row.outletPrice ??
+      row.originalPrice ??
+      toNumber(existing?.supplierPrice) ??
+      toNumber(existing?.outletPrice) ??
+      toNumber(existing?.price) ??
+      null;
+
+    if (supplierBasePrice === null) {
+      throw new ApiError(400, `Row ${row.rowNumber}: OriginalPrice or OutletPrice is required for new products.`);
+    }
+
+    const resolvedOldPrice = row.originalPrice ?? toNumber(existing?.oldPrice);
+    const resolvedOutletPrice = row.outletPrice ?? toNumber(existing?.outletPrice) ?? supplierBasePrice;
+    const resolvedDescription = row.description ?? existing?.description ?? null;
+    const resolvedSourceStore = row.sourceStore ?? existing?.sourceStore ?? null;
+    const resolvedGender = row.gender ?? existing?.gender ?? null;
+    const resolvedSizes = row.sizes ?? existing?.sizes ?? [];
+    const resolvedColors = row.colors ?? existing?.colors ?? [];
+    const resolvedStock = row.stock ?? existing?.stock ?? 0;
+    const resolvedStockStatus = row.stock !== undefined ? deriveStockStatus(row.stock) : existing?.stockStatus ?? StockStatus.UNKNOWN;
+    const discountPercent =
+      row.originalPrice !== undefined || row.outletPrice !== undefined || !existing
+        ? normalizeDiscountPercent(resolvedOutletPrice, resolvedOldPrice)
+        : existing.discountPercent ?? 0;
+    const resolvedDealLevel =
+      row.originalPrice !== undefined || row.outletPrice !== undefined || !existing
+        ? resolveDealLevel(discountPercent)
+        : existing.dealLevel;
+    const resolvedSourceType = existing?.sourceType ?? ProductSource.IMPORT;
+    const pricing = await pricingService.calculateProductPricing({
+      id: existing?.id,
+      brandId,
+      categoryId,
+      supplierPrice: supplierBasePrice,
+      fallbackPrice: existing?.supplierPrice ?? existing?.price ?? undefined,
+      currency: existing?.currency ?? null,
+      useCustomPricing: existing?.useCustomPricing ?? false,
+      customPrice: existing?.customPrice ?? null,
+    });
+    const shouldReplaceImages = row.imageUrls !== undefined;
+    const nextImageUrls = row.imageUrls ?? [];
+
+    if (existing) {
+      const currentImageUrls = existing.images.map((image) => image.imageUrl);
+      const nameChanged = name !== existing.name;
+      const descriptionChanged = resolvedDescription !== existing.description;
+      const brandChanged = brandId !== existing.brandId;
+      const categoryChanged = categoryId !== existing.categoryId;
+      const supplierPriceChanged = !decimalEquals(existing.supplierPrice, pricing.supplierPrice);
+      const customerPriceChanged = !decimalEquals(existing.price, pricing.customerPrice);
+      const oldPriceChanged = !decimalEquals(existing.oldPrice, resolvedOldPrice);
+      const outletPriceChanged = !decimalEquals(existing.outletPrice, resolvedOutletPrice);
+      const discountChanged = (existing.discountPercent ?? 0) !== discountPercent;
+      const stockChanged = existing.stock !== resolvedStock;
+      const stockStatusChanged = existing.stockStatus !== resolvedStockStatus;
+      const statusChanged = existing.status !== (row.status ?? existing.status);
+      const sourceStoreChanged = existing.sourceStore !== resolvedSourceStore;
+      const genderChanged = existing.gender !== resolvedGender;
+      const sourceUrlChanged = existing.sourceUrl !== row.sourceUrl;
+      const sizesChanged = row.sizes !== undefined && !arraysEqual(existing.sizes, resolvedSizes);
+      const colorsChanged = row.colors !== undefined && !arraysEqual(existing.colors, resolvedColors);
+      const imagesChanged = shouldReplaceImages && !arraysEqual(currentImageUrls, nextImageUrls);
+
+      if (
+        !nameChanged &&
+        !descriptionChanged &&
+        !brandChanged &&
+        !categoryChanged &&
+        !supplierPriceChanged &&
+        !customerPriceChanged &&
+        !oldPriceChanged &&
+        !outletPriceChanged &&
+        !discountChanged &&
+        !stockChanged &&
+        !stockStatusChanged &&
+        !statusChanged &&
+        !sourceStoreChanged &&
+        !genderChanged &&
+        !sourceUrlChanged &&
+        !sizesChanged &&
+        !colorsChanged &&
+        !imagesChanged
+      ) {
+        return {
+          status: "skipped",
+          reason: "No changes detected for this SourceURL.",
+        };
+      }
+
+      const nextStatus = row.status ?? existing.status;
+      const nextSlug = nameChanged
+        ? await buildUniqueSlug(name, async (candidate) => {
+            const conflict = await prisma.product.findFirst({
+              where: {
+                slug: candidate,
+                id: { not: existing.id },
+              },
+            });
+            return Boolean(conflict);
+          })
+        : existing.slug;
+
+      const productId = await prisma.$transaction(async (transaction) => {
+        const current = await transaction.product.findUniqueOrThrow({
+          where: { id: existing.id },
+        });
+
+        const updated = await transaction.product.update({
+          where: { id: existing.id },
+          data: {
+            name,
+            slug: nextSlug,
+            description: resolvedDescription,
+            brandId,
+            categoryId,
+            supplierPrice: pricing.supplierPrice,
+            price: pricing.customerPrice,
+            oldPrice: toDecimal(resolvedOldPrice),
+            outletPrice: toDecimal(resolvedOutletPrice),
+            profitAmount: pricing.profitAmount,
+            discountPercent,
+            dealLevel: resolvedDealLevel,
+            currency: pricing.currency,
+            sourceUrl: row.sourceUrl,
+            sourceStore: resolvedSourceStore,
+            sourceType: resolvedSourceType,
+            status: nextStatus,
+            stock: resolvedStock,
+            stockStatus: resolvedStockStatus,
+            gender: resolvedGender,
+            sizes: row.sizes !== undefined ? resolvedSizes : undefined,
+            colors: row.colors !== undefined ? resolvedColors : undefined,
+            lastSyncedAt: new Date(),
+          },
+        });
+
+        if (shouldReplaceImages) {
+          await replaceProductImages(transaction, existing.id, nextImageUrls, name);
+        }
+
+        await maybeRecordPriceHistory(transaction, current, updated);
+        return updated.id;
+      });
+
+      await productMonitoringService.ensureWebsiteProfileForProduct(productId);
+
+      return {
+        status: "updated",
+        reason: "",
+      };
+    }
+
+    const slug = await buildUniqueSlug(name, async (candidate) => {
+      const conflict = await prisma.product.findUnique({ where: { slug: candidate } });
+      return Boolean(conflict);
+    });
+
+    const productId = await prisma.$transaction(async (transaction) => {
+      const created = await transaction.product.create({
+        data: {
+          sku: buildCsvImportSku(row.sourceUrl),
+          slug,
+          name,
+          description: resolvedDescription,
+          brandId,
+          categoryId,
+          supplierPrice: pricing.supplierPrice,
+          price: pricing.customerPrice,
+          oldPrice: toDecimal(resolvedOldPrice),
+          outletPrice: toDecimal(resolvedOutletPrice),
+          profitAmount: pricing.profitAmount,
+          discountPercent,
+          dealLevel: resolvedDealLevel,
+          currency: pricing.currency,
+          sourceUrl: row.sourceUrl,
+          sourceStore: resolvedSourceStore,
+          sourceType: ProductSource.IMPORT,
+          status: row.status ?? ProductStatus.ACTIVE,
+          stock: resolvedStock,
+          stockStatus: resolvedStockStatus,
+          gender: resolvedGender,
+          sizes: resolvedSizes,
+          colors: resolvedColors,
+          importedAt: new Date(),
+          lastSyncedAt: new Date(),
+        },
+      });
+
+      if (shouldReplaceImages) {
+        await replaceProductImages(transaction, created.id, nextImageUrls, name);
+      }
+
+      const current = await transaction.product.findUniqueOrThrow({
+        where: { id: created.id },
+      });
+      await maybeRecordPriceHistory(transaction, null, current);
+      return created.id;
+    });
+
+    await productMonitoringService.ensureWebsiteProfileForProduct(productId);
+
+    return {
+      status: "imported",
+      reason: "",
+    };
   }
 
   public async createProduct(input: CreateProductInput) {

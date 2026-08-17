@@ -169,6 +169,25 @@ interface CatalogProductResponse {
   updatedAt: string;
 }
 
+export interface ProductCsvImportIssue {
+  rowNumber: number;
+  status: "SKIPPED" | "FAILED";
+  reason: string;
+  sourceUrl: string | null;
+  title: string | null;
+}
+
+export interface ProductCsvImportResult {
+  summary: {
+    total: number;
+    imported: number;
+    updated: number;
+    skipped: number;
+    failed: number;
+  };
+  issues: ProductCsvImportIssue[];
+}
+
 interface ProductMutationPayload extends EntityRecord {
   name?: string;
   title?: string;
@@ -935,6 +954,16 @@ export async function listAdminProductsPage(params?: {
 
   return http<ProductListResponse<CatalogProductResponse>>(`/admin/products${query}`, {
     token,
+  });
+}
+
+export async function importAdminProductsCsv(payload: { content: string; fileName?: string }) {
+  const token = getRequiredToken();
+
+  return http<ProductCsvImportResult>("/admin/products/import-csv", {
+    method: "POST",
+    token,
+    body: JSON.stringify(payload),
   });
 }
 

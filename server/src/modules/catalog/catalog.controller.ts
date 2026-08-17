@@ -70,6 +70,11 @@ export class CatalogController {
     response.status(200).json(product);
   }
 
+  public async importProductsCsv(request: Request, response: Response) {
+    const result = await catalogService.importProductsCsv(request.body);
+    response.status(200).json(result);
+  }
+
   public async createProduct(request: Request, response: Response) {
     const product = await catalogService.createProduct(request.body);
     response.status(201).json(product);

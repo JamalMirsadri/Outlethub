@@ -158,6 +158,11 @@ export const createProductSchema = z.object({
 
 export const updateProductSchema = createProductSchema.partial();
 
+export const importProductsCsvSchema = z.object({
+  content: z.string().trim().min(1),
+  fileName: z.string().trim().min(1).max(255).optional(),
+});
+
 export const toggleFeaturedSchema = z.object({
   isFeatured: z.boolean(),
 });

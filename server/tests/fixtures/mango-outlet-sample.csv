@@ -1,0 +1,4 @@
+Title,OriginalPrice,OutletPrice,SourceStore,SourceURL,Brand,Category,ProductImages,Description,Color,Size,Stock,Status,Gender
+"CSV Import Jacket",199,129,"Test CSV Import Store","https://example.com/test-csv-import-jacket","Test CSV Import Brand","Test CSV Import Category","https://example.com/test-csv-import-jacket-1.jpg|https://example.com/test-csv-import-jacket-2.jpg","Imported from Mango outlet feed","Black","S, M, L",6,active,women
+"CSV Import Jacket Duplicate",199,129,"Test CSV Import Store","https://example.com/test-csv-import-jacket","Test CSV Import Brand","Test CSV Import Category","https://example.com/test-csv-import-jacket-1.jpg","Duplicate row should be skipped","Black","S, M, L",6,active,women
+"CSV Import Invalid",199,129,"Test CSV Import Store","not-a-url","Test CSV Import Brand","Test CSV Import Category","https://example.com/test-csv-import-invalid.jpg","Invalid row should fail","Black","M",-1,active,women

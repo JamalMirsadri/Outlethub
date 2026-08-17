@@ -12,6 +12,7 @@ import {
   createCategorySchema,
   createProductImageSchema,
   createProductSchema,
+  importProductsCsvSchema,
   createProductVariantSchema,
   entityIdParamsSchema,
   entitySlugParamsSchema,
@@ -119,6 +120,12 @@ catalogRouter.get(
   "/admin/products/:id",
   validateParams(entityIdParamsSchema),
   asyncHandler(catalogController.getAdminProduct.bind(catalogController)),
+);
+
+catalogRouter.post(
+  "/admin/products/import-csv",
+  validateBody(importProductsCsvSchema),
+  asyncHandler(catalogController.importProductsCsv.bind(catalogController)),
 );
 
 catalogRouter.post(
