@@ -1402,11 +1402,15 @@ export class CatalogService {
       };
     });
 
-    await Promise.all(
+    const monitoringResults = await Promise.allSettled(
       transactionResult.createdProductIds.map((productId) =>
         productMonitoringService.ensureWebsiteProfileForProduct(productId),
       ),
     );
+    const monitoringFailure = monitoringResults.find((result) => result.status === "rejected");
+    if (monitoringFailure?.status === "rejected") {
+      console.error("CSV product import monitoring sync failed", monitoringFailure.reason);
+    }
 
     return {
       mode: input.mode,
@@ -1469,6 +1473,11 @@ export class CatalogService {
             continue;
           }
 
+          await this.validateImportedProductCsvRow(normalizedRow, {
+            brandId: selection.selection.brand.id,
+            categoryId: selection.destinationCategoryId,
+          });
+
           seenSourceUrls.add(normalizedRow.sourceUrl);
           rows.push(normalizedRow);
         } catch (error) {
@@ -1501,6 +1510,40 @@ export class CatalogService {
         finalProductCount: failed === 0 ? rows.length : previousMatchingProductCount,
       },
     };
+  }
+
+  private async validateImportedProductCsvRow(
+    row: NormalizedProductCsvRow,
+    scope: { brandId: string; categoryId: string },
+  ): Promise<void> {
+    if (!row.title) {
+      throw new ApiError(400, `Row ${row.rowNumber}: Title is required.`);
+    }
+
+    const supplierBasePrice = row.outletPrice ?? row.originalPrice ?? null;
+    if (supplierBasePrice === null) {
+      throw new ApiError(400, `Row ${row.rowNumber}: OriginalPrice or OutletPrice is required.`);
+    }
+
+    const variants = buildImportedVariants(row);
+    const variantKeys = new Set<string>();
+    for (const variant of variants) {
+      const key = `${variant.size ?? ""}::${variant.color ?? ""}`;
+      if (variantKeys.has(key)) {
+        throw new ApiError(400, `Row ${row.rowNumber}: Duplicate size/color combinations were found.`);
+      }
+      variantKeys.add(key);
+    }
+
+    await pricingService.calculateProductPricing({
+      brandId: scope.brandId,
+      categoryId: scope.categoryId,
+      supplierPrice: supplierBasePrice,
+      fallbackPrice: supplierBasePrice,
+      currency: null,
+      useCustomPricing: false,
+      customPrice: null,
+    });
   }
 
   private async createImportedProductFromCsvRow(
