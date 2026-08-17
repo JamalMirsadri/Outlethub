@@ -19,6 +19,98 @@ const adidasCsvDressSourceUrl = "https://example.com/test-adidas-woman-dress";
 const csvFixturePath = resolve(currentDir, "fixtures", "mango-outlet-sample.csv");
 
 async function cleanup(): Promise<void> {
+  await prisma.procurementTask.deleteMany({
+    where: {
+      order: {
+        orderNumber: {
+          startsWith: "TEST-IMPORT-ORDER-",
+        },
+      },
+    },
+  });
+
+  await prisma.orderItem.deleteMany({
+    where: {
+      order: {
+        orderNumber: {
+          startsWith: "TEST-IMPORT-ORDER-",
+        },
+      },
+    },
+  });
+
+  await prisma.order.deleteMany({
+    where: {
+      orderNumber: {
+        startsWith: "TEST-IMPORT-ORDER-",
+      },
+    },
+  });
+
+  await prisma.cartItem.deleteMany({
+    where: {
+      cart: {
+        guestToken: {
+          startsWith: "TEST-IMPORT-CART-",
+        },
+      },
+    },
+  });
+
+  await prisma.cart.deleteMany({
+    where: {
+      guestToken: {
+        startsWith: "TEST-IMPORT-CART-",
+      },
+    },
+  });
+
+  await prisma.review.deleteMany({
+    where: {
+      comment: {
+        startsWith: "CSV import dependency cleanup",
+      },
+    },
+  });
+
+  await prisma.notification.deleteMany({
+    where: {
+      user: {
+        email: {
+          startsWith: "csv-import-test-",
+        },
+      },
+    },
+  });
+
+  await prisma.priceAlert.deleteMany({
+    where: {
+      user: {
+        email: {
+          startsWith: "csv-import-test-",
+        },
+      },
+    },
+  });
+
+  await prisma.wishlist.deleteMany({
+    where: {
+      user: {
+        email: {
+          startsWith: "csv-import-test-",
+        },
+      },
+    },
+  });
+
+  await prisma.importProductResult.deleteMany({
+    where: {
+      sourceUrl: {
+        startsWith: "https://example.com/import-result-test-",
+      },
+    },
+  });
+
   await prisma.priceHistory.deleteMany({
     where: {
       OR: [
@@ -156,6 +248,14 @@ async function cleanup(): Promise<void> {
           },
         },
       ],
+    },
+  });
+
+  await prisma.user.deleteMany({
+    where: {
+      email: {
+        startsWith: "csv-import-test-",
+      },
     },
   });
 }
@@ -527,6 +627,206 @@ test("catalog service replaces only the selected Adidas Woman scope and keeps ot
     assert.equal(nikeWomanCount, 1);
     assert.equal(adidasManCount, 1);
     assert.equal(adidasShoesCount, 1);
+  } finally {
+    await cleanup();
+  }
+});
+
+test("catalog service replaces scoped CSV products even when linked records exist", async () => {
+  await cleanup();
+
+  try {
+    const brand = await catalogService.createBrand({
+      name: `Adidas Test Linked ${suffix}`,
+      isActive: true,
+    });
+
+    const womanCategory = await catalogService.createCategory({
+      name: `Adidas Test Linked Woman ${suffix}`,
+      sortOrder: 0,
+    });
+
+    const existingProduct = await catalogService.createProduct({
+      sku: `TEST-ADIDAS-LINKED-${suffix}`,
+      name: `Adidas Woman Linked Existing ${suffix}`,
+      brandId: brand.id,
+      categoryId: womanCategory.id,
+      price: 120,
+      oldPrice: 160,
+      status: "ACTIVE",
+      stock: 5,
+      stockStatus: "IN_STOCK",
+      sourceType: "IMPORT",
+      sourceUrl: `https://example.com/seed-adidas-linked-${suffix}`,
+      sourceStore: "Seed Import Scope",
+    });
+
+    const customerRole =
+      (await prisma.role.findFirst({
+        where: {
+          code: "CUSTOMER",
+        },
+      })) ??
+      (await prisma.role.create({
+        data: {
+          code: "CUSTOMER",
+          name: "Customer",
+        },
+      }));
+
+    const user = await prisma.user.create({
+      data: {
+        roleId: customerRole.id,
+        email: `csv-import-test-${suffix}@example.com`,
+        referralCode: `CSVIMPORT${suffix}`,
+      },
+    });
+
+    const cart = await prisma.cart.create({
+      data: {
+        guestToken: `TEST-IMPORT-CART-${suffix}`,
+        countryCode: "PT",
+      },
+    });
+
+    await prisma.cartItem.create({
+      data: {
+        cartId: cart.id,
+        productId: existingProduct.id,
+        quantity: 1,
+        supplierCost: 100,
+        customerPaid: 120,
+        profitAmount: 20,
+        snapshotTitle: existingProduct.title,
+      },
+    });
+
+    await prisma.wishlist.create({
+      data: {
+        userId: user.id,
+        productId: existingProduct.id,
+      },
+    });
+
+    await prisma.priceAlert.create({
+      data: {
+        userId: user.id,
+        productId: existingProduct.id,
+        targetPrice: 99,
+      },
+    });
+
+    await prisma.review.create({
+      data: {
+        productId: existingProduct.id,
+        rating: 4,
+        comment: `CSV import dependency cleanup ${suffix}`,
+      },
+    });
+
+    const order = await prisma.order.create({
+      data: {
+        userId: user.id,
+        orderNumber: `TEST-IMPORT-ORDER-${suffix}`,
+        customerEmail: user.email,
+        subtotal: 120,
+        shippingAmount: 0,
+        taxAmount: 0,
+        totalAmount: 120,
+        shippingAddress: {
+          countryCode: "PT",
+        },
+      },
+    });
+
+    const orderItem = await prisma.orderItem.create({
+      data: {
+        orderId: order.id,
+        productId: existingProduct.id,
+        title: existingProduct.title,
+        quantity: 1,
+        unitPrice: 120,
+        totalPrice: 120,
+      },
+    });
+
+    const procurementTask = await prisma.procurementTask.create({
+      data: {
+        orderId: order.id,
+        orderItemId: orderItem.id,
+        productId: existingProduct.id,
+        quantity: 1,
+      },
+    });
+
+    const importResultLink = await prisma.importProductResult.create({
+      data: {
+        status: "UPDATED",
+        productId: existingProduct.id,
+        productName: existingProduct.title,
+        sourceUrl: `https://example.com/import-result-test-${suffix}`,
+      },
+    });
+
+    const csvContent = readFileSync(csvFixturePath, "utf8");
+    const previewResult = await catalogService.importProductsCsv({
+      mode: "PREVIEW",
+      content: csvContent,
+      fileName: "mango-outlet-sample.csv",
+      brandId: brand.id,
+      mainCategoryId: womanCategory.id,
+      subcategoryId: null,
+    });
+
+    assert.equal(previewResult.readyToImport, true);
+    assert.equal(previewResult.summary.previousMatchingProductCount, 1);
+
+    const importResult = await catalogService.importProductsCsv({
+      mode: "IMPORT",
+      content: csvContent,
+      fileName: "mango-outlet-sample.csv",
+      brandId: brand.id,
+      mainCategoryId: womanCategory.id,
+      subcategoryId: null,
+    });
+
+    assert.equal(importResult.summary.deleted, 1);
+    assert.equal(importResult.summary.imported, 2);
+    assert.equal(importResult.summary.failed, 0);
+
+    assert.equal(
+      await prisma.product.count({
+        where: {
+          id: existingProduct.id,
+        },
+      }),
+      0,
+    );
+    assert.equal(await prisma.cartItem.count({ where: { productId: existingProduct.id } }), 0);
+    assert.equal(await prisma.wishlist.count({ where: { productId: existingProduct.id } }), 0);
+    assert.equal(await prisma.priceAlert.count({ where: { productId: existingProduct.id } }), 0);
+    assert.equal(await prisma.review.count({ where: { productId: existingProduct.id } }), 0);
+
+    const persistedOrderItem = await prisma.orderItem.findUniqueOrThrow({
+      where: {
+        id: orderItem.id,
+      },
+    });
+    assert.equal(persistedOrderItem.productId, null);
+
+    const persistedProcurementTask = await prisma.procurementTask.findUniqueOrThrow({
+      where: {
+        id: procurementTask.id,
+      },
+    });
+    assert.equal(persistedProcurementTask.productId, null);
+
+    const persistedImportProductResult = await prisma.importProductResult.findUniqueOrThrow({
+      where: {
+        id: importResultLink.id,
+      },
+    });
+    assert.equal(persistedImportProductResult.productId, null);
   } finally {
     await cleanup();
   }

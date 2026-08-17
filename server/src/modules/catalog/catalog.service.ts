@@ -527,6 +527,37 @@ function deriveStockStatus(stock: number): StockStatus {
   return StockStatus.IN_STOCK;
 }
 
+function getCsvImportFailureReason(error: unknown, rowNumber: number): string {
+  if (error instanceof ApiError) {
+    return error.message;
+  }
+
+  if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    if (error.code === "P2002") {
+      const target = Array.isArray(error.meta?.target)
+        ? (error.meta.target as string[]).join(", ")
+        : typeof error.meta?.target === "string"
+          ? error.meta.target
+          : "a unique field";
+      return `Row ${rowNumber}: Product data conflicts with an existing unique value (${target}).`;
+    }
+
+    if (error.code === "P2003") {
+      return `Row ${rowNumber}: Product data references a related record that no longer exists or cannot be deleted safely.`;
+    }
+
+    if (error.code === "P2025") {
+      return `Row ${rowNumber}: A required related product record was not found during import.`;
+    }
+  }
+
+  if (error instanceof Error && error.message.trim()) {
+    return `Row ${rowNumber}: ${error.message}`;
+  }
+
+  return `Row ${rowNumber}: Product import failed unexpectedly.`;
+}
+
 function buildCsvImportSku(sourceUrl: string, brandId?: string, categoryId?: string): string {
   const digest = createHash("sha1")
     .update([sourceUrl.toLowerCase(), brandId ?? "", categoryId ?? ""].join("|"))
@@ -608,6 +639,146 @@ async function replaceProductImages(
       altText: productName,
       sortOrder: index,
     })),
+  });
+}
+
+async function cleanupImportedProductDependencies(
+  transaction: Prisma.TransactionClient,
+  productIds: string[],
+): Promise<void> {
+  if (productIds.length === 0) {
+    return;
+  }
+
+  const linkedPriceAlertIds = (
+    await transaction.priceAlert.findMany({
+      where: {
+        productId: {
+          in: productIds,
+        },
+      },
+      select: {
+        id: true,
+      },
+    })
+  ).map((alert) => alert.id);
+
+  if (linkedPriceAlertIds.length > 0) {
+    await transaction.notification.updateMany({
+      where: {
+        priceAlertId: {
+          in: linkedPriceAlertIds,
+        },
+      },
+      data: {
+        priceAlertId: null,
+      },
+    });
+  }
+
+  await transaction.cartItem.deleteMany({
+    where: {
+      productId: {
+        in: productIds,
+      },
+    },
+  });
+
+  await transaction.wishlist.deleteMany({
+    where: {
+      productId: {
+        in: productIds,
+      },
+    },
+  });
+
+  await transaction.review.deleteMany({
+    where: {
+      productId: {
+        in: productIds,
+      },
+    },
+  });
+
+  await transaction.priceAlert.deleteMany({
+    where: {
+      productId: {
+        in: productIds,
+      },
+    },
+  });
+
+  await transaction.procurementTask.updateMany({
+    where: {
+      productId: {
+        in: productIds,
+      },
+    },
+    data: {
+      productId: null,
+    },
+  });
+
+  await transaction.orderItem.updateMany({
+    where: {
+      productId: {
+        in: productIds,
+      },
+    },
+    data: {
+      productId: null,
+    },
+  });
+
+  await transaction.importProductResult.updateMany({
+    where: {
+      productId: {
+        in: productIds,
+      },
+    },
+    data: {
+      productId: null,
+    },
+  });
+
+  await transaction.priceHistory.deleteMany({
+    where: {
+      productId: {
+        in: productIds,
+      },
+    },
+  });
+
+  await transaction.priceChange.deleteMany({
+    where: {
+      productId: {
+        in: productIds,
+      },
+    },
+  });
+
+  await transaction.stockChange.deleteMany({
+    where: {
+      productId: {
+        in: productIds,
+      },
+    },
+  });
+
+  await transaction.productImage.deleteMany({
+    where: {
+      productId: {
+        in: productIds,
+      },
+    },
+  });
+
+  await transaction.productVariant.deleteMany({
+    where: {
+      productId: {
+        in: productIds,
+      },
+    },
   });
 }
 
@@ -1345,72 +1516,106 @@ export class CatalogService {
     }
 
     const importedRows = prepared.rows;
-    const transactionResult = await prisma.$transaction(async (transaction) => {
-      const scopedProducts = await transaction.product.findMany({
-        where: {
-          deletedAt: null,
-          brandId: prepared.selection.brand.id,
-          categoryId: {
-            in: prepared.scopeCategoryIds,
-          },
-        },
-        select: {
-          id: true,
-        },
-      });
-      const scopedProductIds = scopedProducts.map((product) => product.id);
+    let transactionResult: {
+      createdProductIds: string[];
+      deletedCount: number;
+      finalProductCount: number;
+      failedCount: number;
+      issues: ProductCsvImportRowIssue[];
+    };
 
-      if (scopedProductIds.length > 0) {
-        await transaction.product.deleteMany({
+    try {
+      transactionResult = await prisma.$transaction(async (transaction) => {
+        const issues = [...prepared.issues];
+        const scopedProducts = await transaction.product.findMany({
           where: {
-            id: {
-              in: scopedProductIds,
+            deletedAt: null,
+            brandId: prepared.selection.brand.id,
+            categoryId: {
+              in: prepared.scopeCategoryIds,
+            },
+          },
+          select: {
+            id: true,
+          },
+        });
+        const scopedProductIds = scopedProducts.map((product) => product.id);
+
+        if (scopedProductIds.length > 0) {
+          await cleanupImportedProductDependencies(transaction, scopedProductIds);
+          await transaction.product.deleteMany({
+            where: {
+              id: {
+                in: scopedProductIds,
+              },
+            },
+          });
+        }
+
+        const createdProductIds: string[] = [];
+        let failedCount = 0;
+
+        for (let startIndex = 0; startIndex < importedRows.length; startIndex += PRODUCT_CSV_IMPORT_BATCH_SIZE) {
+          const batch = importedRows.slice(startIndex, startIndex + PRODUCT_CSV_IMPORT_BATCH_SIZE);
+
+          for (const row of batch) {
+            try {
+              createdProductIds.push(
+                await this.createImportedProductFromCsvRow(transaction, row, {
+                  brandId: prepared.selection.brand.id,
+                  categoryId: prepared.destinationCategoryId,
+                }),
+              );
+            } catch (error) {
+              failedCount += 1;
+              issues.push({
+                rowNumber: row.rowNumber,
+                status: "FAILED",
+                reason: getCsvImportFailureReason(error, row.rowNumber),
+                sourceUrl: row.sourceUrl,
+                title: row.title ?? null,
+              });
+            }
+          }
+        }
+
+        const finalProductCount = await transaction.product.count({
+          where: {
+            deletedAt: null,
+            brandId: prepared.selection.brand.id,
+            categoryId: {
+              in: prepared.scopeCategoryIds,
             },
           },
         });
-      }
 
-      const createdProductIds: string[] = [];
-
-      for (let startIndex = 0; startIndex < importedRows.length; startIndex += PRODUCT_CSV_IMPORT_BATCH_SIZE) {
-        const batch = importedRows.slice(startIndex, startIndex + PRODUCT_CSV_IMPORT_BATCH_SIZE);
-
-        for (const row of batch) {
-          createdProductIds.push(
-            await this.createImportedProductFromCsvRow(transaction, row, {
-              brandId: prepared.selection.brand.id,
-              categoryId: prepared.destinationCategoryId,
-            }),
-          );
-        }
-      }
-
-      const finalProductCount = await transaction.product.count({
-        where: {
-          deletedAt: null,
-          brandId: prepared.selection.brand.id,
-          categoryId: {
-            in: prepared.scopeCategoryIds,
-          },
-        },
+        return {
+          createdProductIds,
+          deletedCount: scopedProductIds.length,
+          finalProductCount,
+          failedCount,
+          issues,
+        };
       });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2003") {
+        throw new ApiError(
+          409,
+          "CSV import could not replace the selected products because related records still reference one or more existing products in this brand/category scope.",
+        );
+      }
 
-      return {
-        createdProductIds,
-        deletedCount: scopedProductIds.length,
-        finalProductCount,
-      };
-    });
+      throw error instanceof ApiError
+        ? error
+        : new ApiError(500, `CSV import failed: ${error instanceof Error ? error.message : "Unknown error"}.`);
+    }
 
     const monitoringResults = await Promise.allSettled(
       transactionResult.createdProductIds.map((productId) =>
         productMonitoringService.ensureWebsiteProfileForProduct(productId),
       ),
     );
-    const monitoringFailure = monitoringResults.find((result) => result.status === "rejected");
-    if (monitoringFailure?.status === "rejected") {
-      console.error("CSV product import monitoring sync failed", monitoringFailure.reason);
-    }
+    void monitoringResults;
 
     return {
       mode: input.mode,
@@ -1424,10 +1629,10 @@ export class CatalogService {
         imported: transactionResult.createdProductIds.length,
         updated: 0,
         skipped: prepared.summary.skipped,
-        failed: 0,
+        failed: transactionResult.failedCount,
         finalProductCount: transactionResult.finalProductCount,
       },
-      issues: prepared.issues,
+      issues: transactionResult.issues,
     };
   }
 
