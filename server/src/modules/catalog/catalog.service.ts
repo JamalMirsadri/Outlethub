@@ -1827,6 +1827,26 @@ export class CatalogService {
     });
   }
 
+  public async bulkDeleteProducts(ids: string[]) {
+    const uniqueIds = [...new Set(ids)];
+
+    if (uniqueIds.length === 0) {
+      throw new ApiError(400, "At least one product must be selected.");
+    }
+
+    const result = await prisma.product.deleteMany({
+      where: {
+        id: {
+          in: uniqueIds,
+        },
+      },
+    });
+
+    return {
+      deletedCount: result.count,
+    };
+  }
+
   public async setFeatured(id: string, isFeatured: boolean) {
     const product = await prisma.product.update({
       where: { id },

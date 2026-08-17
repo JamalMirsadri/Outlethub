@@ -8,6 +8,7 @@ import { asyncHandler } from "../../utils/async-handler.js";
 import { catalogController } from "./catalog.controller.js";
 import {
   adminProductListQuerySchema,
+  bulkDeleteProductsSchema,
   createBrandSchema,
   createCategorySchema,
   createProductImageSchema,
@@ -145,6 +146,12 @@ catalogRouter.delete(
   "/admin/products/:id",
   validateParams(entityIdParamsSchema),
   asyncHandler(catalogController.deleteProduct.bind(catalogController)),
+);
+
+catalogRouter.post(
+  "/admin/products/bulk-delete",
+  validateBody(bulkDeleteProductsSchema),
+  asyncHandler(catalogController.bulkDeleteProducts.bind(catalogController)),
 );
 
 catalogRouter.patch(

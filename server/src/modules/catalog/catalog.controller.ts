@@ -90,6 +90,11 @@ export class CatalogController {
     response.status(204).send();
   }
 
+  public async bulkDeleteProducts(request: Request, response: Response) {
+    const result = await catalogService.bulkDeleteProducts(request.body.ids);
+    response.status(200).json(result);
+  }
+
   public async setFeatured(request: Request, response: Response) {
     const result = await catalogService.setFeatured(getParam(request, "id"), request.body.isFeatured);
     response.status(200).json(result);

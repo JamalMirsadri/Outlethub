@@ -964,19 +964,52 @@ const productEntityClient: EntityClient<EntityRecord> = {
 export async function listAdminProductsPage(params?: {
   page?: number;
   pageSize?: number;
+  search?: string;
+  status?: "active" | "draft" | "archived";
   brandId?: string;
+  categoryId?: string;
   includeDeleted?: boolean;
 }) {
   const token = getRequiredToken();
   const query = buildQueryString({
     page: params?.page ?? 1,
     pageSize: params?.pageSize ?? 50,
+    search: params?.search,
+    status: toApiStatus(params?.status),
     brandId: params?.brandId,
+    categoryId: params?.categoryId,
     includeDeleted: params?.includeDeleted ?? false,
   });
 
   return http<ProductListResponse<CatalogProductResponse>>(`/admin/products${query}`, {
     token,
+  });
+}
+
+export async function listAdminProductsLegacyPage(params?: {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  status?: "active" | "draft" | "archived";
+  brandId?: string;
+  categoryId?: string;
+  includeDeleted?: boolean;
+}) {
+  const response = await listAdminProductsPage(params);
+
+  return {
+    items: response.items.map(toLegacyProduct),
+    pagination: response.pagination,
+  };
+}
+
+export async function deleteAdminProductsBulk(ids: string[]) {
+  const token = getRequiredToken();
+
+  return http<{ deletedCount: number }>("/admin/products/bulk-delete", {
+    method: "POST",
+    token,
+    body: JSON.stringify({ ids }),
   });
 }
 

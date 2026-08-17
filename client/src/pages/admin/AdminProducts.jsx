@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { appClient, importAdminProductsCsv, listAdminProductsPage } from "@/api/appClient";
+import { appClient, deleteAdminProductsBulk, importAdminProductsCsv, listAdminProductsLegacyPage, listAdminProductsPage } from "@/api/appClient";
 import { getProductSourceInfo, updateProductPricingOverride } from "@/api/commerce";
 import {
   getGlobalProductMonitoringSettings,
@@ -47,6 +47,7 @@ const defaultForm = {
 
 const CUSTOM_OPTION_VALUE = "__custom__";
 const ADMIN_EXPORT_PAGE_SIZE = 100;
+const ADMIN_PRODUCTS_PAGE_SIZE = 50;
 
 function parseImageUrls(value) {
   if (typeof value !== "string") {
@@ -220,6 +221,23 @@ function buildImportCategoryHierarchy(categories) {
     ...mainCategory,
     children: getCategoryChildren(categories, mainCategory.id),
   }));
+}
+
+function getVisiblePageNumbers(currentPage, totalPages) {
+  if (totalPages <= 1) {
+    return [1];
+  }
+
+  const start = Math.max(1, currentPage - 2);
+  const end = Math.min(totalPages, start + 4);
+  const normalizedStart = Math.max(1, end - 4);
+  const pages = [];
+
+  for (let page = normalizedStart; page <= end; page += 1) {
+    pages.push(page);
+  }
+
+  return pages;
 }
 
 function getMonitoringMeta(product) {
@@ -449,6 +467,18 @@ export default function AdminProducts() {
   const [manualUpdatingIds, setManualUpdatingIds] = useState({});
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [brandFilter, setBrandFilter] = useState("all");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    pageSize: ADMIN_PRODUCTS_PAGE_SIZE,
+    total: 0,
+    totalPages: 1,
+  });
+  const [selectedProductIds, setSelectedProductIds] = useState([]);
+  const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [sourceInfo, setSourceInfo] = useState(null);
@@ -476,14 +506,30 @@ export default function AdminProducts() {
   const [importResultDialogOpen, setImportResultDialogOpen] = useState(false);
   const [importResult, setImportResult] = useState(null);
 
-  const loadProducts = async () => {
+  const loadProducts = async (page = currentPage) => {
+    setLoading(true);
     try {
-      const items = await appClient.entities.Product.list("-created_date", 50);
-      setProducts(items);
-    } catch {
+      const response = await listAdminProductsLegacyPage({
+        page,
+        pageSize: ADMIN_PRODUCTS_PAGE_SIZE,
+        search: search.trim() || undefined,
+        status: statusFilter === "all" ? undefined : statusFilter,
+        brandId: brandFilter === "all" ? undefined : brandFilter,
+        categoryId: categoryFilter === "all" ? undefined : categoryFilter,
+        includeDeleted: false,
+      });
+
+      setProducts(response.items);
+      setPagination(response.pagination);
+
+      if (response.pagination.totalPages > 0 && page > response.pagination.totalPages) {
+        setCurrentPage(response.pagination.totalPages);
+        return;
+      }
+    } catch (error) {
       toast({
         title: "Unable to load products",
-        description: "Try again in a moment.",
+        description: getErrorMessage(error),
         variant: "destructive",
       });
     } finally {
@@ -492,8 +538,8 @@ export default function AdminProducts() {
   };
 
   useEffect(() => {
-    void loadProducts();
-  }, []);
+    void loadProducts(currentPage);
+  }, [currentPage, search, statusFilter, brandFilter, categoryFilter]);
 
   const loadGlobalSettings = async () => {
     setGlobalMonitoringLoading(true);
@@ -557,12 +603,10 @@ export default function AdminProducts() {
       intervalMinutes: useGlobalInterval ? String(globalMonitoringSettings.intervalMinutes) : String(resolvedInterval),
     });
   }, [dialogOpen, editing, sourceInfo, globalMonitoringSettings]);
+  useEffect(() => {
+    setSelectedProductIds([]);
+  }, [products]);
 
-  const filtered = products.filter(p => {
-    if (search && !p.title?.toLowerCase().includes(search.toLowerCase()) && !p.brand?.toLowerCase().includes(search.toLowerCase())) return false;
-    if (statusFilter !== "all" && p.status !== statusFilter) return false;
-    return true;
-  });
   const mainImportCategories = getCategoryChildren(categories);
   const importSubcategories = importSelection.mainCategoryId
     ? getCategoryChildren(categories, importSelection.mainCategoryId)
@@ -579,6 +623,14 @@ export default function AdminProducts() {
     : "";
   const canPreviewImport =
     Boolean(importFile) && Boolean(importSelection.brandId) && Boolean(importSelection.mainCategoryId);
+  const currentPageProductIds = products.map((product) => product.id);
+  const hasProducts = products.length > 0;
+  const allVisibleSelected =
+    hasProducts && currentPageProductIds.every((productId) => selectedProductIds.includes(productId));
+  const someVisibleSelected =
+    currentPageProductIds.some((productId) => selectedProductIds.includes(productId)) && !allVisibleSelected;
+  const selectedVisibleCount = currentPageProductIds.filter((productId) => selectedProductIds.includes(productId)).length;
+  const paginationNumbers = getVisiblePageNumbers(currentPage, pagination.totalPages);
 
   const exportProductsMapping = async () => {
     if (!exportAllBrands && selectedExportBrandIds.length === 0) {
@@ -930,7 +982,7 @@ export default function AdminProducts() {
     setSaving(true);
     try {
       if (editing) {
-        const updated = await appClient.entities.Product.update(editing.id, data);
+        await appClient.entities.Product.update(editing.id, data);
         await updateProductPricingOverride(editing.id, {
           useCustomPricing: Boolean(form.use_custom_pricing),
           customPrice,
@@ -940,11 +992,15 @@ export default function AdminProducts() {
         } catch {
           setSourceInfo(null);
         }
-        setProducts((currentProducts) => currentProducts.map((p) => p.id === editing.id ? updated : p));
+        await loadProducts(currentPage);
         toast({ title: "Product updated" });
       } else {
-        const created = await appClient.entities.Product.create(data);
-        setProducts((currentProducts) => [created, ...currentProducts]);
+        await appClient.entities.Product.create(data);
+        if (currentPage !== 1) {
+          setCurrentPage(1);
+        } else {
+          await loadProducts(1);
+        }
         toast({ title: "Product created" });
       }
       setDialogOpen(false);
@@ -967,7 +1023,58 @@ export default function AdminProducts() {
 
   const deleteProduct = async (id) => {
     await appClient.entities.Product.delete(id);
-    setProducts(products.filter(p => p.id !== id));
+    setSelectedProductIds((current) => current.filter((productId) => productId !== id));
+    await loadProducts(currentPage);
+  };
+
+  const toggleSelectAllVisible = (checked) => {
+    setSelectedProductIds((current) => {
+      const currentSet = new Set(current);
+
+      if (checked) {
+        currentPageProductIds.forEach((productId) => currentSet.add(productId));
+      } else {
+        currentPageProductIds.forEach((productId) => currentSet.delete(productId));
+      }
+
+      return Array.from(currentSet);
+    });
+  };
+
+  const toggleProductSelection = (productId, checked) => {
+    setSelectedProductIds((current) => {
+      if (checked) {
+        return current.includes(productId) ? current : [...current, productId];
+      }
+
+      return current.filter((id) => id !== productId);
+    });
+  };
+
+  const handleBulkDeleteSelected = async () => {
+    if (selectedProductIds.length === 0) {
+      return;
+    }
+
+    setBulkDeleting(true);
+    try {
+      const result = await deleteAdminProductsBulk(selectedProductIds);
+      setBulkDeleteDialogOpen(false);
+      setSelectedProductIds([]);
+      await loadProducts(currentPage);
+      toast({
+        title: "Products deleted",
+        description: `${result.deletedCount} product${result.deletedCount === 1 ? "" : "s"} deleted permanently.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Failed to delete selected products",
+        description: getErrorMessage(error),
+        variant: "destructive",
+      });
+    } finally {
+      setBulkDeleting(false);
+    }
   };
 
   const toggleVisibility = async (p) => {
@@ -1214,7 +1321,7 @@ export default function AdminProducts() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <div>
           <h1 className="font-display text-2xl font-bold">Products</h1>
-          <p className="text-sm text-muted-foreground">{products.length} total products</p>
+          <p className="text-sm text-muted-foreground">{pagination.total} total products</p>
         </div>
         <div className="flex items-center gap-3">
           <input
@@ -1240,23 +1347,79 @@ export default function AdminProducts() {
             <Download className="w-4 h-4 mr-2" />
             Export CSV
           </Button>
+          <Button
+            variant="destructive"
+            onClick={() => setBulkDeleteDialogOpen(true)}
+            className="rounded-full"
+            disabled={selectedProductIds.length === 0 || bulkDeleting}
+          >
+            <Trash2 className="w-4 h-4 mr-2" />
+            Delete Selected
+          </Button>
           <Button onClick={openNew} className="rounded-full"><Plus className="w-4 h-4 mr-1" /> Add Product</Button>
         </div>
       </div>
 
-      <div className="flex gap-3 mb-6">
+      <div className="grid gap-3 mb-6 lg:grid-cols-[minmax(0,1fr)_180px_220px_220px]">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input placeholder="Search products..." value={search} onChange={e=>setSearch(e.target.value)} className="pl-10 bg-secondary border-0" />
+          <Input
+            placeholder="Search products..."
+            value={search}
+            onChange={(event) => {
+              setSearch(event.target.value);
+              setCurrentPage(1);
+            }}
+            className="pl-10 bg-secondary border-0"
+          />
         </div>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
+        <Select
+          value={statusFilter}
+          onValueChange={(value) => {
+            setStatusFilter(value);
+            setCurrentPage(1);
+          }}
+        >
           <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Status</SelectItem>
             <SelectItem value="active">Active</SelectItem>
             <SelectItem value="draft">Draft</SelectItem>
-            <SelectItem value="out_of_stock">Out of Stock</SelectItem>
             <SelectItem value="archived">Archived</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select
+          value={brandFilter}
+          onValueChange={(value) => {
+            setBrandFilter(value);
+            setCurrentPage(1);
+          }}
+        >
+          <SelectTrigger><SelectValue placeholder="All Brands" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Brands</SelectItem>
+            {brands.map((brand) => (
+              <SelectItem key={brand.id} value={brand.id}>
+                {brand.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select
+          value={categoryFilter}
+          onValueChange={(value) => {
+            setCategoryFilter(value);
+            setCurrentPage(1);
+          }}
+        >
+          <SelectTrigger><SelectValue placeholder="All Categories" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Categories</SelectItem>
+            {categories.map((category) => (
+              <SelectItem key={category.id} value={category.id}>
+                {buildCategoryPath(categories, category.id)}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
@@ -1266,8 +1429,23 @@ export default function AdminProducts() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-secondary/50">
+                <th className="px-4 py-3 w-12">
+                  <input
+                    type="checkbox"
+                    checked={allVisibleSelected}
+                    ref={(element) => {
+                      if (element) {
+                        element.indeterminate = someVisibleSelected;
+                      }
+                    }}
+                    onChange={(event) => toggleSelectAllVisible(event.target.checked)}
+                    disabled={!hasProducts}
+                    aria-label="Select all visible products"
+                  />
+                </th>
                 <th className="text-left px-4 py-3 font-medium text-xs tracking-widest text-muted-foreground">PRODUCT</th>
                 <th className="text-left px-4 py-3 font-medium text-xs tracking-widest text-muted-foreground hidden md:table-cell">BRAND</th>
+                <th className="text-left px-4 py-3 font-medium text-xs tracking-widest text-muted-foreground hidden md:table-cell">CATEGORY</th>
                 <th className="text-left px-4 py-3 font-medium text-xs tracking-widest text-muted-foreground hidden lg:table-cell">PRICE</th>
                 <th className="text-left px-4 py-3 font-medium text-xs tracking-widest text-muted-foreground hidden lg:table-cell">SOURCE URL</th>
                 <th className="text-left px-4 py-3 font-medium text-xs tracking-widest text-muted-foreground hidden lg:table-cell">PRODUCT URL</th>
@@ -1276,11 +1454,25 @@ export default function AdminProducts() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map(p => {
+              {products.length === 0 ? (
+                <tr>
+                  <td colSpan={9} className="px-4 py-10 text-center text-muted-foreground">
+                    No products match the current search and filters.
+                  </td>
+                </tr>
+              ) : products.map(p => {
                 const storefrontUrl = `/products/${p.slug || p.id}`;
 
                 return (
                 <tr key={p.id} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors">
+                  <td className="px-4 py-3">
+                    <input
+                      type="checkbox"
+                      checked={selectedProductIds.includes(p.id)}
+                      onChange={(event) => toggleProductSelection(p.id, event.target.checked)}
+                      aria-label={`Select ${p.title}`}
+                    />
+                  </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded bg-secondary overflow-hidden flex-shrink-0">
@@ -1292,6 +1484,7 @@ export default function AdminProducts() {
                     </div>
                   </td>
                   <td className="px-4 py-3 text-muted-foreground hidden md:table-cell">{p.brand}</td>
+                  <td className="px-4 py-3 text-muted-foreground hidden md:table-cell">{p.category}</td>
                   <td className="px-4 py-3 hidden lg:table-cell">
                     <span className="font-mono text-[hsl(var(--accent))]">${p.final_price?.toFixed(2)}</span>
                     <span className="text-muted-foreground line-through ml-2 text-xs">${p.original_price?.toFixed(2)}</span>
@@ -1347,7 +1540,60 @@ export default function AdminProducts() {
             </tbody>
           </table>
         </div>
+        <div className="flex flex-col gap-3 border-t border-border bg-secondary/20 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="text-sm text-muted-foreground">
+            Showing page {pagination.page} of {pagination.totalPages} with {products.length} product{products.length === 1 ? "" : "s"} on this page.
+            {selectedVisibleCount > 0 ? ` ${selectedVisibleCount} visible selected.` : ""}
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => setCurrentPage((page) => Math.max(1, page - 1))} disabled={currentPage <= 1}>
+              Previous
+            </Button>
+            {paginationNumbers.map((pageNumber) => (
+              <Button
+                key={pageNumber}
+                variant={pageNumber === currentPage ? "default" : "outline"}
+                size="sm"
+                onClick={() => setCurrentPage(pageNumber)}
+              >
+                {pageNumber}
+              </Button>
+            ))}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage((page) => Math.min(pagination.totalPages, page + 1))}
+              disabled={currentPage >= pagination.totalPages}
+            >
+              Next
+            </Button>
+          </div>
+        </div>
       </div>
+
+      <Dialog open={bulkDeleteDialogOpen} onOpenChange={setBulkDeleteDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-display">Delete Selected Products</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              This will permanently delete {selectedProductIds.length} selected product{selectedProductIds.length === 1 ? "" : "s"} from the database.
+            </p>
+            <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-4 text-sm text-muted-foreground">
+              This action is a hard delete and cannot be undone.
+            </div>
+            <div className="flex items-center justify-end gap-3">
+              <Button variant="outline" onClick={() => setBulkDeleteDialogOpen(false)} disabled={bulkDeleting}>
+                Cancel
+              </Button>
+              <Button variant="destructive" onClick={() => void handleBulkDeleteSelected()} disabled={bulkDeleting}>
+                {bulkDeleting ? "Deleting..." : "Delete Selected"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={globalMonitoringDialogOpen} onOpenChange={setGlobalMonitoringDialogOpen}>
         <DialogContent className="max-w-md">

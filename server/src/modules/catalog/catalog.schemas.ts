@@ -167,6 +167,10 @@ export const importProductsCsvSchema = z.object({
   subcategoryId: cuidSchema.optional().nullable(),
 });
 
+export const bulkDeleteProductsSchema = z.object({
+  ids: z.array(cuidSchema).min(1),
+});
+
 export const toggleFeaturedSchema = z.object({
   isFeatured: z.boolean(),
 });
