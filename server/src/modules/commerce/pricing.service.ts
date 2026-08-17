@@ -91,9 +91,11 @@ export class PricingService {
     return settings;
   }
 
-  public async calculateProductPricing(input: ProductPricingInput, countryCode?: string | null): Promise<ProductPricingResult> {
-    const settings = await this.getBusinessSettings();
-
+  public calculateProductPricingWithSettings(
+    settings: Awaited<ReturnType<PricingService["getBusinessSettings"]>>,
+    input: ProductPricingInput,
+    countryCode?: string | null,
+  ): ProductPricingResult {
     const supplierPrice = decimal(input.supplierPrice ?? input.fallbackPrice);
     const currency = input.currency || settings.defaultCurrency;
 
@@ -135,6 +137,12 @@ export class PricingService {
       minimumProfitAmount: decimal(minimumProfitAmount),
       vatPercent: decimal(settings.vatPercent),
     };
+  }
+
+  public async calculateProductPricing(input: ProductPricingInput, countryCode?: string | null): Promise<ProductPricingResult> {
+    const settings = await this.getBusinessSettings();
+
+    return this.calculateProductPricingWithSettings(settings, input, countryCode);
   }
 
   public async calculateCartTotals(input: {

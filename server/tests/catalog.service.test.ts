@@ -632,6 +632,216 @@ test("catalog service replaces only the selected Adidas Woman scope and keeps ot
   }
 });
 
+test("catalog service replaces the selected brand within the main category scope and assigns imports to the selected subcategory", async () => {
+  await cleanup();
+
+  try {
+    const adidasBrand = await catalogService.createBrand({
+      name: `Adidas Main Scope ${suffix}`,
+      isActive: true,
+    });
+    const mangoBrand = await catalogService.createBrand({
+      name: `Mango Main Scope ${suffix}`,
+      isActive: true,
+    });
+
+    const womanCategory = await catalogService.createCategory({
+      name: `Woman Main Scope ${suffix}`,
+      sortOrder: 0,
+    });
+    const dressesCategory = await catalogService.createCategory({
+      name: `Woman Dresses Scope ${suffix}`,
+      parentId: womanCategory.id,
+      sortOrder: 1,
+    });
+    const topsCategory = await catalogService.createCategory({
+      name: `Woman Tops Scope ${suffix}`,
+      parentId: womanCategory.id,
+      sortOrder: 2,
+    });
+    const manCategory = await catalogService.createCategory({
+      name: `Man Scope ${suffix}`,
+      sortOrder: 3,
+    });
+
+    const createScopedProduct = async (
+      sku: string,
+      name: string,
+      brandId: string,
+      categoryId: string,
+      sourceUrl: string,
+    ) =>
+      catalogService.createProduct({
+        sku,
+        name,
+        brandId,
+        categoryId,
+        price: 120,
+        oldPrice: 160,
+        status: "ACTIVE",
+        stock: 5,
+        stockStatus: "IN_STOCK",
+        sourceType: "IMPORT",
+        sourceUrl,
+        sourceStore: "Seed Import Scope",
+      });
+
+    await createScopedProduct(
+      `TEST-ADIDAS-DRESS-${suffix}`,
+      `Adidas Dresses Existing ${suffix}`,
+      adidasBrand.id,
+      dressesCategory.id,
+      `https://example.com/seed-adidas-dress-${suffix}`,
+    );
+    await createScopedProduct(
+      `TEST-ADIDAS-TOPS-${suffix}`,
+      `Adidas Tops Existing ${suffix}`,
+      adidasBrand.id,
+      topsCategory.id,
+      `https://example.com/seed-adidas-tops-${suffix}`,
+    );
+    await createScopedProduct(
+      `TEST-MANGO-TOPS-${suffix}`,
+      `Mango Tops Existing ${suffix}`,
+      mangoBrand.id,
+      topsCategory.id,
+      `https://example.com/seed-mango-tops-${suffix}`,
+    );
+    await createScopedProduct(
+      `TEST-ADIDAS-MAN-MAIN-${suffix}`,
+      `Adidas Man Existing ${suffix}`,
+      adidasBrand.id,
+      manCategory.id,
+      `https://example.com/seed-adidas-man-main-${suffix}`,
+    );
+
+    const csvContent = readFileSync(csvFixturePath, "utf8");
+    const previewResult = await catalogService.importProductsCsv({
+      mode: "PREVIEW",
+      content: csvContent,
+      fileName: "mango-outlet-sample.csv",
+      brandId: adidasBrand.id,
+      mainCategoryId: womanCategory.id,
+      subcategoryId: dressesCategory.id,
+    });
+
+    assert.equal(previewResult.readyToImport, true);
+    assert.equal(previewResult.summary.previousMatchingProductCount, 2);
+
+    const importResult = await catalogService.importProductsCsv({
+      mode: "IMPORT",
+      content: csvContent,
+      fileName: "mango-outlet-sample.csv",
+      brandId: adidasBrand.id,
+      mainCategoryId: womanCategory.id,
+      subcategoryId: dressesCategory.id,
+    });
+
+    assert.equal(importResult.summary.deleted, 2);
+    assert.equal(importResult.summary.imported, 2);
+    assert.equal(importResult.summary.failed, 0);
+
+    const adidasWomanProducts = await prisma.product.findMany({
+      where: {
+        deletedAt: null,
+        brandId: adidasBrand.id,
+        categoryId: {
+          in: [dressesCategory.id, topsCategory.id],
+        },
+      },
+      orderBy: {
+        name: "asc",
+      },
+    });
+
+    assert.equal(adidasWomanProducts.length, 2);
+    assert.ok(adidasWomanProducts.every((product) => product.categoryId === dressesCategory.id));
+
+    const mangoWomanCount = await prisma.product.count({
+      where: {
+        deletedAt: null,
+        brandId: mangoBrand.id,
+        categoryId: topsCategory.id,
+      },
+    });
+    const adidasManCount = await prisma.product.count({
+      where: {
+        deletedAt: null,
+        brandId: adidasBrand.id,
+        categoryId: manCategory.id,
+      },
+    });
+
+    assert.equal(mangoWomanCount, 1);
+    assert.equal(adidasManCount, 1);
+  } finally {
+    await cleanup();
+  }
+});
+
+test("catalog service imports large CSV datasets across multiple batches without truncation", async () => {
+  await cleanup();
+
+  try {
+    const brand = await catalogService.createBrand({
+      name: `Large CSV Brand ${suffix}`,
+      isActive: true,
+    });
+    const category = await catalogService.createCategory({
+      name: `Large CSV Category ${suffix}`,
+      sortOrder: 0,
+    });
+
+    const totalRows = 130;
+    const csvRows = Array.from({ length: totalRows }, (_, index) => {
+      const rowNumber = index + 1;
+      return `"Large CSV Product ${rowNumber}",199,129,"Large Feed","https://example.com/large-csv-${suffix}-${rowNumber}","Large Brand","Woman","https://example.com/large-${rowNumber}.jpg","Generated row ${rowNumber}","Blue","M","In stock",active,women`;
+    });
+    const csvContent = [
+      "Title,OriginalPrice,OutletPrice,SourceStore,SourceURL,Brand,Category,ProductImages,Description,Color,Size,Stock,Status,Gender",
+      ...csvRows,
+    ].join("\n");
+
+    const previewResult = await catalogService.importProductsCsv({
+      mode: "PREVIEW",
+      content: csvContent,
+      fileName: "large-import.csv",
+      brandId: brand.id,
+      mainCategoryId: category.id,
+      subcategoryId: null,
+    });
+
+    assert.equal(previewResult.readyToImport, true);
+    assert.equal(previewResult.summary.total, totalRows);
+    assert.equal(previewResult.summary.failed, 0);
+
+    const importResult = await catalogService.importProductsCsv({
+      mode: "IMPORT",
+      content: csvContent,
+      fileName: "large-import.csv",
+      brandId: brand.id,
+      mainCategoryId: category.id,
+      subcategoryId: null,
+    });
+
+    assert.equal(importResult.summary.imported, totalRows);
+    assert.equal(importResult.summary.failed, 0);
+    assert.equal(importResult.summary.finalProductCount, totalRows);
+
+    const importedCount = await prisma.product.count({
+      where: {
+        deletedAt: null,
+        brandId: brand.id,
+        categoryId: category.id,
+      },
+    });
+
+    assert.equal(importedCount, totalRows);
+  } finally {
+    await cleanup();
+  }
+});
+
 test("catalog service replaces scoped CSV products even when linked records exist", async () => {
   await cleanup();
 

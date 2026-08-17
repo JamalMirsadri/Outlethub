@@ -505,6 +505,7 @@ export default function AdminProducts() {
   const [importPreview, setImportPreview] = useState(null);
   const [importResultDialogOpen, setImportResultDialogOpen] = useState(false);
   const [importResult, setImportResult] = useState(null);
+  const [importProgress, setImportProgress] = useState(null);
 
   const loadProducts = async (page = currentPage) => {
     setLoading(true);
@@ -702,6 +703,7 @@ export default function AdminProducts() {
       subcategoryId: "",
     });
     setImportPreview(null);
+    setImportProgress(null);
     if (importFileInputRef.current) {
       importFileInputRef.current.value = "";
     }
@@ -715,6 +717,7 @@ export default function AdminProducts() {
 
     setImportFile(file);
     setImportPreview(null);
+    setImportProgress(null);
   };
 
   const handleOpenImportDialog = () => {
@@ -795,6 +798,13 @@ export default function AdminProducts() {
     }
 
     setImportingCsv(true);
+    setImportProgress({
+      phase: "Importing validated rows in database batches",
+      totalRows: importPreview.summary.total,
+      previousMatchingProductCount: importPreview.summary.previousMatchingProductCount,
+      imported: 0,
+      failed: 0,
+    });
 
     try {
       const content = await importFile.text();
@@ -807,6 +817,13 @@ export default function AdminProducts() {
         subcategoryId: importSelection.subcategoryId || null,
       });
 
+      setImportProgress({
+        phase: "Import complete",
+        totalRows: result.summary.total,
+        previousMatchingProductCount: result.summary.previousMatchingProductCount,
+        imported: result.summary.imported,
+        failed: result.summary.failed,
+      });
       setImportResult(result);
       setImportResultDialogOpen(true);
       setImportDialogOpen(false);
@@ -1854,7 +1871,7 @@ export default function AdminProducts() {
               <div>
                 <p className="font-medium">Existing Category Hierarchy</p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Category controls only where the imported products will be assigned and replaced within this brand/site scope.
+                  Main Category controls the replacement scope. Subcategory only controls where the new imported products are assigned.
                 </p>
               </div>
               <div className="max-h-40 space-y-3 overflow-y-auto pr-1 text-sm">
@@ -1933,6 +1950,36 @@ export default function AdminProducts() {
                     </div>
                   </div>
                 ) : null}
+              </div>
+            ) : null}
+
+            {importingCsv && importProgress ? (
+              <div className="space-y-3 rounded-xl border border-border bg-secondary/20 p-4">
+                <div>
+                  <p className="font-medium">Import Progress</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {importProgress.phase}
+                  </p>
+                </div>
+                <div className="grid gap-3 md:grid-cols-3">
+                  <div className="rounded-xl border border-border bg-background p-4">
+                    <p className="text-xs uppercase tracking-widest text-muted-foreground">Validated Rows</p>
+                    <p className="mt-2 font-display text-2xl">{importProgress.totalRows ?? 0}</p>
+                  </div>
+                  <div className="rounded-xl border border-border bg-background p-4">
+                    <p className="text-xs uppercase tracking-widest text-muted-foreground">Scope Replace Count</p>
+                    <p className="mt-2 font-display text-2xl">{importProgress.previousMatchingProductCount ?? 0}</p>
+                  </div>
+                  <div className="rounded-xl border border-border bg-background p-4">
+                    <p className="text-xs uppercase tracking-widest text-muted-foreground">Imported / Failed</p>
+                    <p className="mt-2 font-display text-2xl">
+                      {(importProgress.imported ?? 0)} / {(importProgress.failed ?? 0)}
+                    </p>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Large CSV files are processed in committed database batches so the import can finish without one long-running Prisma transaction.
+                </p>
               </div>
             ) : null}
 
