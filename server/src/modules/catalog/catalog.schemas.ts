@@ -177,7 +177,7 @@ export const toggleFeaturedSchema = z.object({
 
 export const adminProductListQuerySchema = z.object({
   page: z.coerce.number().int().positive().optional().default(1),
-  pageSize: z.coerce.number().int().positive().max(100).optional().default(20),
+  pageSize: z.coerce.number().int().positive().max(200).optional().default(20),
   search: optionalString,
   brandId: cuidSchema.optional(),
   categoryId: cuidSchema.optional(),

@@ -792,7 +792,7 @@ test("catalog service imports large CSV datasets across multiple batches without
       sortOrder: 0,
     });
 
-    const totalRows = 130;
+    const totalRows = 2030;
     const csvRows = Array.from({ length: totalRows }, (_, index) => {
       const rowNumber = index + 1;
       return `"Large CSV Product ${rowNumber}",199,129,"Large Feed","https://example.com/large-csv-${suffix}-${rowNumber}","Large Brand","Woman","https://example.com/large-${rowNumber}.jpg","Generated row ${rowNumber}","Blue","M","In stock",active,women`;
@@ -837,6 +837,108 @@ test("catalog service imports large CSV datasets across multiple batches without
     });
 
     assert.equal(importedCount, totalRows);
+  } finally {
+    await cleanup();
+  }
+});
+
+test("catalog service accepts reordered generic CSV headers, localized prices, and ignores malformed image urls", async () => {
+  await cleanup();
+
+  try {
+    const brand = await catalogService.createBrand({
+      name: `Generic CSV Brand ${suffix}`,
+      isActive: true,
+    });
+    const category = await catalogService.createCategory({
+      name: `Generic CSV Category ${suffix}`,
+      sortOrder: 0,
+    });
+
+    const csvContent = [
+      " SourceURL , Title , ProductImages , OutletPrice , OriginalPrice , SourceStore , Brand , Category , Description , Color , Size , Stock , Status , Gender , ExtraColumn ",
+      `"https://example.com/generic-csv-${suffix}","Generic Imported Product","https://example.com/valid-image-1.jpg|invalid-url|https://example.com/valid-image-2.jpg","999,90","1.234,56","Generic Feed","Different CSV Brand","Different CSV Category","Descricao internacional","Green","XS,S","Limited","active","women","ignored"`,
+      `"https://example.com/generic-csv-empty-${suffix}","Generic Optional Product","","129","","Generic Feed","","","","","","","active","","ignored"`,
+    ].join("\n");
+
+    const previewResult = await catalogService.importProductsCsv({
+      mode: "PREVIEW",
+      content: csvContent,
+      fileName: "generic-import.csv",
+      brandId: brand.id,
+      mainCategoryId: category.id,
+      subcategoryId: null,
+    });
+
+    assert.equal(previewResult.readyToImport, true);
+    assert.equal(previewResult.summary.total, 2);
+    assert.equal(previewResult.summary.failed, 0);
+
+    const importResult = await catalogService.importProductsCsv({
+      mode: "IMPORT",
+      content: csvContent,
+      fileName: "generic-import.csv",
+      brandId: brand.id,
+      mainCategoryId: category.id,
+      subcategoryId: null,
+    });
+
+    assert.equal(importResult.summary.imported, 2);
+    assert.equal(importResult.summary.failed, 0);
+
+    const importedProduct = await prisma.product.findFirstOrThrow({
+      where: {
+        deletedAt: null,
+        brandId: brand.id,
+        categoryId: category.id,
+        sourceUrl: `https://example.com/generic-csv-${suffix}`,
+      },
+      include: {
+        images: {
+          orderBy: {
+            sortOrder: "asc",
+          },
+        },
+        variants: {
+          orderBy: [{ size: "asc" }, { color: "asc" }],
+        },
+      },
+    });
+
+    assert.equal(importedProduct.brandId, brand.id);
+    assert.equal(importedProduct.categoryId, category.id);
+    assert.equal(importedProduct.oldPrice?.toString(), "1234.56");
+    assert.equal(importedProduct.outletPrice?.toString(), "999.9");
+    assert.equal(importedProduct.stock, 20);
+    assert.equal(importedProduct.stockStatus, "LOW_STOCK");
+    assert.deepEqual(importedProduct.sizes, ["XS", "S"]);
+    assert.equal(importedProduct.images.length, 2);
+    assert.deepEqual(
+      importedProduct.images.map((image) => image.imageUrl),
+      ["https://example.com/valid-image-1.jpg/", "https://example.com/valid-image-2.jpg/"],
+    );
+    assert.equal(importedProduct.variants.length, 2);
+    assert.ok(importedProduct.variants.every((variant) => variant.stockQuantity === 10));
+
+    const optionalProduct = await prisma.product.findFirstOrThrow({
+      where: {
+        deletedAt: null,
+        brandId: brand.id,
+        categoryId: category.id,
+        sourceUrl: `https://example.com/generic-csv-empty-${suffix}`,
+      },
+      include: {
+        variants: true,
+        images: true,
+      },
+    });
+
+    assert.equal(optionalProduct.stock, 10);
+    assert.equal(optionalProduct.stockStatus, "IN_STOCK");
+    assert.deepEqual(optionalProduct.sizes, []);
+    assert.deepEqual(optionalProduct.colors, []);
+    assert.equal(optionalProduct.variants.length, 0);
+    assert.equal(optionalProduct.images.length, 0);
   } finally {
     await cleanup();
   }

@@ -48,6 +48,7 @@ const defaultForm = {
 const CUSTOM_OPTION_VALUE = "__custom__";
 const ADMIN_EXPORT_PAGE_SIZE = 100;
 const ADMIN_PRODUCTS_PAGE_SIZE = 50;
+const ADMIN_PRODUCTS_PAGE_SIZE_OPTIONS = [50, 100, 200];
 
 function parseImageUrls(value) {
   if (typeof value !== "string") {
@@ -470,6 +471,7 @@ export default function AdminProducts() {
   const [brandFilter, setBrandFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(ADMIN_PRODUCTS_PAGE_SIZE);
   const [pagination, setPagination] = useState({
     page: 1,
     pageSize: ADMIN_PRODUCTS_PAGE_SIZE,
@@ -512,7 +514,7 @@ export default function AdminProducts() {
     try {
       const response = await listAdminProductsLegacyPage({
         page,
-        pageSize: ADMIN_PRODUCTS_PAGE_SIZE,
+        pageSize,
         search: search.trim() || undefined,
         status: statusFilter === "all" ? undefined : statusFilter,
         brandId: brandFilter === "all" ? undefined : brandFilter,
@@ -540,7 +542,7 @@ export default function AdminProducts() {
 
   useEffect(() => {
     void loadProducts(currentPage);
-  }, [currentPage, search, statusFilter, brandFilter, categoryFilter]);
+  }, [currentPage, pageSize, search, statusFilter, brandFilter, categoryFilter]);
 
   const loadGlobalSettings = async () => {
     setGlobalMonitoringLoading(true);
@@ -632,6 +634,8 @@ export default function AdminProducts() {
     currentPageProductIds.some((productId) => selectedProductIds.includes(productId)) && !allVisibleSelected;
   const selectedVisibleCount = currentPageProductIds.filter((productId) => selectedProductIds.includes(productId)).length;
   const paginationNumbers = getVisiblePageNumbers(currentPage, pagination.totalPages);
+  const showingFrom = pagination.total === 0 ? 0 : (pagination.page - 1) * pagination.pageSize + 1;
+  const showingTo = pagination.total === 0 ? 0 : showingFrom + products.length - 1;
 
   const exportProductsMapping = async () => {
     if (!exportAllBrands && selectedExportBrandIds.length === 0) {
@@ -1338,7 +1342,9 @@ export default function AdminProducts() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <div>
           <h1 className="font-display text-2xl font-bold">Products</h1>
-          <p className="text-sm text-muted-foreground">{pagination.total} total products</p>
+          <p className="text-sm text-muted-foreground">
+            Showing {showingFrom}-{showingTo} of {pagination.total} products
+          </p>
         </div>
         <div className="flex items-center gap-3">
           <input
@@ -1559,10 +1565,29 @@ export default function AdminProducts() {
         </div>
         <div className="flex flex-col gap-3 border-t border-border bg-secondary/20 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="text-sm text-muted-foreground">
-            Showing page {pagination.page} of {pagination.totalPages} with {products.length} product{products.length === 1 ? "" : "s"} on this page.
+            Showing {showingFrom}-{showingTo} of {pagination.total} products.
+            Page {pagination.page} of {pagination.totalPages}.
             {selectedVisibleCount > 0 ? ` ${selectedVisibleCount} visible selected.` : ""}
           </div>
           <div className="flex items-center gap-2">
+          <Select
+            value={String(pageSize)}
+            onValueChange={(value) => {
+              setPageSize(Number(value));
+              setCurrentPage(1);
+            }}
+          >
+            <SelectTrigger className="w-28">
+              <SelectValue placeholder="Page size" />
+            </SelectTrigger>
+            <SelectContent>
+              {ADMIN_PRODUCTS_PAGE_SIZE_OPTIONS.map((option) => (
+                <SelectItem key={option} value={String(option)}>
+                  {option} / page
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
             <Button variant="outline" size="sm" onClick={() => setCurrentPage((page) => Math.max(1, page - 1))} disabled={currentPage <= 1}>
               Previous
             </Button>

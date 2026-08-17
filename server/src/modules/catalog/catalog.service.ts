@@ -83,6 +83,7 @@ const PRODUCT_CSV_REQUIRED_COLUMNS = [
 ] as const;
 
 const PRODUCT_CSV_IMPORT_BATCH_SIZE = 100;
+const DEFAULT_IMPORTED_STOCK_QUANTITY = 10;
 
 interface ParsedCsvDocument {
   headers: string[];
@@ -391,16 +392,39 @@ function parseCsvMoney(value: string, fieldName: string, rowNumber: number): num
     return undefined;
   }
 
-  const sanitized = normalized.replace(/[^0-9,.-]/g, "");
+  const sanitized = normalized.replace(/\s+/g, "").replace(/[^0-9,.-]/g, "");
   if (!sanitized) {
     throw new ApiError(400, `Row ${rowNumber}: ${fieldName} must be a valid number.`);
   }
 
   let decimalValue = sanitized;
-  if (decimalValue.includes(",") && decimalValue.includes(".")) {
-    decimalValue = decimalValue.replace(/,/g, "");
-  } else if (decimalValue.includes(",")) {
-    decimalValue = decimalValue.replace(",", ".");
+  const lastCommaIndex = sanitized.lastIndexOf(",");
+  const lastDotIndex = sanitized.lastIndexOf(".");
+
+  if (lastCommaIndex >= 0 && lastDotIndex >= 0) {
+    if (lastCommaIndex > lastDotIndex) {
+      decimalValue = sanitized.replace(/\./g, "").replace(",", ".");
+    } else {
+      decimalValue = sanitized.replace(/,/g, "");
+    }
+  } else if (lastCommaIndex >= 0) {
+    const commaParts = sanitized.split(",");
+    const fractionalPart = commaParts.at(-1) ?? "";
+    if (commaParts.length === 2 && fractionalPart.length > 0 && fractionalPart.length <= 2) {
+      decimalValue = `${commaParts[0] ?? "0"}.${fractionalPart}`;
+    } else if (commaParts.length > 1 && fractionalPart.length > 0 && fractionalPart.length <= 2) {
+      decimalValue = `${commaParts.slice(0, -1).join("")}.${fractionalPart}`;
+    } else {
+      decimalValue = sanitized.replace(/,/g, "");
+    }
+  } else if (lastDotIndex >= 0) {
+    const dotParts = sanitized.split(".");
+    const fractionalPart = dotParts.at(-1) ?? "";
+    if (!(dotParts.length > 1 && fractionalPart.length === 3)) {
+      decimalValue = sanitized;
+    } else {
+      decimalValue = sanitized.replace(/\./g, "");
+    }
   }
 
   const parsed = Number(decimalValue);
@@ -415,7 +439,7 @@ function parseCsvStockField(value: string): Pick<NormalizedProductCsvRow, "stock
   const normalized = normalizeCsvString(value);
   if (!normalized) {
     return {
-      stockQuantity: 10,
+      stockQuantity: DEFAULT_IMPORTED_STOCK_QUANTITY,
       stockStatus: StockStatus.IN_STOCK,
     };
   }
@@ -440,7 +464,7 @@ function parseCsvStockField(value: string): Pick<NormalizedProductCsvRow, "stock
     case "available":
     case "availability":
       return {
-        stockQuantity: 10,
+        stockQuantity: DEFAULT_IMPORTED_STOCK_QUANTITY,
         stockStatus: StockStatus.IN_STOCK,
       };
     case "limited":
@@ -448,7 +472,7 @@ function parseCsvStockField(value: string): Pick<NormalizedProductCsvRow, "stock
     case "low stock":
     case "few left":
       return {
-        stockQuantity: 10,
+        stockQuantity: DEFAULT_IMPORTED_STOCK_QUANTITY,
         stockStatus: StockStatus.LOW_STOCK,
       };
     case "out of stock":
@@ -460,7 +484,7 @@ function parseCsvStockField(value: string): Pick<NormalizedProductCsvRow, "stock
       };
     default:
       return {
-        stockQuantity: 10,
+        stockQuantity: DEFAULT_IMPORTED_STOCK_QUANTITY,
         stockStatus: StockStatus.IN_STOCK,
       };
   }
@@ -494,19 +518,21 @@ function parseCsvList(value: string, separator: string | RegExp): string[] | und
   return items.length > 0 ? items : undefined;
 }
 
-function parseCsvImageUrls(value: string, rowNumber: number): string[] | undefined {
+function parseCsvImageUrls(value: string): string[] | undefined {
   const items = parseCsvList(value, "|");
   if (!items) {
     return undefined;
   }
 
-  return items.map((item) => {
+  const validUrls = items.flatMap((item) => {
     try {
-      return new URL(item).toString();
+      return [new URL(item).toString()];
     } catch {
-      throw new ApiError(400, `Row ${rowNumber}: ProductImages contains an invalid URL.`);
+      return [];
     }
   });
+
+  return validUrls.length > 0 ? validUrls : undefined;
 }
 
 function parseCsvStatus(value: string, rowNumber: number): ProductStatus | undefined {
@@ -599,7 +625,7 @@ function buildCsvImportSlug(name: string, sourceUrl: string, brandId: string, ca
 }
 
 function buildImportedVariants(row: NormalizedProductCsvRow): CreateVariantInput[] {
-  const stockQuantity = row.stockQuantity ?? 10;
+  const stockQuantity = row.stockQuantity ?? DEFAULT_IMPORTED_STOCK_QUANTITY;
   const colors = row.colors?.length ? row.colors : [undefined];
 
   if (row.sizes?.length) {
@@ -673,7 +699,7 @@ function normalizeProductCsvRow(row: ProductCsvRow, rowNumber: number): Normaliz
     sourceUrl: normalizeSourceUrl(row.SourceURL, rowNumber),
     brand: normalizeCsvString(row.Brand),
     category: normalizeCsvString(row.Category),
-    imageUrls: parseCsvImageUrls(row.ProductImages, rowNumber),
+    imageUrls: parseCsvImageUrls(row.ProductImages),
     description: normalizeCsvString(row.Description),
     colors: parseCsvList(row.Color, /\s*,\s*/),
     sizes: parseCsvList(row.Size, /\s*,\s*/),
@@ -1840,7 +1866,7 @@ export class CatalogService {
     const resolvedColors = row.colors ?? [];
     const resolvedStock = variants.length
       ? variants.reduce((total, variant) => total + variant.stockQuantity, 0)
-      : row.stockQuantity ?? 10;
+      : row.stockQuantity ?? DEFAULT_IMPORTED_STOCK_QUANTITY;
     const resolvedStockStatus = row.stockStatus ?? deriveStockStatus(resolvedStock);
     const discountPercent = normalizeDiscountPercent(resolvedOutletPrice, resolvedOldPrice);
     const resolvedDealLevel = resolveDealLevel(discountPercent);
