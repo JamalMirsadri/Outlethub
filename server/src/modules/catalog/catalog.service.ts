@@ -138,7 +138,8 @@ interface NormalizedProductCsvRow {
   description?: string;
   colors?: string[];
   sizes?: string[];
-  stock?: number;
+  stockQuantity?: number;
+  stockStatus?: StockStatus;
   status?: ProductStatus;
   gender?: string;
 }
@@ -360,18 +361,44 @@ function parseCsvMoney(value: string, fieldName: string, rowNumber: number): num
   return parsed;
 }
 
-function parseCsvStock(value: string, rowNumber: number): number | undefined {
+function parseCsvStockField(value: string): Pick<NormalizedProductCsvRow, "stockQuantity" | "stockStatus"> {
   const normalized = normalizeCsvString(value);
   if (!normalized) {
-    return undefined;
+    return {};
   }
 
-  const parsed = Number(normalized);
-  if (!Number.isInteger(parsed) || parsed < 0) {
-    throw new ApiError(400, `Row ${rowNumber}: Stock must be a non-negative integer.`);
+  const parsedQuantity = Number(normalized);
+  if (Number.isInteger(parsedQuantity) && parsedQuantity >= 0) {
+    return {
+      stockQuantity: parsedQuantity,
+      stockStatus: deriveStockStatus(parsedQuantity),
+    };
   }
 
-  return parsed;
+  const stockStatusValue = normalized
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+
+  switch (stockStatusValue) {
+    case "in stock":
+    case "available":
+    case "availability":
+      return { stockStatus: StockStatus.IN_STOCK };
+    case "limited":
+    case "limited stock":
+    case "low stock":
+    case "few left":
+      return { stockStatus: StockStatus.LOW_STOCK };
+    case "out of stock":
+    case "sold out":
+    case "unavailable":
+      return { stockStatus: StockStatus.OUT_OF_STOCK };
+    default:
+      return {};
+  }
 }
 
 function normalizeSourceUrl(value: string, rowNumber: number): string {
@@ -532,6 +559,8 @@ async function ensureCategoryIdByName(name: string): Promise<string> {
 }
 
 function normalizeProductCsvRow(row: ProductCsvRow, rowNumber: number): NormalizedProductCsvRow {
+  const stockField = parseCsvStockField(row.Stock);
+
   return {
     rowNumber,
     title: normalizeCsvString(row.Title),
@@ -545,7 +574,8 @@ function normalizeProductCsvRow(row: ProductCsvRow, rowNumber: number): Normaliz
     description: normalizeCsvString(row.Description),
     colors: parseCsvList(row.Color, /\s*,\s*/),
     sizes: parseCsvList(row.Size, /\s*,\s*/),
-    stock: parseCsvStock(row.Stock, rowNumber),
+    stockQuantity: stockField.stockQuantity,
+    stockStatus: stockField.stockStatus,
     status: parseCsvStatus(row.Status, rowNumber),
     gender: normalizeCsvString(row.Gender),
   };
@@ -1356,8 +1386,8 @@ export class CatalogService {
     const resolvedGender = row.gender ?? existing?.gender ?? null;
     const resolvedSizes = row.sizes ?? existing?.sizes ?? [];
     const resolvedColors = row.colors ?? existing?.colors ?? [];
-    const resolvedStock = row.stock ?? existing?.stock ?? 0;
-    const resolvedStockStatus = row.stock !== undefined ? deriveStockStatus(row.stock) : existing?.stockStatus ?? StockStatus.UNKNOWN;
+    const resolvedStock = row.stockQuantity ?? existing?.stock ?? 0;
+    const resolvedStockStatus = row.stockStatus ?? existing?.stockStatus ?? StockStatus.UNKNOWN;
     const discountPercent =
       row.originalPrice !== undefined || row.outletPrice !== undefined || !existing
         ? normalizeDiscountPercent(resolvedOutletPrice, resolvedOldPrice)
@@ -1391,8 +1421,8 @@ export class CatalogService {
       const oldPriceChanged = !decimalEquals(existing.oldPrice, resolvedOldPrice);
       const outletPriceChanged = !decimalEquals(existing.outletPrice, resolvedOutletPrice);
       const discountChanged = (existing.discountPercent ?? 0) !== discountPercent;
-      const stockChanged = existing.stock !== resolvedStock;
-      const stockStatusChanged = existing.stockStatus !== resolvedStockStatus;
+      const stockChanged = row.stockQuantity !== undefined && existing.stock !== resolvedStock;
+      const stockStatusChanged = row.stockStatus !== undefined && existing.stockStatus !== resolvedStockStatus;
       const statusChanged = existing.status !== (row.status ?? existing.status);
       const sourceStoreChanged = existing.sourceStore !== resolvedSourceStore;
       const genderChanged = existing.gender !== resolvedGender;

@@ -17,7 +17,7 @@ const productSku = `TEST-${suffix}`;
 const csvSourceUrl = "https://example.com/test-csv-import-jacket";
 const csvFixturePath = resolve(currentDir, "fixtures", "mango-outlet-sample.csv");
 const csvUpdateContent = `Title,OriginalPrice,OutletPrice,SourceStore,SourceURL,Brand,Category,ProductImages,Description,Color,Size,Stock,Status,Gender
-"CSV Import Jacket Updated",219,119,,"${csvSourceUrl}",Test CSV Import Brand,Test CSV Import Category,,,,"",8,active,`;
+"CSV Import Jacket Updated",219,119,,"${csvSourceUrl}",Test CSV Import Brand,Test CSV Import Category,,,,"TAMANHO ÚNICO",Limited,active,`;
 
 async function cleanup(): Promise<void> {
   await prisma.priceHistory.deleteMany({
@@ -324,8 +324,9 @@ test("catalog service imports Mango-shaped CSV rows with SourceURL upserts and p
     assert.equal(Number(createdProduct.oldPrice), 199);
     assert.equal(Number(createdProduct.outletPrice), 129);
     assert.equal(createdProduct.sourceStore, "Test CSV Import Store");
-    assert.equal(createdProduct.stock, 6);
-    assert.deepEqual(createdProduct.sizes, ["S", "M", "L"]);
+    assert.equal(createdProduct.stock, 0);
+    assert.equal(createdProduct.stockStatus, "IN_STOCK");
+    assert.deepEqual(createdProduct.sizes, ["XS", "S", "M"]);
     assert.deepEqual(createdProduct.colors, ["Black"]);
     assert.equal(createdProduct.images.length, 2);
     assert.equal(createdProduct.images[0]?.imageUrl, "https://example.com/test-csv-import-jacket-1.jpg");
@@ -336,6 +337,7 @@ test("catalog service imports Mango-shaped CSV rows with SourceURL upserts and p
         description: "Manual description should stay",
         sourceStore: "Manual Store Override",
         gender: "manual-gender",
+        stock: 4,
       },
     });
 
@@ -366,11 +368,12 @@ test("catalog service imports Mango-shaped CSV rows with SourceURL upserts and p
     assert.equal(updatedProduct.name, "CSV Import Jacket Updated");
     assert.equal(Number(updatedProduct.oldPrice), 219);
     assert.equal(Number(updatedProduct.outletPrice), 119);
-    assert.equal(updatedProduct.stock, 8);
+    assert.equal(updatedProduct.stock, 4);
+    assert.equal(updatedProduct.stockStatus, "LOW_STOCK");
     assert.equal(updatedProduct.description, "Manual description should stay");
     assert.equal(updatedProduct.sourceStore, "Manual Store Override");
     assert.equal(updatedProduct.gender, "manual-gender");
-    assert.deepEqual(updatedProduct.sizes, ["S", "M", "L"]);
+    assert.deepEqual(updatedProduct.sizes, ["TAMANHO ÚNICO"]);
     assert.deepEqual(updatedProduct.colors, ["Black"]);
     assert.equal(updatedProduct.images.length, 2);
 
