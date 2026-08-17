@@ -46,6 +46,7 @@ type UpdateCategoryInput = z.infer<typeof updateCategorySchema>;
 type CreateProductInput = z.infer<typeof createProductSchema>;
 type UpdateProductInput = z.infer<typeof updateProductSchema>;
 type ImportProductsCsvInput = z.infer<typeof importProductsCsvSchema>;
+type ImportProductsCsvMode = ImportProductsCsvInput["mode"];
 type CreateVariantInput = z.infer<typeof createProductVariantSchema>;
 type UpdateVariantInput = z.infer<typeof updateProductVariantSchema>;
 type CreateProductImageInput = z.infer<typeof createProductImageSchema>;
@@ -97,15 +98,47 @@ interface ProductCsvImportRowIssue {
 
 interface ProductCsvImportSummary {
   total: number;
+  previousMatchingProductCount: number;
+  deleted: number;
   imported: number;
   updated: number;
   skipped: number;
   failed: number;
+  finalProductCount: number;
+}
+
+interface ProductCsvImportSelectionSummary {
+  brand: {
+    id: string;
+    name: string;
+  };
+  mainCategory: {
+    id: string;
+    name: string;
+  };
+  destinationCategory: {
+    id: string;
+    name: string;
+    parentId: string | null;
+  };
 }
 
 interface ProductCsvImportResult {
+  mode: ImportProductsCsvMode;
+  readyToImport: boolean;
+  confirmationMessage: string | null;
+  selection: ProductCsvImportSelectionSummary;
   summary: ProductCsvImportSummary;
   issues: ProductCsvImportRowIssue[];
+}
+
+interface PreparedProductCsvImport {
+  selection: ProductCsvImportSelectionSummary;
+  destinationCategoryId: string;
+  scopeCategoryIds: string[];
+  rows: NormalizedProductCsvRow[];
+  issues: ProductCsvImportRowIssue[];
+  summary: ProductCsvImportSummary;
 }
 
 interface ProductCsvRow {
@@ -364,7 +397,10 @@ function parseCsvMoney(value: string, fieldName: string, rowNumber: number): num
 function parseCsvStockField(value: string): Pick<NormalizedProductCsvRow, "stockQuantity" | "stockStatus"> {
   const normalized = normalizeCsvString(value);
   if (!normalized) {
-    return {};
+    return {
+      stockQuantity: 10,
+      stockStatus: StockStatus.IN_STOCK,
+    };
   }
 
   const parsedQuantity = Number(normalized);
@@ -386,18 +422,30 @@ function parseCsvStockField(value: string): Pick<NormalizedProductCsvRow, "stock
     case "in stock":
     case "available":
     case "availability":
-      return { stockStatus: StockStatus.IN_STOCK };
+      return {
+        stockQuantity: 10,
+        stockStatus: StockStatus.IN_STOCK,
+      };
     case "limited":
     case "limited stock":
     case "low stock":
     case "few left":
-      return { stockStatus: StockStatus.LOW_STOCK };
+      return {
+        stockQuantity: 10,
+        stockStatus: StockStatus.LOW_STOCK,
+      };
     case "out of stock":
     case "sold out":
     case "unavailable":
-      return { stockStatus: StockStatus.OUT_OF_STOCK };
+      return {
+        stockQuantity: 0,
+        stockStatus: StockStatus.OUT_OF_STOCK,
+      };
     default:
-      return {};
+      return {
+        stockQuantity: 10,
+        stockStatus: StockStatus.IN_STOCK,
+      };
   }
 }
 
@@ -479,83 +527,41 @@ function deriveStockStatus(stock: number): StockStatus {
   return StockStatus.IN_STOCK;
 }
 
-function buildCsvImportSku(sourceUrl: string): string {
-  const digest = createHash("sha1").update(sourceUrl.toLowerCase()).digest("hex").slice(0, 12).toUpperCase();
+function buildCsvImportSku(sourceUrl: string, brandId?: string, categoryId?: string): string {
+  const digest = createHash("sha1")
+    .update([sourceUrl.toLowerCase(), brandId ?? "", categoryId ?? ""].join("|"))
+    .digest("hex")
+    .slice(0, 12)
+    .toUpperCase();
   return `CSV-${digest}`;
 }
 
-function arraysEqual(left: string[], right: string[]): boolean {
-  if (left.length !== right.length) {
-    return false;
+function buildImportedVariants(row: NormalizedProductCsvRow): CreateVariantInput[] {
+  const stockQuantity = row.stockQuantity ?? 10;
+  const colors = row.colors?.length ? row.colors : [undefined];
+
+  if (row.sizes?.length) {
+    return row.sizes.flatMap((size) =>
+      colors.map((color) => ({
+        size,
+        color,
+        stockQuantity,
+      })),
+    );
   }
 
-  return left.every((value, index) => value === right[index]);
+  if (row.colors?.length) {
+    return row.colors.map((color) => ({
+      color,
+      stockQuantity,
+    }));
+  }
+
+  return [];
 }
 
 function uniqueValues(values: Array<string | null | undefined>): string[] {
   return [...new Set(values.filter((value): value is string => Boolean(value && value.trim())))];
-}
-
-async function ensureBrandIdByName(name: string): Promise<string> {
-  const normalizedName = name.trim();
-  const existing = await prisma.brand.findFirst({
-    where: {
-      name: {
-        equals: normalizedName,
-        mode: "insensitive",
-      },
-    },
-  });
-
-  if (existing) {
-    return existing.id;
-  }
-
-  const slug = await buildUniqueSlug(normalizedName, async (candidate) => {
-    const conflict = await prisma.brand.findUnique({ where: { slug: candidate } });
-    return Boolean(conflict);
-  });
-
-  const created = await prisma.brand.create({
-    data: {
-      name: normalizedName,
-      slug,
-      isActive: true,
-    },
-  });
-
-  return created.id;
-}
-
-async function ensureCategoryIdByName(name: string): Promise<string> {
-  const normalizedName = name.trim();
-  const existing = await prisma.category.findFirst({
-    where: {
-      name: {
-        equals: normalizedName,
-        mode: "insensitive",
-      },
-    },
-  });
-
-  if (existing) {
-    return existing.id;
-  }
-
-  const slug = await buildUniqueSlug(normalizedName, async (candidate) => {
-    const conflict = await prisma.category.findUnique({ where: { slug: candidate } });
-    return Boolean(conflict);
-  });
-
-  const created = await prisma.category.create({
-    data: {
-      name: normalizedName,
-      slug,
-      sortOrder: 0,
-    },
-  });
-
-  return created.id;
 }
 
 function normalizeProductCsvRow(row: ProductCsvRow, rowNumber: number): NormalizedProductCsvRow {
@@ -649,6 +655,55 @@ async function resolveCategoryFilterIds(categoryFilter: string): Promise<string[
   return [...categoryIds];
 }
 
+async function resolveProductCsvImportSelection(
+  input: ImportProductsCsvInput,
+): Promise<{
+  selection: ProductCsvImportSelectionSummary;
+  destinationCategoryId: string;
+  scopeCategoryIds: string[];
+}> {
+  const [brand, mainCategory, subcategory] = await Promise.all([
+    prisma.brand.findUnique({ where: { id: input.brandId } }),
+    prisma.category.findUnique({ where: { id: input.mainCategoryId } }),
+    input.subcategoryId ? prisma.category.findUnique({ where: { id: input.subcategoryId } }) : Promise.resolve(null),
+  ]);
+
+  if (!brand) {
+    throw new ApiError(404, "Selected brand/site was not found.");
+  }
+
+  if (!mainCategory) {
+    throw new ApiError(404, "Selected main category was not found.");
+  }
+
+  if (subcategory && subcategory.parentId !== mainCategory.id) {
+    throw new ApiError(400, "Selected subcategory does not belong to the selected main category.");
+  }
+
+  const destinationCategory = subcategory ?? mainCategory;
+  const scopeCategoryIds = await resolveCategoryFilterIds(destinationCategory.id);
+
+  return {
+    selection: {
+      brand: {
+        id: brand.id,
+        name: brand.name,
+      },
+      mainCategory: {
+        id: mainCategory.id,
+        name: mainCategory.name,
+      },
+      destinationCategory: {
+        id: destinationCategory.id,
+        name: destinationCategory.name,
+        parentId: destinationCategory.parentId,
+      },
+    },
+    destinationCategoryId: destinationCategory.id,
+    scopeCategoryIds,
+  };
+}
+
 async function buildUniqueSlug(
   baseValue: string,
   exists: (slug: string) => Promise<boolean>,
@@ -659,6 +714,21 @@ async function buildUniqueSlug(
 
   while (await exists(candidate)) {
     candidate = `${baseSlug}-${suffix}`;
+    suffix += 1;
+  }
+
+  return candidate;
+}
+
+async function buildUniqueSku(
+  baseValue: string,
+  exists: (sku: string) => Promise<boolean>,
+): Promise<string> {
+  let candidate = baseValue;
+  let suffix = 2;
+
+  while (await exists(candidate)) {
+    candidate = `${baseValue}-${suffix}`;
     suffix += 1;
   }
 
@@ -1257,19 +1327,124 @@ export class CatalogService {
   }
 
   public async importProductsCsv(input: ImportProductsCsvInput): Promise<ProductCsvImportResult> {
+    const prepared = await this.prepareProductsCsvImport(input);
+    const readyToImport = prepared.summary.failed === 0;
+    const confirmationMessage = readyToImport
+      ? `This will replace ${prepared.summary.previousMatchingProductCount} existing ${prepared.selection.brand.name} products in ${prepared.selection.destinationCategory.name}. Continue?`
+      : null;
+
+    if (input.mode === "PREVIEW" || !readyToImport) {
+      return {
+        mode: input.mode,
+        readyToImport,
+        confirmationMessage,
+        selection: prepared.selection,
+        summary: prepared.summary,
+        issues: prepared.issues,
+      };
+    }
+
+    const importedRows = prepared.rows;
+    const transactionResult = await prisma.$transaction(async (transaction) => {
+      const scopedProducts = await transaction.product.findMany({
+        where: {
+          deletedAt: null,
+          brandId: prepared.selection.brand.id,
+          categoryId: {
+            in: prepared.scopeCategoryIds,
+          },
+        },
+        select: {
+          id: true,
+        },
+      });
+      const scopedProductIds = scopedProducts.map((product) => product.id);
+
+      if (scopedProductIds.length > 0) {
+        await transaction.product.deleteMany({
+          where: {
+            id: {
+              in: scopedProductIds,
+            },
+          },
+        });
+      }
+
+      const createdProductIds: string[] = [];
+
+      for (let startIndex = 0; startIndex < importedRows.length; startIndex += PRODUCT_CSV_IMPORT_BATCH_SIZE) {
+        const batch = importedRows.slice(startIndex, startIndex + PRODUCT_CSV_IMPORT_BATCH_SIZE);
+
+        for (const row of batch) {
+          createdProductIds.push(
+            await this.createImportedProductFromCsvRow(transaction, row, {
+              brandId: prepared.selection.brand.id,
+              categoryId: prepared.destinationCategoryId,
+            }),
+          );
+        }
+      }
+
+      const finalProductCount = await transaction.product.count({
+        where: {
+          deletedAt: null,
+          brandId: prepared.selection.brand.id,
+          categoryId: {
+            in: prepared.scopeCategoryIds,
+          },
+        },
+      });
+
+      return {
+        createdProductIds,
+        deletedCount: scopedProductIds.length,
+        finalProductCount,
+      };
+    });
+
+    await Promise.all(
+      transactionResult.createdProductIds.map((productId) =>
+        productMonitoringService.ensureWebsiteProfileForProduct(productId),
+      ),
+    );
+
+    return {
+      mode: input.mode,
+      readyToImport: true,
+      confirmationMessage: null,
+      selection: prepared.selection,
+      summary: {
+        total: prepared.summary.total,
+        previousMatchingProductCount: prepared.summary.previousMatchingProductCount,
+        deleted: transactionResult.deletedCount,
+        imported: transactionResult.createdProductIds.length,
+        updated: 0,
+        skipped: prepared.summary.skipped,
+        failed: 0,
+        finalProductCount: transactionResult.finalProductCount,
+      },
+      issues: prepared.issues,
+    };
+  }
+
+  private async prepareProductsCsvImport(input: ImportProductsCsvInput): Promise<PreparedProductCsvImport> {
+    const selection = await resolveProductCsvImportSelection(input);
     const parsedDocument = parseCsvDocument(input.content);
     validateProductCsvHeaders(parsedDocument.headers);
-
-    const result: ProductCsvImportResult = {
-      summary: {
-        total: parsedDocument.rows.length,
-        imported: 0,
-        updated: 0,
-        skipped: 0,
-        failed: 0,
+    const previousMatchingProductCount = await prisma.product.count({
+      where: {
+        deletedAt: null,
+        brandId: selection.selection.brand.id,
+        categoryId: {
+          in: selection.scopeCategoryIds,
+        },
       },
-      issues: [],
-    };
+    });
+
+    const issues: ProductCsvImportRowIssue[] = [];
+    const rows: NormalizedProductCsvRow[] = [];
+    let skipped = 0;
+    let failed = 0;
     const seenSourceUrls = new Set<string>();
 
     for (let startIndex = 0; startIndex < parsedDocument.rows.length; startIndex += PRODUCT_CSV_IMPORT_BATCH_SIZE) {
@@ -1283,8 +1458,8 @@ export class CatalogService {
           const normalizedRow = normalizeProductCsvRow(rawRow, rowNumber);
 
           if (seenSourceUrls.has(normalizedRow.sourceUrl)) {
-            result.summary.skipped += 1;
-            result.issues.push({
+            skipped += 1;
+            issues.push({
               rowNumber,
               status: "SKIPPED",
               reason: "Duplicate SourceURL detected in this CSV upload.",
@@ -1295,29 +1470,10 @@ export class CatalogService {
           }
 
           seenSourceUrls.add(normalizedRow.sourceUrl);
-          const rowResult = await this.upsertProductFromCsvRow(normalizedRow);
-
-          if (rowResult.status === "imported") {
-            result.summary.imported += 1;
-            continue;
-          }
-
-          if (rowResult.status === "updated") {
-            result.summary.updated += 1;
-            continue;
-          }
-
-          result.summary.skipped += 1;
-          result.issues.push({
-            rowNumber,
-            status: "SKIPPED",
-            reason: rowResult.reason,
-            sourceUrl: normalizedRow.sourceUrl,
-            title: normalizedRow.title ?? null,
-          });
+          rows.push(normalizedRow);
         } catch (error) {
-          result.summary.failed += 1;
-          result.issues.push({
+          failed += 1;
+          issues.push({
             rowNumber,
             status: "FAILED",
             reason: error instanceof Error ? error.message : "CSV row import failed.",
@@ -1328,251 +1484,130 @@ export class CatalogService {
       }
     }
 
-    return result;
+    return {
+      selection: selection.selection,
+      destinationCategoryId: selection.destinationCategoryId,
+      scopeCategoryIds: selection.scopeCategoryIds,
+      rows,
+      issues,
+      summary: {
+        total: parsedDocument.rows.length,
+        previousMatchingProductCount,
+        deleted: 0,
+        imported: 0,
+        updated: 0,
+        skipped,
+        failed,
+        finalProductCount: failed === 0 ? rows.length : previousMatchingProductCount,
+      },
+    };
   }
 
-  private async upsertProductFromCsvRow(
+  private async createImportedProductFromCsvRow(
+    transaction: Prisma.TransactionClient,
     row: NormalizedProductCsvRow,
-  ): Promise<{ status: "imported" | "updated" | "skipped"; reason: string }> {
-    const matches = await prisma.product.findMany({
-      where: {
-        sourceUrl: row.sourceUrl,
-      },
-      include: {
-        images: {
-          orderBy: { sortOrder: "asc" },
-        },
-      },
-      take: 2,
-    });
-
-    if (matches.length > 1) {
-      throw new ApiError(409, `Row ${row.rowNumber}: Multiple products already use this SourceURL.`);
-    }
-
-    const existing = matches[0] ?? null;
-    const name = row.title ?? existing?.name;
-
+    scope: { brandId: string; categoryId: string },
+  ): Promise<string> {
+    const name = row.title;
     if (!name) {
       throw new ApiError(400, `Row ${row.rowNumber}: Title is required for new products.`);
-    }
-
-    const brandId = row.brand ? await ensureBrandIdByName(row.brand) : existing?.brandId;
-    if (!brandId) {
-      throw new ApiError(400, `Row ${row.rowNumber}: Brand is required for new products.`);
-    }
-
-    const categoryId = row.category ? await ensureCategoryIdByName(row.category) : existing?.categoryId;
-    if (!categoryId) {
-      throw new ApiError(400, `Row ${row.rowNumber}: Category is required for new products.`);
     }
 
     const supplierBasePrice =
       row.outletPrice ??
       row.originalPrice ??
-      toNumber(existing?.supplierPrice) ??
-      toNumber(existing?.outletPrice) ??
-      toNumber(existing?.price) ??
       null;
 
     if (supplierBasePrice === null) {
-      throw new ApiError(400, `Row ${row.rowNumber}: OriginalPrice or OutletPrice is required for new products.`);
+      throw new ApiError(400, `Row ${row.rowNumber}: OriginalPrice or OutletPrice is required.`);
     }
 
-    const resolvedOldPrice = row.originalPrice ?? toNumber(existing?.oldPrice);
-    const resolvedOutletPrice = row.outletPrice ?? toNumber(existing?.outletPrice) ?? supplierBasePrice;
-    const resolvedDescription = row.description ?? existing?.description ?? null;
-    const resolvedSourceStore = row.sourceStore ?? existing?.sourceStore ?? null;
-    const resolvedGender = row.gender ?? existing?.gender ?? null;
-    const resolvedSizes = row.sizes ?? existing?.sizes ?? [];
-    const resolvedColors = row.colors ?? existing?.colors ?? [];
-    const resolvedStock = row.stockQuantity ?? existing?.stock ?? 0;
-    const resolvedStockStatus = row.stockStatus ?? existing?.stockStatus ?? StockStatus.UNKNOWN;
-    const discountPercent =
-      row.originalPrice !== undefined || row.outletPrice !== undefined || !existing
-        ? normalizeDiscountPercent(resolvedOutletPrice, resolvedOldPrice)
-        : existing.discountPercent ?? 0;
-    const resolvedDealLevel =
-      row.originalPrice !== undefined || row.outletPrice !== undefined || !existing
-        ? resolveDealLevel(discountPercent)
-        : existing.dealLevel;
-    const resolvedSourceType = existing?.sourceType ?? ProductSource.IMPORT;
+    const resolvedOldPrice = row.originalPrice ?? null;
+    const resolvedOutletPrice = row.outletPrice ?? supplierBasePrice;
+    const resolvedDescription = row.description ?? null;
+    const resolvedSourceStore = row.sourceStore ?? null;
+    const resolvedGender = row.gender ?? null;
+    const resolvedSizes = row.sizes ?? [];
+    const resolvedColors = row.colors ?? [];
+    const variants = buildImportedVariants(row);
+    const resolvedStock = variants.length
+      ? variants.reduce((total, variant) => total + variant.stockQuantity, 0)
+      : row.stockQuantity ?? 10;
+    const resolvedStockStatus = row.stockStatus ?? deriveStockStatus(resolvedStock);
+    const discountPercent = normalizeDiscountPercent(resolvedOutletPrice, resolvedOldPrice);
+    const resolvedDealLevel = resolveDealLevel(discountPercent);
     const pricing = await pricingService.calculateProductPricing({
-      id: existing?.id,
-      brandId,
-      categoryId,
+      brandId: scope.brandId,
+      categoryId: scope.categoryId,
       supplierPrice: supplierBasePrice,
-      fallbackPrice: existing?.supplierPrice ?? existing?.price ?? undefined,
-      currency: existing?.currency ?? null,
-      useCustomPricing: existing?.useCustomPricing ?? false,
-      customPrice: existing?.customPrice ?? null,
+      fallbackPrice: supplierBasePrice,
+      currency: null,
+      useCustomPricing: false,
+      customPrice: null,
     });
-    const shouldReplaceImages = row.imageUrls !== undefined;
     const nextImageUrls = row.imageUrls ?? [];
-
-    if (existing) {
-      const currentImageUrls = existing.images.map((image) => image.imageUrl);
-      const nameChanged = name !== existing.name;
-      const descriptionChanged = resolvedDescription !== existing.description;
-      const brandChanged = brandId !== existing.brandId;
-      const categoryChanged = categoryId !== existing.categoryId;
-      const supplierPriceChanged = !decimalEquals(existing.supplierPrice, pricing.supplierPrice);
-      const customerPriceChanged = !decimalEquals(existing.price, pricing.customerPrice);
-      const oldPriceChanged = !decimalEquals(existing.oldPrice, resolvedOldPrice);
-      const outletPriceChanged = !decimalEquals(existing.outletPrice, resolvedOutletPrice);
-      const discountChanged = (existing.discountPercent ?? 0) !== discountPercent;
-      const stockChanged = row.stockQuantity !== undefined && existing.stock !== resolvedStock;
-      const stockStatusChanged = row.stockStatus !== undefined && existing.stockStatus !== resolvedStockStatus;
-      const statusChanged = existing.status !== (row.status ?? existing.status);
-      const sourceStoreChanged = existing.sourceStore !== resolvedSourceStore;
-      const genderChanged = existing.gender !== resolvedGender;
-      const sourceUrlChanged = existing.sourceUrl !== row.sourceUrl;
-      const sizesChanged = row.sizes !== undefined && !arraysEqual(existing.sizes, resolvedSizes);
-      const colorsChanged = row.colors !== undefined && !arraysEqual(existing.colors, resolvedColors);
-      const imagesChanged = shouldReplaceImages && !arraysEqual(currentImageUrls, nextImageUrls);
-
-      if (
-        !nameChanged &&
-        !descriptionChanged &&
-        !brandChanged &&
-        !categoryChanged &&
-        !supplierPriceChanged &&
-        !customerPriceChanged &&
-        !oldPriceChanged &&
-        !outletPriceChanged &&
-        !discountChanged &&
-        !stockChanged &&
-        !stockStatusChanged &&
-        !statusChanged &&
-        !sourceStoreChanged &&
-        !genderChanged &&
-        !sourceUrlChanged &&
-        !sizesChanged &&
-        !colorsChanged &&
-        !imagesChanged
-      ) {
-        return {
-          status: "skipped",
-          reason: "No changes detected for this SourceURL.",
-        };
-      }
-
-      const nextStatus = row.status ?? existing.status;
-      const nextSlug = nameChanged
-        ? await buildUniqueSlug(name, async (candidate) => {
-            const conflict = await prisma.product.findFirst({
-              where: {
-                slug: candidate,
-                id: { not: existing.id },
-              },
-            });
-            return Boolean(conflict);
-          })
-        : existing.slug;
-
-      const productId = await prisma.$transaction(async (transaction) => {
-        const current = await transaction.product.findUniqueOrThrow({
-          where: { id: existing.id },
-        });
-
-        const updated = await transaction.product.update({
-          where: { id: existing.id },
-          data: {
-            name,
-            slug: nextSlug,
-            description: resolvedDescription,
-            brandId,
-            categoryId,
-            supplierPrice: pricing.supplierPrice,
-            price: pricing.customerPrice,
-            oldPrice: toDecimal(resolvedOldPrice),
-            outletPrice: toDecimal(resolvedOutletPrice),
-            profitAmount: pricing.profitAmount,
-            discountPercent,
-            dealLevel: resolvedDealLevel,
-            currency: pricing.currency,
-            sourceUrl: row.sourceUrl,
-            sourceStore: resolvedSourceStore,
-            sourceType: resolvedSourceType,
-            status: nextStatus,
-            stock: resolvedStock,
-            stockStatus: resolvedStockStatus,
-            gender: resolvedGender,
-            sizes: row.sizes !== undefined ? resolvedSizes : undefined,
-            colors: row.colors !== undefined ? resolvedColors : undefined,
-            lastSyncedAt: new Date(),
-          },
-        });
-
-        if (shouldReplaceImages) {
-          await replaceProductImages(transaction, existing.id, nextImageUrls, name);
-        }
-
-        await maybeRecordPriceHistory(transaction, current, updated);
-        return updated.id;
-      });
-
-      await productMonitoringService.ensureWebsiteProfileForProduct(productId);
-
-      return {
-        status: "updated",
-        reason: "",
-      };
-    }
-
     const slug = await buildUniqueSlug(name, async (candidate) => {
-      const conflict = await prisma.product.findUnique({ where: { slug: candidate } });
+      const conflict = await transaction.product.findUnique({ where: { slug: candidate } });
+      return Boolean(conflict);
+    });
+    const baseSku = buildCsvImportSku(row.sourceUrl, scope.brandId, scope.categoryId);
+    const sku = await buildUniqueSku(baseSku, async (candidate) => {
+      const conflict = await transaction.product.findUnique({ where: { sku: candidate } });
       return Boolean(conflict);
     });
 
-    const productId = await prisma.$transaction(async (transaction) => {
-      const created = await transaction.product.create({
-        data: {
-          sku: buildCsvImportSku(row.sourceUrl),
-          slug,
-          name,
-          description: resolvedDescription,
-          brandId,
-          categoryId,
-          supplierPrice: pricing.supplierPrice,
-          price: pricing.customerPrice,
-          oldPrice: toDecimal(resolvedOldPrice),
-          outletPrice: toDecimal(resolvedOutletPrice),
-          profitAmount: pricing.profitAmount,
-          discountPercent,
-          dealLevel: resolvedDealLevel,
-          currency: pricing.currency,
-          sourceUrl: row.sourceUrl,
-          sourceStore: resolvedSourceStore,
-          sourceType: ProductSource.IMPORT,
-          status: row.status ?? ProductStatus.ACTIVE,
-          stock: resolvedStock,
-          stockStatus: resolvedStockStatus,
-          gender: resolvedGender,
-          sizes: resolvedSizes,
-          colors: resolvedColors,
-          importedAt: new Date(),
-          lastSyncedAt: new Date(),
-        },
-      });
-
-      if (shouldReplaceImages) {
-        await replaceProductImages(transaction, created.id, nextImageUrls, name);
-      }
-
-      const current = await transaction.product.findUniqueOrThrow({
-        where: { id: created.id },
-      });
-      await maybeRecordPriceHistory(transaction, null, current);
-      return created.id;
+    const created = await transaction.product.create({
+      data: {
+        sku,
+        slug,
+        name,
+        description: resolvedDescription,
+        brandId: scope.brandId,
+        categoryId: scope.categoryId,
+        supplierPrice: pricing.supplierPrice,
+        price: pricing.customerPrice,
+        oldPrice: toDecimal(resolvedOldPrice),
+        outletPrice: toDecimal(resolvedOutletPrice),
+        profitAmount: pricing.profitAmount,
+        discountPercent,
+        dealLevel: resolvedDealLevel,
+        currency: pricing.currency,
+        sourceUrl: row.sourceUrl,
+        sourceStore: resolvedSourceStore,
+        sourceType: ProductSource.IMPORT,
+        status: row.status ?? ProductStatus.ACTIVE,
+        stock: resolvedStock,
+        stockStatus: resolvedStockStatus,
+        gender: resolvedGender,
+        sizes: resolvedSizes,
+        colors: resolvedColors,
+        importedAt: new Date(),
+        lastSyncedAt: new Date(),
+      },
     });
 
-    await productMonitoringService.ensureWebsiteProfileForProduct(productId);
+    if (nextImageUrls.length > 0) {
+      await replaceProductImages(transaction, created.id, nextImageUrls, name);
+    }
 
-    return {
-      status: "imported",
-      reason: "",
-    };
+    if (variants.length > 0) {
+      await transaction.productVariant.createMany({
+        data: variants.map((variant) => ({
+          productId: created.id,
+          size: variant.size ?? null,
+          color: variant.color ?? null,
+          stockQuantity: variant.stockQuantity,
+        })),
+      });
+
+      await syncVariantDerivedFields(created.id, transaction);
+    }
+
+    const current = await transaction.product.findUniqueOrThrow({
+      where: { id: created.id },
+    });
+    await maybeRecordPriceHistory(transaction, null, current);
+    return created.id;
   }
 
   public async createProduct(input: CreateProductInput) {

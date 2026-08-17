@@ -159,8 +159,12 @@ export const createProductSchema = z.object({
 export const updateProductSchema = createProductSchema.partial();
 
 export const importProductsCsvSchema = z.object({
+  mode: z.enum(["PREVIEW", "IMPORT"]).default("PREVIEW"),
   content: z.string().trim().min(1),
   fileName: z.string().trim().min(1).max(255).optional(),
+  brandId: cuidSchema,
+  mainCategoryId: cuidSchema,
+  subcategoryId: cuidSchema.optional().nullable(),
 });
 
 export const toggleFeaturedSchema = z.object({

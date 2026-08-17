@@ -177,13 +177,36 @@ export interface ProductCsvImportIssue {
   title: string | null;
 }
 
+export interface ProductCsvImportSelection {
+  brand: {
+    id: string;
+    name: string;
+  };
+  mainCategory: {
+    id: string;
+    name: string;
+  };
+  destinationCategory: {
+    id: string;
+    name: string;
+    parentId: string | null;
+  };
+}
+
 export interface ProductCsvImportResult {
+  mode: "PREVIEW" | "IMPORT";
+  readyToImport: boolean;
+  confirmationMessage: string | null;
+  selection: ProductCsvImportSelection;
   summary: {
     total: number;
+    previousMatchingProductCount: number;
+    deleted: number;
     imported: number;
     updated: number;
     skipped: number;
     failed: number;
+    finalProductCount: number;
   };
   issues: ProductCsvImportIssue[];
 }
@@ -957,7 +980,14 @@ export async function listAdminProductsPage(params?: {
   });
 }
 
-export async function importAdminProductsCsv(payload: { content: string; fileName?: string }) {
+export async function importAdminProductsCsv(payload: {
+  mode: "PREVIEW" | "IMPORT";
+  content: string;
+  fileName?: string;
+  brandId: string;
+  mainCategoryId: string;
+  subcategoryId?: string | null;
+}) {
   const token = getRequiredToken();
 
   return http<ProductCsvImportResult>("/admin/products/import-csv", {

@@ -193,6 +193,35 @@ async function fetchAdminProductsForExport(brandIds = []) {
   });
 }
 
+function getCategoryChildren(categories, parentId = null) {
+  return categories
+    .filter((category) => (category?.parent_id ?? null) === parentId)
+    .sort((left, right) => left.name.localeCompare(right.name));
+}
+
+function getCategoryById(categories, categoryId) {
+  return categories.find((category) => category.id === categoryId) ?? null;
+}
+
+function buildCategoryPath(categories, categoryId) {
+  const segments = [];
+  let current = getCategoryById(categories, categoryId);
+
+  while (current) {
+    segments.unshift(current.name);
+    current = current.parent_id ? getCategoryById(categories, current.parent_id) : null;
+  }
+
+  return segments.join(" / ");
+}
+
+function buildImportCategoryHierarchy(categories) {
+  return getCategoryChildren(categories).map((mainCategory) => ({
+    ...mainCategory,
+    children: getCategoryChildren(categories, mainCategory.id),
+  }));
+}
+
 function getMonitoringMeta(product) {
   const hasSourceUrl = typeof product?.source_url === "string" && product.source_url.trim().length > 0;
   const latestStatus =
@@ -434,7 +463,16 @@ export default function AdminProducts() {
   const [exportAllBrands, setExportAllBrands] = useState(true);
   const [selectedExportBrandIds, setSelectedExportBrandIds] = useState([]);
   const [exportingCsv, setExportingCsv] = useState(false);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [importingCsv, setImportingCsv] = useState(false);
+  const [previewingCsv, setPreviewingCsv] = useState(false);
+  const [importFile, setImportFile] = useState(null);
+  const [importSelection, setImportSelection] = useState({
+    brandId: "",
+    mainCategoryId: "",
+    subcategoryId: "",
+  });
+  const [importPreview, setImportPreview] = useState(null);
   const [importResultDialogOpen, setImportResultDialogOpen] = useState(false);
   const [importResult, setImportResult] = useState(null);
 
@@ -525,6 +563,22 @@ export default function AdminProducts() {
     if (statusFilter !== "all" && p.status !== statusFilter) return false;
     return true;
   });
+  const mainImportCategories = getCategoryChildren(categories);
+  const importSubcategories = importSelection.mainCategoryId
+    ? getCategoryChildren(categories, importSelection.mainCategoryId)
+    : [];
+  const importCategoryHierarchy = buildImportCategoryHierarchy(categories);
+  const selectedImportBrand = brands.find((brand) => brand.id === importSelection.brandId) ?? null;
+  const selectedMainImportCategory = getCategoryById(categories, importSelection.mainCategoryId);
+  const selectedDestinationCategory = getCategoryById(
+    categories,
+    importSelection.subcategoryId || importSelection.mainCategoryId,
+  );
+  const importDestinationLabel = selectedDestinationCategory
+    ? buildCategoryPath(categories, selectedDestinationCategory.id)
+    : "";
+  const canPreviewImport =
+    Boolean(importFile) && Boolean(importSelection.brandId) && Boolean(importSelection.mainCategoryId);
 
   const exportProductsMapping = async () => {
     if (!exportAllBrands && selectedExportBrandIds.length === 0) {
@@ -588,28 +642,128 @@ export default function AdminProducts() {
     importFileInputRef.current?.click();
   };
 
-  const handleImportCsv = async (event) => {
+  const resetImportDialog = () => {
+    setImportFile(null);
+    setImportSelection({
+      brandId: "",
+      mainCategoryId: "",
+      subcategoryId: "",
+    });
+    setImportPreview(null);
+    if (importFileInputRef.current) {
+      importFileInputRef.current.value = "";
+    }
+  };
+
+  const handleImportFileChange = (event) => {
     const file = event.target.files?.[0];
     if (!file) {
+      return;
+    }
+
+    setImportFile(file);
+    setImportPreview(null);
+  };
+
+  const handleOpenImportDialog = () => {
+    resetImportDialog();
+    setImportDialogOpen(true);
+  };
+
+  const handlePreviewImport = async () => {
+    if (!importFile) {
+      toast({
+        title: "Choose a CSV file",
+        description: "Upload the CSV file before validating the import.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!importSelection.brandId) {
+      toast({
+        title: "Select a brand/site",
+        description: "Choose which brand/site should be replaced by this import.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!importSelection.mainCategoryId) {
+      toast({
+        title: "Select a destination category",
+        description: "Choose the main category before validating the import.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setPreviewingCsv(true);
+
+    try {
+      const content = await importFile.text();
+      const preview = await importAdminProductsCsv({
+        mode: "PREVIEW",
+        content,
+        fileName: importFile.name,
+        brandId: importSelection.brandId,
+        mainCategoryId: importSelection.mainCategoryId,
+        subcategoryId: importSelection.subcategoryId || null,
+      });
+
+      setImportPreview(preview);
+
+      if (!preview.readyToImport) {
+        toast({
+          title: "CSV validation failed",
+          description: "Nothing was deleted. Review the row-level issues before continuing.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      toast({
+        title: "CSV validated",
+        description: preview.confirmationMessage ?? "The CSV is ready to import.",
+      });
+    } catch (error) {
+      toast({
+        title: "Failed to validate CSV",
+        description: getErrorMessage(error),
+        variant: "destructive",
+      });
+    } finally {
+      setPreviewingCsv(false);
+    }
+  };
+
+  const handleConfirmImport = async () => {
+    if (!importFile || !importPreview?.readyToImport) {
       return;
     }
 
     setImportingCsv(true);
 
     try {
-      const content = await file.text();
+      const content = await importFile.text();
       const result = await importAdminProductsCsv({
+        mode: "IMPORT",
         content,
-        fileName: file.name,
+        fileName: importFile.name,
+        brandId: importSelection.brandId,
+        mainCategoryId: importSelection.mainCategoryId,
+        subcategoryId: importSelection.subcategoryId || null,
       });
 
       setImportResult(result);
       setImportResultDialogOpen(true);
+      setImportDialogOpen(false);
+      resetImportDialog();
       await Promise.all([loadProducts(), loadReferenceData()]);
 
       toast({
         title: "CSV import finished",
-        description: `${result.summary.imported} imported, ${result.summary.updated} updated, ${result.summary.skipped} skipped, ${result.summary.failed} failed.`,
+        description: `${result.summary.deleted} deleted, ${result.summary.imported} imported, ${result.summary.skipped} skipped, ${result.summary.failed} failed.`,
       });
     } catch (error) {
       toast({
@@ -618,7 +772,6 @@ export default function AdminProducts() {
         variant: "destructive",
       });
     } finally {
-      event.target.value = "";
       setImportingCsv(false);
     }
   };
@@ -1069,11 +1222,11 @@ export default function AdminProducts() {
             type="file"
             accept=".csv,text/csv"
             className="hidden"
-            onChange={(event) => void handleImportCsv(event)}
+            onChange={handleImportFileChange}
           />
-          <Button variant="outline" onClick={handleChooseImportFile} className="rounded-full" disabled={importingCsv}>
-            <Upload className={`w-4 h-4 mr-2 ${importingCsv ? "animate-pulse" : ""}`} />
-            {importingCsv ? "Importing..." : "Import CSV"}
+          <Button variant="outline" onClick={handleOpenImportDialog} className="rounded-full" disabled={importingCsv || previewingCsv}>
+            <Upload className={`w-4 h-4 mr-2 ${importingCsv || previewingCsv ? "animate-pulse" : ""}`} />
+            Import CSV
           </Button>
           <Button
             variant="outline"
@@ -1330,18 +1483,262 @@ export default function AdminProducts() {
         </DialogContent>
       </Dialog>
 
+      <Dialog
+        open={importDialogOpen}
+        onOpenChange={(open) => {
+          setImportDialogOpen(open);
+          if (!open) {
+            resetImportDialog();
+          }
+        }}
+      >
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="font-display">Import CSV</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-5">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Brand / Site</Label>
+                <Select
+                  value={importSelection.brandId || undefined}
+                  onValueChange={(value) => {
+                    setImportSelection((current) => ({ ...current, brandId: value }));
+                    setImportPreview(null);
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select brand / site" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {brands.map((brand) => (
+                      <SelectItem key={brand.id} value={brand.id}>
+                        {brand.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Main Category</Label>
+                <Select
+                  value={importSelection.mainCategoryId || undefined}
+                  onValueChange={(value) => {
+                    setImportSelection((current) => ({
+                      ...current,
+                      mainCategoryId: value,
+                      subcategoryId: "",
+                    }));
+                    setImportPreview(null);
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select main category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {mainImportCategories.map((category) => (
+                      <SelectItem key={category.id} value={category.id}>
+                        {category.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-[1fr_auto]">
+              <div className="space-y-2">
+                <Label>Subcategory</Label>
+                <Select
+                  value={importSelection.subcategoryId || "__none__"}
+                  onValueChange={(value) => {
+                    setImportSelection((current) => ({
+                      ...current,
+                      subcategoryId: value === "__none__" ? "" : value,
+                    }));
+                    setImportPreview(null);
+                  }}
+                  disabled={!importSelection.mainCategoryId || importSubcategories.length === 0}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="No subcategory" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">No subcategory</SelectItem>
+                    {importSubcategories.map((category) => (
+                      <SelectItem key={category.id} value={category.id}>
+                        {category.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Products will be assigned to the selected subcategory when one is chosen.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label>CSV File</Label>
+                <Button type="button" variant="outline" onClick={handleChooseImportFile} className="w-full md:min-w-44">
+                  <Upload className="mr-2 h-4 w-4" />
+                  {importFile ? "Change File" : "Choose CSV"}
+                </Button>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-border bg-secondary/20 p-4 text-sm">
+              <div className="grid gap-3 md:grid-cols-3">
+                <div>
+                  <p className="text-xs uppercase tracking-widest text-muted-foreground">Selected Brand / Site</p>
+                  <p className="mt-1 font-medium">{selectedImportBrand?.name || "Not selected"}</p>
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-widest text-muted-foreground">Destination Category</p>
+                  <p className="mt-1 font-medium">{importDestinationLabel || "Not selected"}</p>
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-widest text-muted-foreground">Selected File</p>
+                  <p className="mt-1 font-medium break-all">{importFile?.name || "No file selected"}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-border p-4 space-y-3">
+              <div>
+                <p className="font-medium">Existing Category Hierarchy</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Category controls only where the imported products will be assigned and replaced within this brand/site scope.
+                </p>
+              </div>
+              <div className="max-h-40 space-y-3 overflow-y-auto pr-1 text-sm">
+                {importCategoryHierarchy.map((category) => (
+                  <div key={category.id}>
+                    <p className={`font-medium ${selectedMainImportCategory?.id === category.id ? "text-foreground" : ""}`}>
+                      {category.name}
+                    </p>
+                    {category.children.length > 0 ? (
+                      <div className="mt-1 space-y-1 pl-4 text-muted-foreground">
+                        {category.children.map((child) => (
+                          <p
+                            key={child.id}
+                            className={selectedDestinationCategory?.id === child.id ? "text-foreground font-medium" : ""}
+                          >
+                            - {child.name}
+                          </p>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="mt-1 pl-4 text-muted-foreground">- No subcategories</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {importPreview ? (
+              <div className="space-y-4 rounded-xl border border-border p-4">
+                <div className="space-y-1">
+                  <p className="font-medium">Preview</p>
+                  <p className="text-sm text-muted-foreground">
+                    {importPreview.confirmationMessage || "Review the validation results below before continuing."}
+                  </p>
+                </div>
+
+                <div className="grid gap-3 md:grid-cols-3">
+                  <div className="rounded-xl border border-border bg-secondary/20 p-4">
+                    <p className="text-xs uppercase tracking-widest text-muted-foreground">Previous Matching</p>
+                    <p className="mt-2 font-display text-2xl">{importPreview.summary.previousMatchingProductCount}</p>
+                  </div>
+                  <div className="rounded-xl border border-border bg-secondary/20 p-4">
+                    <p className="text-xs uppercase tracking-widest text-muted-foreground">Skipped</p>
+                    <p className="mt-2 font-display text-2xl">{importPreview.summary.skipped}</p>
+                  </div>
+                  <div className="rounded-xl border border-border bg-secondary/20 p-4">
+                    <p className="text-xs uppercase tracking-widest text-muted-foreground">Failed</p>
+                    <p className="mt-2 font-display text-2xl">{importPreview.summary.failed}</p>
+                  </div>
+                </div>
+
+                {importPreview.issues.length > 0 ? (
+                  <div className="space-y-3">
+                    <p className="text-sm font-medium">Row-level issues</p>
+                    <div className="max-h-60 space-y-3 overflow-y-auto pr-1">
+                      {importPreview.issues.map((issue) => (
+                        <div key={`${issue.status}-${issue.rowNumber}-${issue.reason}`} className="rounded-xl border border-border p-4">
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className="font-medium">Row {issue.rowNumber}</p>
+                              <p className="mt-1 text-sm text-muted-foreground">{issue.reason}</p>
+                            </div>
+                            <Badge
+                              variant="secondary"
+                              className={
+                                issue.status === "FAILED"
+                                  ? "bg-destructive/10 text-destructive"
+                                  : "bg-amber-500/10 text-amber-700"
+                              }
+                            >
+                              {issue.status}
+                            </Badge>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+
+            <div className="flex items-center justify-end gap-3">
+              <Button variant="outline" onClick={() => setImportDialogOpen(false)} disabled={previewingCsv || importingCsv}>
+                Cancel
+              </Button>
+              <Button onClick={() => void handlePreviewImport()} disabled={!canPreviewImport || previewingCsv || importingCsv || referenceLoading}>
+                {previewingCsv ? "Validating..." : "Validate CSV"}
+              </Button>
+              <Button onClick={() => void handleConfirmImport()} disabled={!importPreview?.readyToImport || importingCsv}>
+                {importingCsv ? "Importing..." : "Continue Import"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={importResultDialogOpen} onOpenChange={setImportResultDialogOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle className="font-display">CSV Import Result</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="grid gap-3 sm:grid-cols-4">
+            <div className="rounded-xl border border-border bg-secondary/20 p-4 text-sm">
+              <div className="grid gap-3 md:grid-cols-2">
+                <div>
+                  <p className="text-xs uppercase tracking-widest text-muted-foreground">Brand / Site</p>
+                  <p className="mt-1 font-medium">{importResult?.selection?.brand?.name ?? "—"}</p>
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-widest text-muted-foreground">Category / Subcategory</p>
+                  <p className="mt-1 font-medium">
+                    {importResult?.selection?.mainCategory?.name ?? "—"}
+                    {importResult?.selection?.destinationCategory?.id &&
+                    importResult?.selection?.destinationCategory?.id !== importResult?.selection?.mainCategory?.id
+                      ? ` / ${importResult.selection.destinationCategory.name}`
+                      : ""}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-3">
               {[
+                { label: "Previous Matching", value: importResult?.summary?.previousMatchingProductCount ?? 0 },
+                { label: "Deleted", value: importResult?.summary?.deleted ?? 0 },
                 { label: "Imported", value: importResult?.summary?.imported ?? 0 },
                 { label: "Updated", value: importResult?.summary?.updated ?? 0 },
                 { label: "Skipped", value: importResult?.summary?.skipped ?? 0 },
                 { label: "Failed", value: importResult?.summary?.failed ?? 0 },
+                { label: "Final Product Count", value: importResult?.summary?.finalProductCount ?? 0 },
               ].map((item) => (
                 <div key={item.label} className="rounded-xl border border-border bg-secondary/20 p-4">
                   <p className="text-xs uppercase tracking-widest text-muted-foreground">{item.label}</p>
@@ -1393,7 +1790,7 @@ export default function AdminProducts() {
               </div>
             ) : (
               <div className="rounded-xl border border-border bg-secondary/20 p-6 text-center text-sm text-muted-foreground">
-                No row-level issues. All processed rows imported or updated cleanly.
+                No row-level issues. The selected brand/category scope imported cleanly.
               </div>
             )}
 

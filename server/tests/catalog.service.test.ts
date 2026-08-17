@@ -14,10 +14,9 @@ const parentCategoryName = `Test Parent ${suffix}`;
 const childCategoryName = `Test Child ${suffix}`;
 const productName = `Test Product ${suffix}`;
 const productSku = `TEST-${suffix}`;
-const csvSourceUrl = "https://example.com/test-csv-import-jacket";
+const adidasCsvTeeSourceUrl = "https://example.com/test-adidas-woman-tee";
+const adidasCsvDressSourceUrl = "https://example.com/test-adidas-woman-dress";
 const csvFixturePath = resolve(currentDir, "fixtures", "mango-outlet-sample.csv");
-const csvUpdateContent = `Title,OriginalPrice,OutletPrice,SourceStore,SourceURL,Brand,Category,ProductImages,Description,Color,Size,Stock,Status,Gender
-"CSV Import Jacket Updated",219,119,,"${csvSourceUrl}",Test CSV Import Brand,Test CSV Import Category,,,,"TAMANHO ÚNICO",Limited,active,`;
 
 async function cleanup(): Promise<void> {
   await prisma.priceHistory.deleteMany({
@@ -33,14 +32,14 @@ async function cleanup(): Promise<void> {
         {
           product: {
             sourceStore: {
-              startsWith: "Test CSV Import",
+              startsWith: "Adidas Outlet Feed",
             },
           },
         },
         {
           product: {
             sourceUrl: {
-              startsWith: "https://example.com/test-csv-import",
+              startsWith: "https://example.com/test-adidas-",
             },
           },
         },
@@ -61,14 +60,14 @@ async function cleanup(): Promise<void> {
         {
           product: {
             sourceStore: {
-              startsWith: "Test CSV Import",
+              startsWith: "Adidas Outlet Feed",
             },
           },
         },
         {
           product: {
             sourceUrl: {
-              startsWith: "https://example.com/test-csv-import",
+              startsWith: "https://example.com/test-adidas-",
             },
           },
         },
@@ -89,14 +88,14 @@ async function cleanup(): Promise<void> {
         {
           product: {
             sourceStore: {
-              startsWith: "Test CSV Import",
+              startsWith: "Adidas Outlet Feed",
             },
           },
         },
         {
           product: {
             sourceUrl: {
-              startsWith: "https://example.com/test-csv-import",
+              startsWith: "https://example.com/test-adidas-",
             },
           },
         },
@@ -114,12 +113,12 @@ async function cleanup(): Promise<void> {
         },
         {
           sourceStore: {
-            startsWith: "Test CSV Import",
+            startsWith: "Adidas Outlet Feed",
           },
         },
         {
           sourceUrl: {
-            startsWith: "https://example.com/test-csv-import",
+            startsWith: "https://example.com/test-adidas-",
           },
         },
       ],
@@ -136,7 +135,7 @@ async function cleanup(): Promise<void> {
         },
         {
           name: {
-            startsWith: "Test CSV Import",
+            startsWith: "Adidas Test ",
           },
         },
       ],
@@ -153,7 +152,7 @@ async function cleanup(): Promise<void> {
         },
         {
           name: {
-            startsWith: "Test CSV Import",
+            startsWith: "Adidas Test ",
           },
         },
       ],
@@ -288,101 +287,246 @@ test("catalog service covers Sprint 2 CRUD, image upload, search, and filters", 
   }
 });
 
-test("catalog service imports Mango-shaped CSV rows with SourceURL upserts and preserves manual values", async () => {
+test("catalog service replaces only the selected Adidas Woman scope and keeps other scopes untouched", async () => {
   await cleanup();
 
   try {
-    const initialCsv = readFileSync(csvFixturePath, "utf8");
-    const initialResult = await catalogService.importProductsCsv({
-      content: initialCsv,
-      fileName: "mango-outlet-sample.csv",
+    const adidasBrand = await catalogService.createBrand({
+      name: `Adidas Test ${suffix}`,
+      isActive: true,
+    });
+    const mangoBrand = await catalogService.createBrand({
+      name: `Adidas Test Mango ${suffix}`,
+      isActive: true,
+    });
+    const nikeBrand = await catalogService.createBrand({
+      name: `Adidas Test Nike ${suffix}`,
+      isActive: true,
     });
 
-    assert.deepEqual(initialResult.summary, {
-      total: 3,
-      imported: 1,
-      updated: 0,
-      skipped: 1,
-      failed: 1,
+    const womanCategory = await catalogService.createCategory({
+      name: `Adidas Test Woman ${suffix}`,
+      sortOrder: 0,
     });
-    assert.equal(initialResult.issues.length, 2);
-    assert.equal(initialResult.issues[0]?.status, "SKIPPED");
-    assert.equal(initialResult.issues[1]?.status, "FAILED");
+    const manCategory = await catalogService.createCategory({
+      name: `Adidas Test Man ${suffix}`,
+      sortOrder: 1,
+    });
+    const shoesCategory = await catalogService.createCategory({
+      name: `Adidas Test Shoes ${suffix}`,
+      sortOrder: 2,
+    });
 
-    const createdProduct = await prisma.product.findFirstOrThrow({
+    const createScopedProduct = async (
+      sku: string,
+      name: string,
+      brandId: string,
+      categoryId: string,
+      sourceUrl: string,
+    ) =>
+      catalogService.createProduct({
+        sku,
+        name,
+        brandId,
+        categoryId,
+        price: 120,
+        oldPrice: 160,
+        status: "ACTIVE",
+        stock: 5,
+        stockStatus: "IN_STOCK",
+        sourceType: "IMPORT",
+        sourceUrl,
+        sourceStore: "Seed Import Scope",
+      });
+
+    await createScopedProduct(
+      `TEST-ADIDAS-WOMAN-A-${suffix}`,
+      `Adidas Woman Existing A ${suffix}`,
+      adidasBrand.id,
+      womanCategory.id,
+      `https://example.com/seed-adidas-woman-a-${suffix}`,
+    );
+    await createScopedProduct(
+      `TEST-ADIDAS-WOMAN-B-${suffix}`,
+      `Adidas Woman Existing B ${suffix}`,
+      adidasBrand.id,
+      womanCategory.id,
+      `https://example.com/seed-adidas-woman-b-${suffix}`,
+    );
+    await createScopedProduct(
+      `TEST-MANGO-WOMAN-${suffix}`,
+      `Mango Woman Existing ${suffix}`,
+      mangoBrand.id,
+      womanCategory.id,
+      `https://example.com/seed-mango-woman-${suffix}`,
+    );
+    await createScopedProduct(
+      `TEST-NIKE-WOMAN-${suffix}`,
+      `Nike Woman Existing ${suffix}`,
+      nikeBrand.id,
+      womanCategory.id,
+      `https://example.com/seed-nike-woman-${suffix}`,
+    );
+    await createScopedProduct(
+      `TEST-ADIDAS-MAN-${suffix}`,
+      `Adidas Man Existing ${suffix}`,
+      adidasBrand.id,
+      manCategory.id,
+      `https://example.com/seed-adidas-man-${suffix}`,
+    );
+    await createScopedProduct(
+      `TEST-ADIDAS-SHOES-${suffix}`,
+      `Adidas Shoes Existing ${suffix}`,
+      adidasBrand.id,
+      shoesCategory.id,
+      `https://example.com/seed-adidas-shoes-${suffix}`,
+    );
+
+    const invalidPreview = await catalogService.importProductsCsv({
+      mode: "PREVIEW",
+      content: `Title,OriginalPrice,OutletPrice,SourceStore,SourceURL,Brand,Category,ProductImages,Description,Color,Size,Stock,Status,Gender
+"Invalid Adidas Row",199,129,"Adidas Outlet Feed","not-a-url","Adidas","Woman","","Broken row","Blue","M","In stock",active,women`,
+      fileName: "invalid-adidas-preview.csv",
+      brandId: adidasBrand.id,
+      mainCategoryId: womanCategory.id,
+      subcategoryId: null,
+    });
+
+    assert.equal(invalidPreview.readyToImport, false);
+    assert.equal(invalidPreview.summary.failed, 1);
+    assert.equal(invalidPreview.summary.previousMatchingProductCount, 2);
+
+    const adidasWomanBeforeImport = await prisma.product.count({
       where: {
-        sourceUrl: csvSourceUrl,
-      },
-      include: {
-        images: {
-          orderBy: { sortOrder: "asc" },
-        },
+        deletedAt: null,
+        brandId: adidasBrand.id,
+        categoryId: womanCategory.id,
       },
     });
+    assert.equal(adidasWomanBeforeImport, 2);
 
-    assert.equal(createdProduct.name, "CSV Import Jacket");
-    assert.equal(Number(createdProduct.oldPrice), 199);
-    assert.equal(Number(createdProduct.outletPrice), 129);
-    assert.equal(createdProduct.sourceStore, "Test CSV Import Store");
-    assert.equal(createdProduct.stock, 0);
-    assert.equal(createdProduct.stockStatus, "IN_STOCK");
-    assert.deepEqual(createdProduct.sizes, ["XS", "S", "M"]);
-    assert.deepEqual(createdProduct.colors, ["Black"]);
-    assert.equal(createdProduct.images.length, 2);
-    assert.equal(createdProduct.images[0]?.imageUrl, "https://example.com/test-csv-import-jacket-1.jpg");
-
-    await prisma.product.update({
-      where: { id: createdProduct.id },
-      data: {
-        description: "Manual description should stay",
-        sourceStore: "Manual Store Override",
-        gender: "manual-gender",
-        stock: 4,
-      },
+    const csvContent = readFileSync(csvFixturePath, "utf8");
+    const previewResult = await catalogService.importProductsCsv({
+      mode: "PREVIEW",
+      content: csvContent,
+      fileName: "mango-outlet-sample.csv",
+      brandId: adidasBrand.id,
+      mainCategoryId: womanCategory.id,
+      subcategoryId: null,
     });
 
-    const updateResult = await catalogService.importProductsCsv({
-      content: csvUpdateContent,
-      fileName: "mango-outlet-update.csv",
+    assert.equal(previewResult.readyToImport, true);
+    assert.equal(previewResult.summary.previousMatchingProductCount, 2);
+    assert.equal(previewResult.summary.failed, 0);
+    assert.equal(previewResult.summary.skipped, 0);
+
+    const importResult = await catalogService.importProductsCsv({
+      mode: "IMPORT",
+      content: csvContent,
+      fileName: "mango-outlet-sample.csv",
+      brandId: adidasBrand.id,
+      mainCategoryId: womanCategory.id,
+      subcategoryId: null,
     });
 
-    assert.deepEqual(updateResult.summary, {
-      total: 1,
-      imported: 0,
-      updated: 1,
+    assert.equal(importResult.readyToImport, true);
+    assert.deepEqual(importResult.summary, {
+      total: 2,
+      previousMatchingProductCount: 2,
+      deleted: 2,
+      imported: 2,
+      updated: 0,
       skipped: 0,
       failed: 0,
+      finalProductCount: 2,
     });
 
-    const updatedProduct = await prisma.product.findFirstOrThrow({
+    const importedWomanProducts = await prisma.product.findMany({
       where: {
-        sourceUrl: csvSourceUrl,
+        deletedAt: null,
+        brandId: adidasBrand.id,
+        categoryId: womanCategory.id,
       },
       include: {
-        images: {
-          orderBy: { sortOrder: "asc" },
+        variants: {
+          orderBy: [{ size: "asc" }, { color: "asc" }],
+        },
+      },
+      orderBy: {
+        name: "asc",
+      },
+    });
+
+    assert.equal(importedWomanProducts.length, 2);
+    assert.ok(importedWomanProducts.every((product) => product.brandId === adidasBrand.id));
+    assert.ok(importedWomanProducts.every((product) => product.categoryId === womanCategory.id));
+
+    const importedTee = await prisma.product.findFirstOrThrow({
+      where: {
+        sourceUrl: adidasCsvTeeSourceUrl,
+      },
+      include: {
+        variants: {
+          orderBy: [{ size: "asc" }, { color: "asc" }],
         },
       },
     });
 
-    assert.equal(updatedProduct.name, "CSV Import Jacket Updated");
-    assert.equal(Number(updatedProduct.oldPrice), 219);
-    assert.equal(Number(updatedProduct.outletPrice), 119);
-    assert.equal(updatedProduct.stock, 4);
-    assert.equal(updatedProduct.stockStatus, "LOW_STOCK");
-    assert.equal(updatedProduct.description, "Manual description should stay");
-    assert.equal(updatedProduct.sourceStore, "Manual Store Override");
-    assert.equal(updatedProduct.gender, "manual-gender");
-    assert.deepEqual(updatedProduct.sizes, ["TAMANHO ÚNICO"]);
-    assert.deepEqual(updatedProduct.colors, ["Black"]);
-    assert.equal(updatedProduct.images.length, 2);
+    assert.equal(importedTee.stock, 30);
+    assert.equal(importedTee.stockStatus, "IN_STOCK");
+    assert.deepEqual(importedTee.sizes, ["M", "S", "XS"]);
+    assert.equal(importedTee.variants.length, 3);
+    assert.ok(importedTee.variants.every((variant) => variant.stockQuantity === 10));
 
-    const duplicateCount = await prisma.product.count({
+    const importedDress = await prisma.product.findFirstOrThrow({
       where: {
-        sourceUrl: csvSourceUrl,
+        sourceUrl: adidasCsvDressSourceUrl,
+      },
+      include: {
+        variants: {
+          orderBy: [{ size: "asc" }, { color: "asc" }],
+        },
       },
     });
-    assert.equal(duplicateCount, 1);
+
+    assert.equal(importedDress.stock, 5);
+    assert.equal(importedDress.stockStatus, "IN_STOCK");
+    assert.deepEqual(importedDress.sizes, ["TAMANHO ÚNICO"]);
+    assert.equal(importedDress.variants[0]?.stockQuantity, 5);
+
+    const mangoWomanCount = await prisma.product.count({
+      where: {
+        deletedAt: null,
+        brandId: mangoBrand.id,
+        categoryId: womanCategory.id,
+      },
+    });
+    const nikeWomanCount = await prisma.product.count({
+      where: {
+        deletedAt: null,
+        brandId: nikeBrand.id,
+        categoryId: womanCategory.id,
+      },
+    });
+    const adidasManCount = await prisma.product.count({
+      where: {
+        deletedAt: null,
+        brandId: adidasBrand.id,
+        categoryId: manCategory.id,
+      },
+    });
+    const adidasShoesCount = await prisma.product.count({
+      where: {
+        deletedAt: null,
+        brandId: adidasBrand.id,
+        categoryId: shoesCategory.id,
+      },
+    });
+
+    assert.equal(mangoWomanCount, 1);
+    assert.equal(nikeWomanCount, 1);
+    assert.equal(adidasManCount, 1);
+    assert.equal(adidasShoesCount, 1);
   } finally {
     await cleanup();
   }
