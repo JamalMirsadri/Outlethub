@@ -1012,13 +1012,13 @@ function buildPublicProductFilterSql(input: {
 }) {
   const { query, categoryIds, brandIds, requireAvailable } = input;
   const filters: Prisma.Sql[] = [
-    Prisma.sql`p."status" = ${ProductStatus.ACTIVE}`,
+    Prisma.sql`p."status" = CAST(${ProductStatus.ACTIVE} AS "ProductStatus")`,
     Prisma.sql`p."deletedAt" IS NULL`,
   ];
 
   if (requireAvailable) {
     filters.push(Prisma.sql`p."stock" > 0`);
-    filters.push(Prisma.sql`p."stockStatus" <> ${StockStatus.OUT_OF_STOCK}`);
+    filters.push(Prisma.sql`p."stockStatus" <> CAST(${StockStatus.OUT_OF_STOCK} AS "StockStatus")`);
   }
 
   if (query.featured !== undefined) {
