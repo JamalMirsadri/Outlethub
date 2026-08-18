@@ -1004,7 +1004,7 @@ function buildPublicProductWhere(input: {
   };
 }
 
-function buildPublicProductRandomOrderFilterSql(input: {
+function buildPublicProductFilterSql(input: {
   query: PublicProductListQuery;
   categoryIds: string[];
   brandIds: string[];
@@ -1051,13 +1051,29 @@ function buildPublicProductRandomOrderFilterSql(input: {
       Prisma.sql`(
         p."title" ILIKE ${term}
         OR p."sku" ILIKE ${term}
-        OR b."name" ILIKE ${term}
-        OR c."name" ILIKE ${term}
+        OR EXISTS (
+          SELECT 1
+          FROM "Brand" b
+          WHERE b."id" = p."brandId"
+            AND b."name" ILIKE ${term}
+        )
+        OR EXISTS (
+          SELECT 1
+          FROM "Category" c
+          WHERE c."id" = p."categoryId"
+            AND c."name" ILIKE ${term}
+        )
       )`,
     );
   }
 
-  return Prisma.sql`WHERE ${Prisma.join(filters, " AND ")}`;
+  return filters.reduce<Prisma.Sql>(
+    (sql, filter, index) =>
+      index === 0
+        ? Prisma.sql`WHERE ${filter}`
+        : Prisma.sql`${sql} AND ${filter}`,
+    Prisma.empty,
+  );
 }
 
 async function listPublicProductIdsByRandomOrder(input: {
@@ -1068,7 +1084,7 @@ async function listPublicProductIdsByRandomOrder(input: {
 }): Promise<string[]> {
   const effectiveSeed = input.query.seed ?? randomUUID();
   const skip = (input.query.page - 1) * input.query.pageSize;
-  const whereSql = buildPublicProductRandomOrderFilterSql(input);
+  const whereSql = buildPublicProductFilterSql(input);
   const rows = await prisma.$queryRaw<Array<{ id: string }>>(Prisma.sql`
     WITH filtered_products AS (
       SELECT
@@ -1077,8 +1093,6 @@ async function listPublicProductIdsByRandomOrder(input: {
         md5(${effectiveSeed} || ':' || p."id") AS product_hash,
         md5(${effectiveSeed} || ':' || p."brandId") AS brand_hash
       FROM "Product" p
-      INNER JOIN "Brand" b ON b."id" = p."brandId"
-      INNER JOIN "Category" c ON c."id" = p."categoryId"
       ${whereSql}
     ),
     ranked_products AS (
@@ -1108,7 +1122,7 @@ async function listPublicProductIdsByBestSellerOrder(input: {
   brandIds: string[];
 }): Promise<string[]> {
   const skip = (input.query.page - 1) * input.query.pageSize;
-  const whereSql = buildPublicProductRandomOrderFilterSql({
+  const whereSql = buildPublicProductFilterSql({
     ...input,
     requireAvailable: true,
   });
@@ -1129,8 +1143,6 @@ async function listPublicProductIdsByBestSellerOrder(input: {
             p."id" ASC
         ) AS brand_rank
       FROM "Product" p
-      INNER JOIN "Brand" b ON b."id" = p."brandId"
-      INNER JOIN "Category" c ON c."id" = p."categoryId"
       ${whereSql}
     )
     SELECT rp."id"
