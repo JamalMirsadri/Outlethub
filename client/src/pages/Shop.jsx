@@ -1,9 +1,8 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { http } from "@/services/http";
-import { Search, SlidersHorizontal, X, ChevronDown } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { Search, SlidersHorizontal, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -24,7 +23,12 @@ const COLORS = [
   { name: "Green", value: "#388e3c" },
   { name: "Blue", value: "#1976d2" },
 ];
-const PAGE_SIZE = 12;
+const PAGE_SIZE = 15;
+const SORT_OPTIONS = new Set(["random", "price_low", "price_high"]);
+
+function createRandomSeed() {
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
 
 export default function Shop() {
   const { t } = useTranslation();
@@ -38,13 +42,16 @@ export default function Shop() {
   const [selectedCategory, setSelectedCategory] = useState(searchParams.get("category") ?? "");
   const [selectedSizes, setSelectedSizes] = useState([]);
   const [selectedColors, setSelectedColors] = useState([]);
-  const [sortBy, setSortBy] = useState("newest");
+  const initialSort = searchParams.get("sort");
+  const [sortBy, setSortBy] = useState(SORT_OPTIONS.has(initialSort ?? "") ? initialSort : "random");
   const [showFilters, setShowFilters] = useState(false);
   const [discountRange, setDiscountRange] = useState(0);
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState({ page: 1, totalPages: 1, total: 0 });
+  const [randomSeed, setRandomSeed] = useState(() => createRandomSeed());
   const brandParam = searchParams.get("brand") ?? "";
   const categoryParam = searchParams.get("category") ?? "";
+  const sortParam = searchParams.get("sort") ?? "";
 
   const updateCatalogParams = (updates) => {
     const nextParams = new URLSearchParams(searchParams);
@@ -78,6 +85,15 @@ export default function Shop() {
   }, [brandParam]);
 
   useEffect(() => {
+    if (SORT_OPTIONS.has(sortParam)) {
+      setSortBy(sortParam);
+      return;
+    }
+
+    setSortBy("random");
+  }, [sortParam]);
+
+  useEffect(() => {
     setLoading(true);
     const params = new URLSearchParams();
     params.set("page", String(page));
@@ -86,7 +102,10 @@ export default function Shop() {
     if (search) params.set("search", search);
     if (selectedCategory) params.set("category", selectedCategory);
     if (selectedBrands.length === 1) params.set("brand", selectedBrands[0]);
+    if (selectedSizes.length > 0) params.set("sizes", selectedSizes.join(","));
+    if (selectedColors.length > 0) params.set("colors", selectedColors.join(","));
     if (discountRange > 0) params.set("minDiscount", String(discountRange));
+    if (sortBy === "random") params.set("seed", randomSeed);
 
     http(`/products?${params.toString()}`)
       .then((response) => {
@@ -95,30 +114,14 @@ export default function Shop() {
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [page, search, selectedBrands, selectedCategory, sortBy, discountRange]);
+  }, [page, search, selectedBrands, selectedCategory, selectedSizes, selectedColors, sortBy, discountRange, randomSeed]);
 
   useEffect(() => {
     setPage(1);
-  }, [search, selectedBrands, selectedCategory, sortBy, discountRange]);
-
-  const filtered = useMemo(() => {
-    let result = [...products];
-    if (selectedBrands.length) {
-      result = result.filter((product) => {
-        const productBrandName = String(product.brand ?? "").trim().toLowerCase();
-        const productBrandSlug = String(product.brand_slug ?? "").trim().toLowerCase();
-
-        return selectedBrands.some((selectedBrand) => {
-          const normalizedSelectedBrand = selectedBrand.trim().toLowerCase();
-          return normalizedSelectedBrand === productBrandSlug || normalizedSelectedBrand === productBrandName;
-        });
-      });
+    if (sortBy === "random") {
+      setRandomSeed(createRandomSeed());
     }
-    if (selectedSizes.length) result = result.filter(p => p.sizes?.some(s => selectedSizes.includes(s)));
-    if (selectedColors.length) result = result.filter(p => p.colors?.some(c => selectedColors.includes(c)));
-
-    return result;
-  }, [products, selectedBrands, selectedSizes, selectedColors]);
+  }, [search, selectedBrands, selectedCategory, selectedSizes, selectedColors, sortBy, discountRange]);
 
   const handleCategoryChange = (categorySlug) => {
     const nextCategory = selectedCategory === categorySlug ? "" : categorySlug;
@@ -141,6 +144,7 @@ export default function Shop() {
     setDiscountRange(0);
     setSearch("");
     setPage(1);
+    setRandomSeed(createRandomSeed());
     updateCatalogParams({ category: "", brand: "" });
   };
   const activeFilters = selectedBrands.length + (selectedCategory ? 1 : 0) + selectedSizes.length + selectedColors.length + (discountRange > 0 ? 1 : 0);
@@ -154,7 +158,7 @@ export default function Shop() {
           <div>
             <p className="luxe-eyebrow mb-3">{t("shop.eyebrow")}</p>
             <h1 className="luxe-heading text-3xl lg:text-5xl">{t("shop.title")}</h1>
-            <p className="mt-2 text-sm text-muted-foreground">{t("shop.productsCount", { count: pagination.total || filtered.length })}</p>
+            <p className="mt-2 text-sm text-muted-foreground">{t("shop.productsCount", { count: pagination.total || products.length })}</p>
           </div>
           <div className="flex items-center gap-3 w-full md:w-auto">
             <div className="relative flex-1 md:w-72">
@@ -170,15 +174,20 @@ export default function Shop() {
               <SlidersHorizontal className="w-4 h-4" />
               {activeFilters > 0 && <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-[hsl(var(--accent))] text-black text-[10px] font-bold flex items-center justify-center">{activeFilters}</span>}
             </Button>
-            <Select value={sortBy} onValueChange={setSortBy}>
+            <Select
+              value={sortBy}
+              onValueChange={(value) => {
+                setSortBy(value);
+                updateCatalogParams({ sort: value === "random" ? "" : value });
+              }}
+            >
               <SelectTrigger className="w-40 h-11 rounded-full hidden md:flex">
                 <SelectValue placeholder={t("shop.sortBy")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="newest">{t("shop.newest")}</SelectItem>
+                <SelectItem value="random">{t("shop.random")}</SelectItem>
                 <SelectItem value="price_low">{t("shop.priceLowHigh")}</SelectItem>
                 <SelectItem value="price_high">{t("shop.priceHighLow")}</SelectItem>
-                <SelectItem value="discount">{t("shop.biggestDiscount")}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -288,7 +297,7 @@ export default function Shop() {
                   </div>
                 ))}
               </div>
-            ) : filtered.length === 0 ? (
+            ) : products.length === 0 ? (
               <div className="text-center py-20">
                 <p className="text-muted-foreground">{t("shop.noProducts")}</p>
                 <p className="text-sm text-muted-foreground mt-2">{t("shop.tryClearingFilters")}</p>
@@ -296,7 +305,7 @@ export default function Shop() {
               </div>
             ) : (
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-4 lg:gap-6">
-                {filtered.map((product, i) => (
+                {products.map((product, i) => (
                   <ProductCard key={product.id} product={product} index={i} />
                 ))}
               </div>

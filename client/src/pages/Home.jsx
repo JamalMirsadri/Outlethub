@@ -22,6 +22,10 @@ const TRUST_ICON_MAP = {
   support: Headphones,
 };
 
+function createRandomSeed() {
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
 export default function Home() {
   const { t } = useTranslation();
   const { settings } = useSiteContent();
@@ -31,11 +35,12 @@ export default function Home() {
   const [mostSoldProducts, setMostSoldProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [catalogSeed] = useState(() => createRandomSeed());
 
   useEffect(() => {
     Promise.all([
       appClient.entities.Product.filter({ status: "active", is_trending: true }, "-created_date", 8),
-      http("/products?page=1&pageSize=24&sort=newest"),
+      http(`/products?page=1&pageSize=24&sort=random&seed=${encodeURIComponent(catalogSeed)}`),
       http("/products?page=1&pageSize=4&sort=views"),
       http("/products?page=1&pageSize=4&sort=purchases"),
       http("/products/meta/filters"),
@@ -59,39 +64,30 @@ export default function Home() {
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, []);
-
-  const newestProducts = useMemo(
-    () =>
-      [...catalogProducts].sort(
-        (left, right) =>
-          new Date(right.created_date ?? 0).getTime() - new Date(left.created_date ?? 0).getTime(),
-      ),
-    [catalogProducts],
-  );
+  }, [catalogSeed]);
 
   const featuredRandomNewProduct = useMemo(() => {
-    if (newestProducts.length === 0) {
+    if (catalogProducts.length === 0) {
       return null;
     }
 
-    const candidatePool = newestProducts.slice(0, Math.min(newestProducts.length, 8));
+    const candidatePool = catalogProducts.slice(0, Math.min(catalogProducts.length, 8));
     return candidatePool[Math.floor(Math.random() * candidatePool.length)] ?? candidatePool[0];
-  }, [newestProducts]);
+  }, [catalogProducts]);
 
-  const newArrivalProducts = newestProducts.slice(0, 8);
+  const newArrivalProducts = catalogProducts.slice(0, 8);
   const bestsellerProducts = mostSoldProducts.length > 0
     ? mostSoldProducts.slice(0, 4)
     : trendingProducts.length > 0
       ? trendingProducts.slice(0, 4)
-      : newestProducts.slice(0, 4);
+      : catalogProducts.slice(0, 4);
 
   const categoryCards = useMemo(
     () =>
       categories.map((category, index) => {
         const matchingProduct =
-          newestProducts.find((product) => product.category?.toLowerCase() === category.name?.toLowerCase()) ??
-          newestProducts[index] ??
+          catalogProducts.find((product) => product.category?.toLowerCase() === category.name?.toLowerCase()) ??
+          catalogProducts[index] ??
           null;
 
         return {
@@ -99,7 +95,7 @@ export default function Home() {
           image: matchingProduct?.images?.[0] || HERO_IMAGE,
         };
       }),
-    [categories, newestProducts],
+    [categories, catalogProducts],
   );
 
   return (

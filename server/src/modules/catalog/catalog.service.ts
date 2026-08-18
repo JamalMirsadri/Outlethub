@@ -13,6 +13,7 @@ import {
   type ProductImage,
   type ProductVariant,
 } from "@prisma/client";
+import { randomUUID } from "node:crypto";
 import { z } from "zod";
 
 import { cloudinary } from "../../config/cloudinary.js";
@@ -916,6 +917,171 @@ async function resolveCategoryFilterIds(categoryFilter: string): Promise<string[
   }
 
   return [...categoryIds];
+}
+
+async function resolveBrandFilterIds(brandFilter: string): Promise<string[]> {
+  const normalizedFilter = brandFilter.trim().toLowerCase();
+
+  const brands = await prisma.brand.findMany({
+    select: {
+      id: true,
+      slug: true,
+      name: true,
+    },
+  });
+
+  return brands
+    .filter(
+      (brand) =>
+        brand.id === brandFilter
+        || brand.slug === brandFilter
+        || brand.name.trim().toLowerCase() === normalizedFilter,
+    )
+    .map((brand) => brand.id);
+}
+
+function buildPublicProductWhere(input: {
+  query: PublicProductListQuery;
+  categoryIds: string[];
+  brandIds: string[];
+}): Prisma.ProductWhereInput {
+  const { query, categoryIds, brandIds } = input;
+
+  return {
+    status: ProductStatus.ACTIVE,
+    deletedAt: null,
+    ...(query.featured !== undefined ? { isFeatured: query.featured } : {}),
+    ...(query.minDiscount !== undefined ? { discountPercent: { gte: query.minDiscount } } : {}),
+    ...(query.brand
+      ? {
+          brandId: {
+            in: brandIds,
+          },
+        }
+      : {}),
+    ...(query.category
+      ? {
+          categoryId: {
+            in: categoryIds,
+          },
+        }
+      : {}),
+    ...(query.sizes && query.sizes.length > 0
+      ? {
+          sizes: {
+            hasSome: query.sizes,
+          },
+        }
+      : {}),
+    ...(query.colors && query.colors.length > 0
+      ? {
+          colors: {
+            hasSome: query.colors,
+          },
+        }
+      : {}),
+    ...(query.search
+      ? {
+          OR: [
+            { name: { contains: query.search, mode: "insensitive" } },
+            { sku: { contains: query.search, mode: "insensitive" } },
+            { brand: { name: { contains: query.search, mode: "insensitive" } } },
+            { category: { name: { contains: query.search, mode: "insensitive" } } },
+          ],
+        }
+      : {}),
+  };
+}
+
+function buildPublicProductRandomOrderFilterSql(input: {
+  query: PublicProductListQuery;
+  categoryIds: string[];
+  brandIds: string[];
+}) {
+  const { query, categoryIds, brandIds } = input;
+  const filters: Prisma.Sql[] = [
+    Prisma.sql`p."status" = ${ProductStatus.ACTIVE}`,
+    Prisma.sql`p."deletedAt" IS NULL`,
+  ];
+
+  if (query.featured !== undefined) {
+    filters.push(Prisma.sql`p."isFeatured" = ${query.featured}`);
+  }
+
+  if (query.minDiscount !== undefined) {
+    filters.push(Prisma.sql`COALESCE(p."discountPercent", 0) >= ${query.minDiscount}`);
+  }
+
+  if (query.brand) {
+    filters.push(Prisma.sql`p."brandId" IN (${Prisma.join(brandIds)})`);
+  }
+
+  if (query.category) {
+    filters.push(Prisma.sql`p."categoryId" IN (${Prisma.join(categoryIds)})`);
+  }
+
+  if (query.sizes && query.sizes.length > 0) {
+    filters.push(Prisma.sql`p."sizes" && ARRAY[${Prisma.join(query.sizes)}]::text[]`);
+  }
+
+  if (query.colors && query.colors.length > 0) {
+    filters.push(Prisma.sql`p."colors" && ARRAY[${Prisma.join(query.colors)}]::text[]`);
+  }
+
+  if (query.search) {
+    const term = `%${query.search}%`;
+    filters.push(
+      Prisma.sql`(
+        p."title" ILIKE ${term}
+        OR p."sku" ILIKE ${term}
+        OR b."name" ILIKE ${term}
+        OR c."name" ILIKE ${term}
+      )`,
+    );
+  }
+
+  return Prisma.sql`WHERE ${Prisma.join(filters, " AND ")}`;
+}
+
+async function listPublicProductIdsByRandomOrder(input: {
+  query: PublicProductListQuery;
+  categoryIds: string[];
+  brandIds: string[];
+}): Promise<string[]> {
+  const effectiveSeed = input.query.seed ?? randomUUID();
+  const skip = (input.query.page - 1) * input.query.pageSize;
+  const whereSql = buildPublicProductRandomOrderFilterSql(input);
+  const rows = await prisma.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+    WITH filtered_products AS (
+      SELECT
+        p."id",
+        p."brandId",
+        md5(${effectiveSeed} || ':' || p."id") AS product_hash,
+        md5(${effectiveSeed} || ':' || p."brandId") AS brand_hash
+      FROM "Product" p
+      INNER JOIN "Brand" b ON b."id" = p."brandId"
+      INNER JOIN "Category" c ON c."id" = p."categoryId"
+      ${whereSql}
+    ),
+    ranked_products AS (
+      SELECT
+        fp."id",
+        fp.brand_hash,
+        fp.product_hash,
+        ROW_NUMBER() OVER (
+          PARTITION BY fp."brandId"
+          ORDER BY fp.product_hash ASC, fp."id" ASC
+        ) AS brand_rank
+      FROM filtered_products fp
+    )
+    SELECT rp."id"
+    FROM ranked_products rp
+    ORDER BY rp.brand_rank ASC, rp.brand_hash ASC, rp.product_hash ASC, rp."id" ASC
+    OFFSET ${skip}
+    LIMIT ${input.query.pageSize}
+  `);
+
+  return rows.map((row) => row.id);
 }
 
 async function resolveProductCsvImportSelection(
@@ -2345,43 +2511,12 @@ export class CatalogService {
 
   public async listPublicProducts(query: PublicProductListQuery) {
     const categoryIds = query.category ? await resolveCategoryFilterIds(query.category) : [];
-
-    const where: Prisma.ProductWhereInput = {
-      status: ProductStatus.ACTIVE,
-      deletedAt: null,
-      ...(query.featured !== undefined ? { isFeatured: query.featured } : {}),
-      ...(query.minDiscount !== undefined ? { discountPercent: { gte: query.minDiscount } } : {}),
-      ...(query.brand
-        ? {
-            brand: {
-              OR: [
-                { id: query.brand },
-                { slug: query.brand },
-                { name: { equals: query.brand, mode: "insensitive" } },
-              ],
-            },
-          }
-        : {}),
-      ...(query.category
-        ? {
-            categoryId: {
-              in: categoryIds,
-            },
-          }
-        : {}),
-      ...(query.search
-        ? {
-            OR: [
-              { name: { contains: query.search, mode: "insensitive" } },
-              { sku: { contains: query.search, mode: "insensitive" } },
-              { brand: { name: { contains: query.search, mode: "insensitive" } } },
-              { category: { name: { contains: query.search, mode: "insensitive" } } },
-            ],
-          }
-        : {}),
-    };
-
-    const skip = (query.page - 1) * query.pageSize;
+    const brandIds = query.brand ? await resolveBrandFilterIds(query.brand) : [];
+    const where = buildPublicProductWhere({
+      query,
+      categoryIds,
+      brandIds,
+    });
     const orderBy: Prisma.ProductOrderByWithRelationInput[] =
       query.sort === "price_low"
         ? [{ price: "asc" }, { createdAt: "desc" }]
@@ -2395,27 +2530,75 @@ export class CatalogService {
                 ? [{ views: "desc" }, { createdAt: "desc" }]
                 : query.sort === "purchases"
                   ? [{ purchases: "desc" }, { createdAt: "desc" }]
-              : [{ createdAt: "desc" }];
+                : [{ createdAt: "desc" }];
 
-    const [items, total] = await Promise.all([
-      prisma.product.findMany({
-        where,
-        include: {
-          brand: true,
-          category: true,
-          images: { orderBy: { sortOrder: "asc" } },
-          variants: { orderBy: [{ size: "asc" }, { color: "asc" }] },
-          priceHistory: { orderBy: { capturedAt: "desc" }, take: 20 },
+    if ((query.brand && brandIds.length === 0) || (query.category && categoryIds.length === 0)) {
+      return {
+        items: [],
+        pagination: {
+          page: query.page,
+          pageSize: query.pageSize,
+          total: 0,
+          totalPages: 1,
         },
-        orderBy,
-        skip,
-        take: query.pageSize,
-      }),
+      };
+    }
+
+    const [pageProductIds, total] = await Promise.all([
+      query.sort === "random"
+        ? listPublicProductIdsByRandomOrder({
+            query,
+            categoryIds,
+            brandIds,
+          })
+        : prisma.product
+            .findMany({
+              where,
+              select: {
+                id: true,
+              },
+              orderBy,
+              skip: (query.page - 1) * query.pageSize,
+              take: query.pageSize,
+            })
+            .then((items) => items.map((item) => item.id)),
       prisma.product.count({ where }),
     ]);
 
+    if (pageProductIds.length === 0) {
+      return {
+        items: [],
+        pagination: {
+          page: query.page,
+          pageSize: query.pageSize,
+          total,
+          totalPages: Math.max(1, Math.ceil(total / query.pageSize)),
+        },
+      };
+    }
+
+    const items = await prisma.product.findMany({
+      where: {
+        id: {
+          in: pageProductIds,
+        },
+      },
+      include: {
+        brand: true,
+        category: true,
+        images: { orderBy: { sortOrder: "asc" } },
+        variants: { orderBy: [{ size: "asc" }, { color: "asc" }] },
+        priceHistory: { orderBy: { capturedAt: "desc" }, take: 20 },
+      },
+    });
+
+    const itemOrder = new Map(pageProductIds.map((id, index) => [id, index]));
+    const orderedItems = items.sort((left, right) => {
+      return (itemOrder.get(left.id) ?? Number.MAX_SAFE_INTEGER) - (itemOrder.get(right.id) ?? Number.MAX_SAFE_INTEGER);
+    });
+
     return {
-      items: items.map(mapProductResponse),
+      items: orderedItems.map(mapProductResponse),
       pagination: {
         page: query.page,
         pageSize: query.pageSize,

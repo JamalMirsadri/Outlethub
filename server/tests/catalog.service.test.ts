@@ -632,6 +632,117 @@ test("catalog service replaces only the selected Adidas Woman scope and keeps ot
   }
 });
 
+test("catalog service randomizes public listings across brands and supports global price sorting with 15-item pagination", async () => {
+  await cleanup();
+
+  try {
+    const randomBrands = await Promise.all(
+      ["Alpha", "Beta", "Gamma"].map((label) =>
+        catalogService.createBrand({
+          name: `${label} Random ${suffix}`,
+          isActive: true,
+        })),
+    );
+
+    const randomParentCategory = await catalogService.createCategory({
+      name: `Random Parent ${suffix}`,
+      sortOrder: 0,
+    });
+    const randomChildCategory = await catalogService.createCategory({
+      name: `Random Child ${suffix}`,
+      parentId: randomParentCategory.id,
+      sortOrder: 0,
+    });
+
+    for (let brandIndex = 0; brandIndex < randomBrands.length; brandIndex += 1) {
+      const brand = randomBrands[brandIndex];
+
+      for (let productIndex = 0; productIndex < 6; productIndex += 1) {
+        await catalogService.createProduct({
+          sku: `RAND-${brandIndex}-${productIndex}-${suffix}`,
+          name: `${brand.name} Product ${productIndex} ${suffix}`,
+          brandId: brand.id,
+          categoryId: randomChildCategory.id,
+          price: 100 + brandIndex * 100 + productIndex,
+          oldPrice: 150 + brandIndex * 100 + productIndex,
+          status: "ACTIVE",
+          stock: 10,
+          stockStatus: "IN_STOCK",
+          sourceType: "MANUAL",
+          sizes: [productIndex % 2 === 0 ? "M" : "L"],
+          colors: [productIndex % 2 === 0 ? "Black" : "Blue"],
+        });
+      }
+    }
+
+    const randomResults = await catalogService.listPublicProducts({
+      page: 1,
+      pageSize: 15,
+      category: randomParentCategory.slug,
+      sort: "random",
+      seed: `random-seed-${suffix}`,
+    });
+
+    assert.equal(randomResults.items.length, 15);
+    assert.equal(randomResults.pagination.pageSize, 15);
+    assert.equal(randomResults.pagination.total, 18);
+    assert.equal(randomResults.pagination.totalPages, 2);
+    assert.ok(new Set(randomResults.items.map((item) => item.brand.slug)).size >= 3);
+    assert.ok(randomResults.items.every((item) => item.category.id === randomChildCategory.id));
+
+    const randomPageTwo = await catalogService.listPublicProducts({
+      page: 2,
+      pageSize: 15,
+      category: randomParentCategory.slug,
+      sort: "random",
+      seed: `random-seed-${suffix}`,
+    });
+
+    assert.equal(randomPageTwo.items.length, 3);
+    assert.equal(
+      new Set([...randomResults.items, ...randomPageTwo.items].map((item) => item.id)).size,
+      18,
+    );
+
+    const priceLowResults = await catalogService.listPublicProducts({
+      page: 1,
+      pageSize: 15,
+      category: randomParentCategory.slug,
+      sort: "price_low",
+    });
+    const lowPrices = priceLowResults.items.map((item) => item.price);
+    assert.deepEqual(lowPrices, [...lowPrices].sort((left, right) => left - right));
+
+    const priceHighResults = await catalogService.listPublicProducts({
+      page: 1,
+      pageSize: 15,
+      category: randomParentCategory.slug,
+      sort: "price_high",
+    });
+    const highPrices = priceHighResults.items.map((item) => item.price);
+    assert.deepEqual(highPrices, [...highPrices].sort((left, right) => right - left));
+
+    const filteredResults = await catalogService.listPublicProducts({
+      page: 1,
+      pageSize: 15,
+      category: randomParentCategory.slug,
+      sort: "random",
+      seed: `filter-seed-${suffix}`,
+      sizes: ["M"],
+      colors: ["Black"],
+    });
+
+    assert.equal(filteredResults.pagination.total, 9);
+    assert.ok(
+      filteredResults.items.every(
+        (item) => item.sizes.includes("M") && item.colors.includes("Black"),
+      ),
+    );
+  } finally {
+    await cleanup();
+  }
+});
+
 test("catalog service replaces the selected brand within the main category scope and assigns imports to the selected subcategory", async () => {
   await cleanup();
 

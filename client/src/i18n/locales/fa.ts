@@ -124,6 +124,7 @@ export const fa: TranslationResource = {
     minDiscount: "حداقل تخفیف",
     discountRange: "{{percent}}٪+ تخفیف",
     sortBy: "مرتب‌سازی بر اساس",
+    random: "مرتبط / تصادفی",
     newest: "جدیدترین",
     priceLowHigh: "قیمت: کم به زیاد",
     priceHighLow: "قیمت: زیاد به کم",

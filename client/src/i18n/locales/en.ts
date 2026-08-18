@@ -122,6 +122,7 @@ export const en = {
     minDiscount: "Min Discount",
     discountRange: "{{percent}}%+ off",
     sortBy: "Sort by",
+    random: "Relevance / Random",
     newest: "Newest",
     priceLowHigh: "Price: Low to High",
     priceHighLow: "Price: High to Low",

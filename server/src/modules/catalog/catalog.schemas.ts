@@ -15,6 +15,23 @@ const optionalString = z
     return value.length > 0 ? value : undefined;
   });
 
+const optionalCsvStringArray = z
+  .string()
+  .trim()
+  .optional()
+  .transform((value) => {
+    if (value === undefined || value.length === 0) {
+      return undefined;
+    }
+
+    const items = value
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean);
+
+    return items.length > 0 ? items : undefined;
+  });
+
 const optionalNullableString = z
   .string()
   .trim()
@@ -187,14 +204,17 @@ export const adminProductListQuerySchema = z.object({
 
 export const publicProductListQuerySchema = z.object({
   page: z.coerce.number().int().positive().optional().default(1),
-  pageSize: z.coerce.number().int().positive().max(60).optional().default(24),
+  pageSize: z.coerce.number().int().positive().max(60).optional().default(15),
   search: optionalString,
   brand: optionalString,
   category: optionalString,
+  sizes: optionalCsvStringArray,
+  colors: optionalCsvStringArray,
   minDiscount: z.coerce.number().int().min(0).max(100).optional(),
   featured: z.coerce.boolean().optional(),
+  seed: optionalString,
   sort: z
-    .enum(["newest", "price_low", "price_high", "discount", "featured", "views", "purchases"])
+    .enum(["random", "newest", "price_low", "price_high", "discount", "featured", "views", "purchases"])
     .optional()
-    .default("newest"),
+    .default("random"),
 });
