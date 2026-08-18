@@ -214,7 +214,7 @@ export const publicProductListQuerySchema = z.object({
   featured: z.coerce.boolean().optional(),
   seed: optionalString,
   sort: z
-    .enum(["random", "newest", "price_low", "price_high", "discount", "featured", "views", "purchases"])
+    .enum(["best_sellers", "random", "newest", "price_low", "price_high", "discount", "featured", "views", "purchases"])
     .optional()
     .default("random"),
 });

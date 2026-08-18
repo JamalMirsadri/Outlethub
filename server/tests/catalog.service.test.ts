@@ -632,6 +632,179 @@ test("catalog service replaces only the selected Adidas Woman scope and keeps ot
   }
 });
 
+test("catalog service ranks homepage best sellers from real popularity metrics with brand mix", async () => {
+  await cleanup();
+
+  try {
+    const [alphaBrand, betaBrand, gammaBrand] = await Promise.all([
+      catalogService.createBrand({
+        name: `Best Seller Alpha ${suffix}`,
+        isActive: true,
+      }),
+      catalogService.createBrand({
+        name: `Best Seller Beta ${suffix}`,
+        isActive: true,
+      }),
+      catalogService.createBrand({
+        name: `Best Seller Gamma ${suffix}`,
+        isActive: true,
+      }),
+    ]);
+
+    const bestSellerCategory = await catalogService.createCategory({
+      name: `Best Seller Category ${suffix}`,
+      sortOrder: 0,
+    });
+
+    const products = await Promise.all([
+      catalogService.createProduct({
+        sku: `BEST-A1-${suffix}`,
+        name: `Best Seller A1 ${suffix}`,
+        brandId: alphaBrand.id,
+        categoryId: bestSellerCategory.id,
+        price: 200,
+        oldPrice: 260,
+        status: "ACTIVE",
+        stock: 10,
+        stockStatus: "IN_STOCK",
+        sourceType: "MANUAL",
+      }),
+      catalogService.createProduct({
+        sku: `BEST-A2-${suffix}`,
+        name: `Best Seller A2 ${suffix}`,
+        brandId: alphaBrand.id,
+        categoryId: bestSellerCategory.id,
+        price: 190,
+        oldPrice: 250,
+        status: "ACTIVE",
+        stock: 10,
+        stockStatus: "IN_STOCK",
+        sourceType: "MANUAL",
+      }),
+      catalogService.createProduct({
+        sku: `BEST-A3-${suffix}`,
+        name: `Best Seller A3 ${suffix}`,
+        brandId: alphaBrand.id,
+        categoryId: bestSellerCategory.id,
+        price: 180,
+        oldPrice: 220,
+        status: "ACTIVE",
+        stock: 10,
+        stockStatus: "IN_STOCK",
+        sourceType: "MANUAL",
+      }),
+      catalogService.createProduct({
+        sku: `BEST-B1-${suffix}`,
+        name: `Best Seller B1 ${suffix}`,
+        brandId: betaBrand.id,
+        categoryId: bestSellerCategory.id,
+        price: 170,
+        oldPrice: 210,
+        status: "ACTIVE",
+        stock: 10,
+        stockStatus: "IN_STOCK",
+        sourceType: "MANUAL",
+      }),
+      catalogService.createProduct({
+        sku: `BEST-B2-${suffix}`,
+        name: `Best Seller B2 ${suffix}`,
+        brandId: betaBrand.id,
+        categoryId: bestSellerCategory.id,
+        price: 160,
+        oldPrice: 205,
+        status: "ACTIVE",
+        stock: 10,
+        stockStatus: "IN_STOCK",
+        sourceType: "MANUAL",
+      }),
+      catalogService.createProduct({
+        sku: `BEST-B3-${suffix}`,
+        name: `Best Seller B3 ${suffix}`,
+        brandId: betaBrand.id,
+        categoryId: bestSellerCategory.id,
+        price: 150,
+        oldPrice: 190,
+        status: "ACTIVE",
+        stock: 10,
+        stockStatus: "IN_STOCK",
+        sourceType: "MANUAL",
+      }),
+      catalogService.createProduct({
+        sku: `BEST-C1-${suffix}`,
+        name: `Best Seller C1 ${suffix}`,
+        brandId: gammaBrand.id,
+        categoryId: bestSellerCategory.id,
+        price: 140,
+        oldPrice: 185,
+        status: "ACTIVE",
+        stock: 10,
+        stockStatus: "IN_STOCK",
+        sourceType: "MANUAL",
+      }),
+      catalogService.createProduct({
+        sku: `BEST-C2-${suffix}`,
+        name: `Best Seller C2 ${suffix}`,
+        brandId: gammaBrand.id,
+        categoryId: bestSellerCategory.id,
+        price: 130,
+        oldPrice: 175,
+        status: "ACTIVE",
+        stock: 10,
+        stockStatus: "IN_STOCK",
+        sourceType: "MANUAL",
+      }),
+      catalogService.createProduct({
+        sku: `BEST-X1-${suffix}`,
+        name: `Best Seller Excluded ${suffix}`,
+        brandId: gammaBrand.id,
+        categoryId: bestSellerCategory.id,
+        price: 120,
+        oldPrice: 170,
+        status: "ACTIVE",
+        stock: 0,
+        stockStatus: "OUT_OF_STOCK",
+        sourceType: "MANUAL",
+      }),
+    ]);
+
+    const [a1, a2, a3, b1, b2, b3, c1, c2, excluded] = products;
+
+    await Promise.all([
+      prisma.product.update({ where: { id: a1.id }, data: { purchases: 10, views: 20 } }),
+      prisma.product.update({ where: { id: a2.id }, data: { purchases: 9, views: 5 } }),
+      prisma.product.update({ where: { id: a3.id }, data: { purchases: 0, views: 200 } }),
+      prisma.product.update({ where: { id: b1.id }, data: { purchases: 8, views: 100 } }),
+      prisma.product.update({ where: { id: b2.id }, data: { purchases: 1, views: 50 } }),
+      prisma.product.update({ where: { id: b3.id }, data: { purchases: 0, views: 20 } }),
+      prisma.product.update({ where: { id: c1.id }, data: { purchases: 7, views: 10 } }),
+      prisma.product.update({ where: { id: c2.id }, data: { purchases: 0, views: 400 } }),
+      prisma.product.update({ where: { id: excluded.id }, data: { purchases: 50, views: 1000 } }),
+    ]);
+
+    const result = await catalogService.listPublicProducts({
+      page: 1,
+      pageSize: 8,
+      sort: "best_sellers",
+    });
+
+    assert.equal(result.items.length, 8);
+    assert.equal(result.pagination.total, 8);
+    assert.equal(new Set(result.items.map((item) => item.id)).size, 8);
+    assert.ok(new Set(result.items.map((item) => item.brand.slug)).size >= 3);
+    assert.ok(result.items.every((item) => item.status === "ACTIVE"));
+    assert.ok(result.items.every((item) => item.stock > 0));
+    assert.ok(result.items.every((item) => item.stockStatus !== "OUT_OF_STOCK"));
+    assert.ok(!result.items.some((item) => item.id === excluded.id));
+
+    const orderedIds = result.items.map((item) => item.id);
+    assert.deepEqual(orderedIds, [a1.id, b1.id, c1.id, a2.id, b2.id, c2.id, a3.id, b3.id]);
+    assert.ok(orderedIds.indexOf(b2.id) < orderedIds.indexOf(c2.id));
+    assert.ok(orderedIds.indexOf(c2.id) < orderedIds.indexOf(a3.id));
+  } finally {
+    await cleanup();
+  }
+});
+
 test("catalog service randomizes public listings across brands and supports global price sorting with 15-item pagination", async () => {
   await cleanup();
 

@@ -944,12 +944,23 @@ function buildPublicProductWhere(input: {
   query: PublicProductListQuery;
   categoryIds: string[];
   brandIds: string[];
+  requireAvailable?: boolean;
 }): Prisma.ProductWhereInput {
-  const { query, categoryIds, brandIds } = input;
+  const { query, categoryIds, brandIds, requireAvailable } = input;
 
   return {
     status: ProductStatus.ACTIVE,
     deletedAt: null,
+    ...(requireAvailable
+      ? {
+          stock: {
+            gt: 0,
+          },
+          stockStatus: {
+            not: StockStatus.OUT_OF_STOCK,
+          },
+        }
+      : {}),
     ...(query.featured !== undefined ? { isFeatured: query.featured } : {}),
     ...(query.minDiscount !== undefined ? { discountPercent: { gte: query.minDiscount } } : {}),
     ...(query.brand
@@ -997,12 +1008,18 @@ function buildPublicProductRandomOrderFilterSql(input: {
   query: PublicProductListQuery;
   categoryIds: string[];
   brandIds: string[];
+  requireAvailable?: boolean;
 }) {
-  const { query, categoryIds, brandIds } = input;
+  const { query, categoryIds, brandIds, requireAvailable } = input;
   const filters: Prisma.Sql[] = [
     Prisma.sql`p."status" = ${ProductStatus.ACTIVE}`,
     Prisma.sql`p."deletedAt" IS NULL`,
   ];
+
+  if (requireAvailable) {
+    filters.push(Prisma.sql`p."stock" > 0`);
+    filters.push(Prisma.sql`p."stockStatus" <> ${StockStatus.OUT_OF_STOCK}`);
+  }
 
   if (query.featured !== undefined) {
     filters.push(Prisma.sql`p."isFeatured" = ${query.featured}`);
@@ -1047,6 +1064,7 @@ async function listPublicProductIdsByRandomOrder(input: {
   query: PublicProductListQuery;
   categoryIds: string[];
   brandIds: string[];
+  requireAvailable?: boolean;
 }): Promise<string[]> {
   const effectiveSeed = input.query.seed ?? randomUUID();
   const skip = (input.query.page - 1) * input.query.pageSize;
@@ -1077,6 +1095,52 @@ async function listPublicProductIdsByRandomOrder(input: {
     SELECT rp."id"
     FROM ranked_products rp
     ORDER BY rp.brand_rank ASC, rp.brand_hash ASC, rp.product_hash ASC, rp."id" ASC
+    OFFSET ${skip}
+    LIMIT ${input.query.pageSize}
+  `);
+
+  return rows.map((row) => row.id);
+}
+
+async function listPublicProductIdsByBestSellerOrder(input: {
+  query: PublicProductListQuery;
+  categoryIds: string[];
+  brandIds: string[];
+}): Promise<string[]> {
+  const skip = (input.query.page - 1) * input.query.pageSize;
+  const whereSql = buildPublicProductRandomOrderFilterSql({
+    ...input,
+    requireAvailable: true,
+  });
+  const rows = await prisma.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+    WITH ranked_products AS (
+      SELECT
+        p."id",
+        p."brandId",
+        p."purchases" AS sales_count,
+        p."views" AS view_count,
+        (COALESCE(p."purchases", 0) * 1000000 + COALESCE(p."views", 0)) AS popularity_score,
+        ROW_NUMBER() OVER (
+          PARTITION BY p."brandId"
+          ORDER BY
+            COALESCE(p."purchases", 0) DESC,
+            COALESCE(p."views", 0) DESC,
+            p."createdAt" DESC,
+            p."id" ASC
+        ) AS brand_rank
+      FROM "Product" p
+      INNER JOIN "Brand" b ON b."id" = p."brandId"
+      INNER JOIN "Category" c ON c."id" = p."categoryId"
+      ${whereSql}
+    )
+    SELECT rp."id"
+    FROM ranked_products rp
+    ORDER BY
+      rp.brand_rank ASC,
+      rp.sales_count DESC,
+      rp.popularity_score DESC,
+      rp.view_count DESC,
+      rp."id" ASC
     OFFSET ${skip}
     LIMIT ${input.query.pageSize}
   `);
@@ -2512,10 +2576,12 @@ export class CatalogService {
   public async listPublicProducts(query: PublicProductListQuery) {
     const categoryIds = query.category ? await resolveCategoryFilterIds(query.category) : [];
     const brandIds = query.brand ? await resolveBrandFilterIds(query.brand) : [];
+    const requireAvailable = query.sort === "best_sellers";
     const where = buildPublicProductWhere({
       query,
       categoryIds,
       brandIds,
+      requireAvailable,
     });
     const orderBy: Prisma.ProductOrderByWithRelationInput[] =
       query.sort === "price_low"
@@ -2530,6 +2596,8 @@ export class CatalogService {
                 ? [{ views: "desc" }, { createdAt: "desc" }]
                 : query.sort === "purchases"
                   ? [{ purchases: "desc" }, { createdAt: "desc" }]
+                  : query.sort === "best_sellers"
+                    ? [{ purchases: "desc" }, { views: "desc" }, { createdAt: "desc" }]
                 : [{ createdAt: "desc" }];
 
     if ((query.brand && brandIds.length === 0) || (query.category && categoryIds.length === 0)) {
@@ -2551,6 +2619,12 @@ export class CatalogService {
             categoryIds,
             brandIds,
           })
+        : query.sort === "best_sellers"
+          ? listPublicProductIdsByBestSellerOrder({
+              query,
+              categoryIds,
+              brandIds,
+            })
         : prisma.product
             .findMany({
               where,

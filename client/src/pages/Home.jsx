@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, Headphones, RotateCcw, ShieldCheck, Truck } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { appClient } from "@/api/appClient";
 import { http } from "@/services/http";
 import Navbar from "@/components/landing/Navbar";
 import HeroSection from "@/components/landing/HeroSection";
@@ -29,37 +28,28 @@ function createRandomSeed() {
 export default function Home() {
   const { t } = useTranslation();
   const { settings } = useSiteContent();
-  const [trendingProducts, setTrendingProducts] = useState([]);
   const [catalogProducts, setCatalogProducts] = useState([]);
-  const [mostViewedProducts, setMostViewedProducts] = useState([]);
-  const [mostSoldProducts, setMostSoldProducts] = useState([]);
+  const [bestSellerProducts, setBestSellerProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [catalogSeed] = useState(() => createRandomSeed());
 
   useEffect(() => {
     Promise.all([
-      appClient.entities.Product.filter({ status: "active", is_trending: true }, "-created_date", 8),
       http(`/products?page=1&pageSize=24&sort=random&seed=${encodeURIComponent(catalogSeed)}`),
-      http("/products?page=1&pageSize=4&sort=views"),
-      http("/products?page=1&pageSize=4&sort=purchases"),
+      http("/products?page=1&pageSize=8&sort=best_sellers"),
       http("/products/meta/filters"),
     ])
-      .then(([trendingItems, latestProductsResponse, viewedProductsResponse, soldProductsResponse, filtersResponse]) => {
+      .then(([latestProductsResponse, bestSellersResponse, filtersResponse]) => {
         const latestProducts = Array.isArray(latestProductsResponse.items)
           ? latestProductsResponse.items.map(normalizeCatalogProduct).filter(Boolean)
           : [];
-        const viewedProducts = Array.isArray(viewedProductsResponse.items)
-          ? viewedProductsResponse.items.map(normalizeCatalogProduct).filter((product) => (product?.views ?? 0) > 0)
-          : [];
-        const soldProducts = Array.isArray(soldProductsResponse.items)
-          ? soldProductsResponse.items.map(normalizeCatalogProduct).filter((product) => (product?.purchases ?? 0) > 0)
+        const bestSellers = Array.isArray(bestSellersResponse.items)
+          ? bestSellersResponse.items.map(normalizeCatalogProduct).filter(Boolean)
           : [];
 
-        setTrendingProducts(trendingItems);
         setCatalogProducts(latestProducts);
-        setMostViewedProducts(viewedProducts);
-        setMostSoldProducts(soldProducts);
+        setBestSellerProducts(bestSellers);
         setCategories(Array.isArray(filtersResponse.categories) ? filtersResponse.categories.filter((category) => !category.parentId).slice(0, 4) : []);
       })
       .catch(() => {})
@@ -76,11 +66,7 @@ export default function Home() {
   }, [catalogProducts]);
 
   const newArrivalProducts = catalogProducts.slice(0, 8);
-  const bestsellerProducts = mostSoldProducts.length > 0
-    ? mostSoldProducts.slice(0, 4)
-    : trendingProducts.length > 0
-      ? trendingProducts.slice(0, 4)
-      : catalogProducts.slice(0, 4);
+  const bestsellerProducts = bestSellerProducts.slice(0, 8);
 
   const categoryCards = useMemo(
     () =>
@@ -181,11 +167,23 @@ export default function Home() {
               </Link>
             </Button>
           </div>
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-            {bestsellerProducts.map((product, index) => (
-              <ProductCard key={product.id} product={product} index={index} />
-            ))}
-          </div>
+          {loading ? (
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+              {Array.from({ length: 8 }).map((_, index) => (
+                <div key={index} className="luxe-panel p-4 animate-pulse">
+                  <div className="aspect-[4/5] rounded-[20px] bg-secondary" />
+                  <div className="mt-4 h-4 w-24 rounded bg-secondary" />
+                  <div className="mt-2 h-4 w-16 rounded bg-secondary" />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+              {bestsellerProducts.map((product, index) => (
+                <ProductCard key={product.id} product={product} index={index} />
+              ))}
+            </div>
+          )}
         </section>
 
         <section className="luxe-panel py-8">
