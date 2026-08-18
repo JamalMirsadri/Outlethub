@@ -47,6 +47,7 @@ export default function AdminPricing() {
     vatPercent: "23",
     freeShippingThreshold: "0",
     minimumOrderValue: "0",
+    bankTransferPaymentDeadlineHours: "3",
     returnPeriodDays: "30",
   });
   const [calculator, setCalculator] = useState({
@@ -75,6 +76,7 @@ export default function AdminPricing() {
       vatPercent: String(settings.businessSettings.vatPercent ?? 0),
       freeShippingThreshold: String(settings.businessSettings.freeShippingThreshold ?? 0),
       minimumOrderValue: String(settings.businessSettings.minimumOrderValue ?? 0),
+      bankTransferPaymentDeadlineHours: String(settings.businessSettings.bankTransferPaymentDeadlineHours ?? 3),
       returnPeriodDays: String(settings.businessSettings.returnPeriodDays ?? 30),
     });
     setCalculator({
@@ -152,6 +154,7 @@ export default function AdminPricing() {
         vatPercent: toNumber(businessForm.vatPercent),
         freeShippingThreshold: toNumber(businessForm.freeShippingThreshold),
         minimumOrderValue: toNumber(businessForm.minimumOrderValue),
+        bankTransferPaymentDeadlineHours: toNumber(businessForm.bankTransferPaymentDeadlineHours, 3),
         returnPeriodDays: toNumber(businessForm.returnPeriodDays, 30),
       });
       await loadSettings();
@@ -197,7 +200,7 @@ export default function AdminPricing() {
           <div className="flex items-center justify-between">
             <div>
               <h3 className="font-semibold">Global Business Settings</h3>
-              <p className="mt-1 text-sm text-muted-foreground">These values are saved to the database and used directly by runtime pricing calculations.</p>
+              <p className="mt-1 text-sm text-muted-foreground">These values are saved to the database and used directly by runtime pricing calculations. Bank transfer deadline changes apply only to new pending payments.</p>
             </div>
             <Button onClick={saveBusinessSettings} disabled={savingBusiness} className="rounded-full">
               {savingBusiness ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
@@ -244,6 +247,7 @@ export default function AdminPricing() {
               ["vatPercent", "VAT %"],
               ["freeShippingThreshold", "Free Shipping Threshold"],
               ["minimumOrderValue", "Minimum Order Value"],
+              ["bankTransferPaymentDeadlineHours", "Bank Transfer Deadline (Hours)"],
               ["returnPeriodDays", "Return Period Days"],
             ].map(([key, label]) => (
               <div key={key}>

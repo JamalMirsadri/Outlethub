@@ -16,6 +16,7 @@ export interface AuthErrorState {
 export interface AuthResponse {
   user: AuthUser;
   accessToken: string;
+  sessionInactivityTimeoutMs: number;
 }
 
 export interface RegisterPayload {

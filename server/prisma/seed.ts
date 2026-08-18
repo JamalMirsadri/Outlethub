@@ -467,6 +467,7 @@ async function seedCommerceConfiguration(): Promise<void> {
         vatPercent: 23,
         freeShippingThreshold: 120,
         minimumOrderValue: 15,
+        bankTransferPaymentDeadlineHours: 3,
         returnPeriodDays: 30,
       },
     });

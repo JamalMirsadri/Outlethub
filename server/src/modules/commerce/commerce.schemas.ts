@@ -100,6 +100,7 @@ export const updateBusinessSettingsSchema = z
     vatPercent: z.coerce.number().min(0).max(1000).optional(),
     freeShippingThreshold: z.coerce.number().min(0).optional(),
     minimumOrderValue: z.coerce.number().min(0).optional(),
+    bankTransferPaymentDeadlineHours: z.coerce.number().int().min(1).max(168).optional(),
     returnPeriodDays: z.coerce.number().int().positive().max(365).optional(),
   })
   .refine((value) => Object.keys(value).length > 0, {

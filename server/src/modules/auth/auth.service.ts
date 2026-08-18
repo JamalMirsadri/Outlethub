@@ -2,12 +2,14 @@ import { PaymentStatus, Prisma, RoleCode, UserStatus } from "@prisma/client";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
+import { env } from "../../config/env.js";
 import { prisma } from "../../config/prisma.js";
 import { ApiError } from "../../utils/api-error.js";
 import { createNumericCode, createRandomToken, hashToken } from "../../utils/crypto.js";
 import { createUserWithReferralCode } from "../../utils/referral-code.js";
 import { comparePassword, hashPassword } from "../../services/password.service.js";
 import {
+  parseDurationToMilliseconds,
   signAccessToken,
   signRefreshToken,
   verifyRefreshToken,
@@ -73,22 +75,11 @@ function reportDebugEvent(payload: Record<string, unknown>) {
 // #endregion debug-point A:auth-register
 
 function parseDurationToDate(duration: string): Date {
-  const match = duration.match(/^(\d+)([mhd])$/i);
-  if (!match) {
-    throw new Error(`Unsupported duration format: ${duration}`);
-  }
+  return new Date(Date.now() + parseDurationToMilliseconds(duration));
+}
 
-  const [, rawValue, rawUnit] = match;
-  if (!rawUnit) {
-    throw new Error(`Unsupported duration format: ${duration}`);
-  }
-  const value = Number(rawValue);
-  const unit = rawUnit.toLowerCase();
-  const now = Date.now();
-  const multiplier =
-    unit === "m" ? 60_000 : unit === "h" ? 3_600_000 : 86_400_000;
-
-  return new Date(now + value * multiplier);
+function getSessionInactivityTimeoutMs() {
+  return env.AUTH_INACTIVITY_TIMEOUT_MINUTES * 60_000;
 }
 
 function toAuthUser(user: {
@@ -446,6 +437,7 @@ export class AuthService {
         user: toAuthUser(user),
         accessToken: tokens.accessToken,
         refreshToken: tokens.refreshToken,
+        sessionInactivityTimeoutMs: getSessionInactivityTimeoutMs(),
       };
     } catch (error) {
       // #region debug-point A:register-error
@@ -504,6 +496,7 @@ export class AuthService {
       user: toAuthUser(user),
       accessToken: tokens.accessToken,
       refreshToken: tokens.refreshToken,
+      sessionInactivityTimeoutMs: getSessionInactivityTimeoutMs(),
     };
   }
 
@@ -578,6 +571,7 @@ export class AuthService {
       user: toAuthUser(storedToken.user),
       accessToken: tokens.accessToken,
       refreshToken: tokens.refreshToken,
+      sessionInactivityTimeoutMs: getSessionInactivityTimeoutMs(),
     };
   }
 
@@ -1005,7 +999,7 @@ export class AuthService {
       data: {
         userId,
         tokenHash: hashToken(refreshToken),
-        expiresAt: parseDurationToDate("7d"),
+        expiresAt: parseDurationToDate(env.JWT_REFRESH_EXPIRES_IN),
         lastActivityAt: new Date(),
         userAgent: sessionContext?.userAgent ?? null,
         ipAddress: sessionContext?.ipAddress ?? null,

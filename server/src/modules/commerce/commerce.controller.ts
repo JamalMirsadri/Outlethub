@@ -348,7 +348,10 @@ export class CommerceController {
   }
 
   public async listCustomerPayments(request: Request, response: Response) {
-    response.status(200).json({ items: await paymentsService.getCustomerPayments(requireUserId(request)) });
+    response.status(200).json({
+      items: await paymentsService.getCustomerPayments(requireUserId(request)),
+      serverNow: new Date().toISOString(),
+    });
   }
 
   public async getCustomerRewards(request: Request, response: Response) {

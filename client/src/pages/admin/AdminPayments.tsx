@@ -31,6 +31,7 @@ const STATUS_STYLES: Record<string, string> = {
   PAYMENT_PENDING: "bg-blue-500/10 text-blue-500",
   PAID: "bg-emerald-500/10 text-emerald-500",
   PAYMENT_REJECTED: "bg-red-500/10 text-red-500",
+  EXPIRED: "bg-red-500/10 text-red-500",
   FAILED: "bg-red-500/10 text-red-500",
   REFUNDED: "bg-muted text-muted-foreground",
   PARTIALLY_REFUNDED: "bg-orange-500/10 text-orange-500",

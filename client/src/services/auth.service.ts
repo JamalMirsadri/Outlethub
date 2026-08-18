@@ -12,6 +12,7 @@ interface MessageResponse {
 
 interface MeResponse {
   user: AuthResponse["user"];
+  sessionInactivityTimeoutMs: number;
 }
 
 const ACCESS_TOKEN_KEY = "outlethub_access_token";
@@ -73,11 +74,10 @@ export async function logout(): Promise<void> {
   }
 }
 
-export async function getCurrentUser(): Promise<MeResponse["user"]> {
-  const response = await http<MeResponse>("/auth/me", {
+export async function getCurrentUser(): Promise<MeResponse> {
+  return http<MeResponse>("/auth/me", {
     token: getAccessToken(),
   });
-  return response.user;
 }
 
 export async function forgotPassword(email: string): Promise<MessageResponse> {

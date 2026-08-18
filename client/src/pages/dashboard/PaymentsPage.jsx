@@ -18,6 +18,7 @@ const STATUS_STYLES = {
   PAYMENT_PENDING: "bg-blue-500/10 text-blue-500",
   PAID: "bg-emerald-500/10 text-emerald-500",
   PAYMENT_REJECTED: "bg-red-500/10 text-red-500",
+  EXPIRED: "bg-red-500/10 text-red-500",
   FAILED: "bg-red-500/10 text-red-500",
 };
 
@@ -30,6 +31,32 @@ async function fileToDataUrl(file) {
   });
 }
 
+function isBankTransferReservationStatus(status) {
+  return status === "PAYMENT_PENDING" || status === "PAYMENT_REJECTED";
+}
+
+function getReservationRemainingMs(payment, serverNowMs) {
+  if (!payment?.expiresAt || !isBankTransferReservationStatus(payment.status)) {
+    return null;
+  }
+
+  const expiresAtMs = Date.parse(payment.expiresAt);
+  if (!Number.isFinite(expiresAtMs)) {
+    return null;
+  }
+
+  return expiresAtMs - serverNowMs;
+}
+
+function formatReservationCountdown(remainingMs) {
+  const totalSeconds = Math.max(0, Math.floor(remainingMs / 1000));
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  return [hours, minutes, seconds].map((value) => String(value).padStart(2, "0")).join(":");
+}
+
 export default function PaymentsPage() {
   const { t } = useTranslation(["dashboard", "common", "product"]);
   const [payments, setPayments] = useState([]);
@@ -37,6 +64,8 @@ export default function PaymentsPage() {
   const [notesById, setNotesById] = useState({});
   const [fileById, setFileById] = useState({});
   const [savingId, setSavingId] = useState(null);
+  const [serverOffsetMs, setServerOffsetMs] = useState(0);
+  const [nowMs, setNowMs] = useState(() => Date.now());
   const { preferredCurrency, convertAmount } = useCurrency();
 
   const buildTimeline = (payment) => {
@@ -61,12 +90,49 @@ export default function PaymentsPage() {
   };
 
   const loadPayments = async () => {
-    setPayments(await listCustomerPayments());
+    const response = await listCustomerPayments();
+    setPayments(response.items);
+
+    const parsedServerNow = Date.parse(response.serverNow);
+    if (Number.isFinite(parsedServerNow)) {
+      setServerOffsetMs(parsedServerNow - Date.now());
+    }
   };
 
   useEffect(() => {
     loadPayments().catch(() => {});
   }, []);
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      setNowMs(Date.now());
+    }, 1000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, []);
+
+  useEffect(() => {
+    const serverNowMs = Date.now() + serverOffsetMs;
+    const activeReservationExpirations = payments
+      .map((payment) => getReservationRemainingMs(payment, serverNowMs))
+      .filter((value) => typeof value === "number");
+
+    if (activeReservationExpirations.length === 0) {
+      return undefined;
+    }
+
+    const nextExpiryMs = Math.min(...activeReservationExpirations);
+    const refreshDelayMs = nextExpiryMs <= 0 ? 1000 : Math.min(nextExpiryMs + 1000, 2_147_483_647);
+    const timeoutId = window.setTimeout(() => {
+      void loadPayments().catch(() => {});
+    }, refreshDelayMs);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [payments, serverOffsetMs]);
 
   const handleUpload = async (payment) => {
     const file = fileById[payment.id];
@@ -102,6 +168,8 @@ export default function PaymentsPage() {
     }
   };
 
+  const serverNowMs = nowMs + serverOffsetMs;
+
   return (
     <div>
       <h2 className="font-display text-xl font-bold mb-6">{t("dashboard.payments")}</h2>
@@ -117,6 +185,10 @@ export default function PaymentsPage() {
             <div key={payment.id} className="rounded-xl border border-border p-5">
               {(() => {
                 const timeline = buildTimeline(payment);
+                const reservationRemainingMs = getReservationRemainingMs(payment, serverNowMs);
+                const reservationExpired =
+                  payment.status === "EXPIRED"
+                  || (typeof reservationRemainingMs === "number" && reservationRemainingMs <= 0);
 
                 return (
                   <>
@@ -141,6 +213,16 @@ export default function PaymentsPage() {
                     {formatCurrency(payment.amount, payment.currency)}
                     {showTomanAmount ? ` · ${formatCurrency(tomanAmount, "TOMAN")}` : ` · ${formatCurrency(convertAmount(payment.amount, payment.currency, preferredCurrency), preferredCurrency)}`}
                   </p>
+                  {payment.provider === "BANK_TRANSFER" && typeof reservationRemainingMs === "number" && reservationRemainingMs > 0 ? (
+                    <p className="mt-2 text-sm font-medium text-amber-600">
+                      Payment reserved for {formatReservationCountdown(reservationRemainingMs)}
+                    </p>
+                  ) : null}
+                  {payment.provider === "BANK_TRANSFER" && reservationExpired ? (
+                    <p className="mt-2 text-sm font-medium text-destructive">
+                      Payment reservation expired.
+                    </p>
+                  ) : null}
                   {payment.receiptUrl ? (
                     <a href={payment.receiptUrl} target="_blank" rel="noreferrer" className="inline-flex mt-2 text-sm text-[hsl(var(--accent))] hover:underline">
                       {t("common.view")}
@@ -194,7 +276,8 @@ export default function PaymentsPage() {
                 </div>
 
                 {payment.provider === "BANK_TRANSFER" &&
-                (payment.status === "PAYMENT_PENDING" || payment.status === "PAYMENT_REJECTED") ? (
+                isBankTransferReservationStatus(payment.status) &&
+                !reservationExpired ? (
                   <div className="w-full max-w-md space-y-3">
                     <div>
                       <Label className="text-xs">{t("dashboard.referralCode")}</Label>

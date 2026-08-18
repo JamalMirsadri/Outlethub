@@ -16,6 +16,26 @@ export interface RefreshTokenPayload {
   type: "refresh";
 }
 
+export function parseDurationToMilliseconds(duration: string): number {
+  const match = duration.match(/^(\d+)([mhd])$/i);
+  if (!match) {
+    throw new Error(`Unsupported duration format: ${duration}`);
+  }
+
+  const [, rawValue, rawUnit] = match;
+  const value = Number(rawValue);
+  const unit = rawUnit?.toLowerCase();
+
+  if (!Number.isFinite(value) || !unit) {
+    throw new Error(`Unsupported duration format: ${duration}`);
+  }
+
+  const multiplier =
+    unit === "m" ? 60_000 : unit === "h" ? 3_600_000 : 86_400_000;
+
+  return value * multiplier;
+}
+
 export function signAccessToken(payload: Omit<AccessTokenPayload, "type">): string {
   const options: SignOptions = {
     expiresIn: env.JWT_ACCESS_EXPIRES_IN as SignOptions["expiresIn"],

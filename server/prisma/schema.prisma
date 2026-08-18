@@ -225,6 +225,7 @@ enum PaymentStatus {
   REQUIRES_ACTION
   SUCCEEDED
   FAILED
+  EXPIRED
   CANCELLED
   REFUNDED
   PARTIALLY_REFUNDED
@@ -995,6 +996,7 @@ model Payment {
   receiptFileName         String?
   receiptMimeType         String?
   receiptUploadedAt       DateTime?
+  expiresAt               DateTime?
   customerNotes           String?
   internalNotes           String?
   reviewRequestedAt       DateTime?
@@ -1019,6 +1021,7 @@ model Payment {
   @@index([providerConfigurationId])
   @@index([status])
   @@index([kind])
+  @@index([expiresAt])
 }
 
 model PaymentProviderConfig {
@@ -1249,6 +1252,7 @@ model BusinessSettings {
   vatPercent            Decimal  @db.Decimal(5, 2)
   freeShippingThreshold Decimal  @db.Decimal(10, 2)
   minimumOrderValue     Decimal  @db.Decimal(10, 2)
+  bankTransferPaymentDeadlineHours Int @default(3)
   returnPeriodDays      Int      @default(30)
   country               Country  @relation(fields: [defaultCountryCode], references: [code])
   createdAt             DateTime @default(now())

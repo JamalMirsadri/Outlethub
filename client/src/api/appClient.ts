@@ -1058,7 +1058,8 @@ function createPlaceholderEntityClient<TRecord extends EntityRecord>(entityName:
 export const appClient: AppClientContract = {
   auth: {
     async me() {
-      return getCurrentUser();
+      const response = await getCurrentUser();
+      return response.user;
     },
     async loginViaEmailPassword(email: string, password: string) {
       return login({ email, password });

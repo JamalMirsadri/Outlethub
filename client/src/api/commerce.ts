@@ -14,6 +14,7 @@ export type PaymentStatus =
   | "REQUIRES_ACTION"
   | "SUCCEEDED"
   | "FAILED"
+  | "EXPIRED"
   | "CANCELLED"
   | "REFUNDED"
   | "PARTIALLY_REFUNDED";
@@ -130,6 +131,7 @@ export interface CommerceSettingsResponse {
     vatPercent: number | null;
     freeShippingThreshold: number | null;
     minimumOrderValue: number | null;
+    bankTransferPaymentDeadlineHours: number;
     returnPeriodDays: number;
   };
   shippingMethods: Array<{
@@ -360,6 +362,7 @@ export interface PaymentRecord {
   receiptFileName: string | null;
   receiptMimeType: string | null;
   receiptUploadedAt: string | null;
+  expiresAt: string | null;
   customerNotes: string | null;
   internalNotes: string | null;
   reviewRequestedAt: string | null;
@@ -669,11 +672,9 @@ export async function listCustomerOrders() {
 }
 
 export async function listCustomerPayments() {
-  const response = await http<{ items: PaymentRecord[] }>("/payments", {
+  return http<{ items: PaymentRecord[]; serverNow: string }>("/payments", {
     token: getRequiredToken(),
   });
-
-  return response.items;
 }
 
 export async function uploadPaymentReceipt(

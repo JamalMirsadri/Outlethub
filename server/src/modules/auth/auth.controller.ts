@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 
 import { env } from "../../config/env.js";
+import { parseDurationToMilliseconds } from "../../services/jwt.service.js";
 import { authService } from "./auth.service.js";
 import { getSessionContext } from "./session.utils.js";
 
@@ -14,7 +15,7 @@ const refreshCookieOptions = {
 function setRefreshTokenCookie(response: Response, refreshToken: string): void {
   response.cookie(env.REFRESH_TOKEN_COOKIE_NAME, refreshToken, {
     ...refreshCookieOptions,
-    expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    expires: new Date(Date.now() + parseDurationToMilliseconds(env.JWT_REFRESH_EXPIRES_IN)),
   });
 }
 
@@ -30,6 +31,7 @@ export class AuthController {
     response.status(201).json({
       user: result.user,
       accessToken: result.accessToken,
+      sessionInactivityTimeoutMs: result.sessionInactivityTimeoutMs,
     });
   }
 
@@ -40,6 +42,7 @@ export class AuthController {
     response.status(200).json({
       user: result.user,
       accessToken: result.accessToken,
+      sessionInactivityTimeoutMs: result.sessionInactivityTimeoutMs,
     });
   }
 
@@ -51,6 +54,7 @@ export class AuthController {
     response.status(200).json({
       user: result.user,
       accessToken: result.accessToken,
+      sessionInactivityTimeoutMs: result.sessionInactivityTimeoutMs,
     });
   }
 
@@ -96,7 +100,10 @@ export class AuthController {
 
   public async me(request: Request, response: Response): Promise<void> {
     const user = await authService.getCurrentUser(request.auth!.userId);
-    response.status(200).json({ user });
+    response.status(200).json({
+      user,
+      sessionInactivityTimeoutMs: env.AUTH_INACTIVITY_TIMEOUT_MINUTES * 60_000,
+    });
   }
 
   public async listAdminUsers(request: Request, response: Response): Promise<void> {

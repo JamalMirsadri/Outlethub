@@ -1,5 +1,6 @@
 import {
   PaymentKind,
+  type OrderStatus,
   PaymentProvider,
   PaymentStatus,
   Prisma,
@@ -15,6 +16,7 @@ import { env } from "../../config/env.js";
 import { prisma } from "../../config/prisma.js";
 import { ApiError } from "../../utils/api-error.js";
 import { currencyService } from "./currency.service.js";
+import { pricingService } from "./pricing.service.js";
 import { procurementService } from "./procurement.service.js";
 import { notificationsService } from "../notifications/notifications.service.js";
 
@@ -86,6 +88,16 @@ function providerDisplayName(provider: PaymentProvider) {
 function paymentStatusLabel(status: PaymentStatus) {
   return status.replaceAll("_", " ");
 }
+
+const EXPIRABLE_BANK_TRANSFER_STATUSES = new Set<PaymentStatus>([
+  PaymentStatus.PAYMENT_PENDING,
+  PaymentStatus.PAYMENT_REJECTED,
+]);
+
+const CANCELLABLE_EXPIRED_ORDER_STATUSES = new Set<OrderStatus>([
+  "PENDING",
+  "PAYMENT_APPROVED",
+]);
 
 function inferReceiptExtension(fileName?: string | null, mimeType?: string | null) {
   const directExtension = fileName ? extname(fileName).trim().toLowerCase() : "";
@@ -350,6 +362,7 @@ function mapPayment(payment: Prisma.PaymentGetPayload<{
     receiptFileName: payment.receiptFileName,
     receiptMimeType: payment.receiptMimeType,
     receiptUploadedAt: payment.receiptUploadedAt,
+    expiresAt: payment.expiresAt,
     customerNotes: payment.customerNotes,
     internalNotes: payment.internalNotes,
     reviewRequestedAt: payment.reviewRequestedAt,
@@ -436,6 +449,102 @@ function mapPayment(payment: Prisma.PaymentGetPayload<{
 }
 
 export class PaymentsService {
+  private async expirePendingBankTransferPayments(filters?: {
+    userId?: string;
+    paymentId?: string;
+  }): Promise<void> {
+    const now = new Date();
+    const expiredPayments = await prisma.payment.findMany({
+      where: {
+        provider: PaymentProvider.BANK_TRANSFER,
+        status: {
+          in: Array.from(EXPIRABLE_BANK_TRANSFER_STATUSES),
+        },
+        expiresAt: {
+          lte: now,
+        },
+        userId: filters?.userId,
+        id: filters?.paymentId,
+      },
+      select: {
+        id: true,
+        orderId: true,
+      },
+    });
+
+    for (const expiredPayment of expiredPayments) {
+      await prisma.$transaction(async (transaction) => {
+        const payment = await transaction.payment.findUnique({
+          where: { id: expiredPayment.id },
+          include: {
+            order: {
+              select: {
+                id: true,
+                status: true,
+              },
+            },
+          },
+        });
+
+        if (
+          !payment
+          || payment.provider !== PaymentProvider.BANK_TRANSFER
+          || !payment.expiresAt
+          || payment.expiresAt > now
+          || !EXPIRABLE_BANK_TRANSFER_STATUSES.has(payment.status)
+        ) {
+          return;
+        }
+
+        await transaction.payment.update({
+          where: { id: payment.id },
+          data: {
+            status: PaymentStatus.EXPIRED,
+            processedAt: now,
+            transactions: {
+              create: {
+                orderId: payment.orderId,
+                providerConfigurationId: payment.providerConfigurationId,
+                provider: payment.provider,
+                kind: PaymentKind.CHARGE,
+                status: PaymentStatus.EXPIRED,
+                currency: payment.currency,
+                amount: payment.amount,
+                exchangeRate: payment.exchangeRate,
+                externalReference: payment.paymentReference,
+                metadata: {
+                  stage: "payment-expired",
+                  expiredAt: now.toISOString(),
+                },
+                failedAt: now,
+              },
+            },
+            auditLogs: {
+              create: {
+                action: "PAYMENT_EXPIRED",
+                fromStatus: payment.status,
+                toStatus: PaymentStatus.EXPIRED,
+                notes: "Bank transfer payment reservation expired before receipt submission.",
+                metadata: {
+                  expiredAt: now.toISOString(),
+                },
+              },
+            },
+          },
+        });
+
+        if (payment.orderId && payment.order && CANCELLABLE_EXPIRED_ORDER_STATUSES.has(payment.order.status)) {
+          await transaction.order.update({
+            where: { id: payment.orderId },
+            data: {
+              status: "CANCELLED",
+            },
+          });
+        }
+      });
+    }
+  }
+
   public async ensureProviderConfigurations() {
     const defaults: Array<{
       code: PaymentProvider;
@@ -628,6 +737,12 @@ export class PaymentsService {
 
     const initialStatus =
       input.provider === "BANK_TRANSFER" ? PaymentStatus.PAYMENT_PENDING : PaymentStatus.PENDING;
+    const businessSettings =
+      input.provider === "BANK_TRANSFER" ? await pricingService.getBusinessSettings() : null;
+    const expiresAt =
+      input.provider === "BANK_TRANSFER" && businessSettings
+        ? new Date(Date.now() + businessSettings.bankTransferPaymentDeadlineHours * 60 * 60 * 1000)
+        : null;
 
     const payment = await prisma.payment.create({
       data: {
@@ -642,6 +757,7 @@ export class PaymentsService {
         amount: input.amount,
         exchangeRate: new Prisma.Decimal(exchangeRate),
         paymentReference,
+        expiresAt,
         metadata: {
           paymentMethodLabel: input.paymentMethodLabel ?? providerDisplayName(input.provider),
         },
@@ -692,6 +808,8 @@ export class PaymentsService {
   }
 
   public async getCustomerPayments(userId: string) {
+    await this.expirePendingBankTransferPayments({ userId });
+
     const payments = await prisma.payment.findMany({
       where: {
         userId,
@@ -758,6 +876,22 @@ export class PaymentsService {
 
     if (payment.provider !== "BANK_TRANSFER") {
       throw new ApiError(400, "Receipt upload is only available for bank transfer payments.");
+    }
+
+    if (
+      payment.expiresAt
+      && payment.expiresAt <= new Date()
+      && EXPIRABLE_BANK_TRANSFER_STATUSES.has(payment.status)
+    ) {
+      await this.expirePendingBankTransferPayments({
+        userId,
+        paymentId: payment.id,
+      });
+      throw new ApiError(409, "This bank transfer payment reservation has expired.");
+    }
+
+    if (!EXPIRABLE_BANK_TRANSFER_STATUSES.has(payment.status)) {
+      throw new ApiError(409, "Receipt upload is only available while payment is pending or rejected.");
     }
 
     const uploaded = await uploadPaymentReceipt({
@@ -1128,6 +1262,7 @@ export class PaymentsService {
 
   public async getAdminPaymentsDashboard() {
     await this.ensureProviderConfigurations();
+    await this.expirePendingBankTransferPayments();
 
     const [payments, providers] = await Promise.all([
       prisma.payment.findMany({

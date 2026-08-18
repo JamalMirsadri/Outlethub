@@ -76,6 +76,7 @@ const PAYMENT_STATUS_STYLES = {
   PAYMENT_PENDING_REVIEW: "bg-amber-500/10 text-amber-500",
   PAYMENT_APPROVED: "bg-emerald-500/10 text-emerald-500",
   PAID: "bg-emerald-500/10 text-emerald-500",
+  EXPIRED: "bg-red-500/10 text-red-500",
   PAYMENT_FAILED: "bg-red-500/10 text-red-500",
   REFUNDED: "bg-muted text-muted-foreground",
 };

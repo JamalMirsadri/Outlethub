@@ -16,4 +16,5 @@ export interface AuthTokens {
 export interface AuthResponse {
   user: AuthUser;
   accessToken: string;
+  sessionInactivityTimeoutMs: number;
 }

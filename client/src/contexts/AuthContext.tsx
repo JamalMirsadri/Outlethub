@@ -123,6 +123,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
   const [authError, setAuthError] = useState<AuthErrorState | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
+  const [sessionInactivityTimeoutMs, setSessionInactivityTimeoutMs] = useState(AUTH_INACTIVITY_TIMEOUT_MS);
   const logoutTimerRef = useRef<number | null>(null);
   const lastServerActivityRef = useRef<number>(0);
   const activityPingPromiseRef = useRef<Promise<void> | null>(null);
@@ -149,6 +150,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     clearLogoutTimer();
     clearLastActivityAt();
     lastServerActivityRef.current = 0;
+    setSessionInactivityTimeoutMs(AUTH_INACTIVITY_TIMEOUT_MS);
 
     if (broadcast) {
       broadcastLogout();
@@ -189,7 +191,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   );
 
   const scheduleAutoLogout = useCallback(
-    (activityTimestamp?: number) => {
+    (activityTimestamp?: number, timeoutMsOverride?: number) => {
       clearLogoutTimer();
 
       if (!isAuthenticated) {
@@ -197,7 +199,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
 
       const lastActivityAt = activityTimestamp ?? readLastActivityAt() ?? Date.now();
-      const remainingMs = AUTH_INACTIVITY_TIMEOUT_MS - (Date.now() - lastActivityAt);
+      const timeoutMs = timeoutMsOverride ?? sessionInactivityTimeoutMs;
+      const remainingMs = timeoutMs - (Date.now() - lastActivityAt);
 
       if (remainingMs <= 0) {
         void logout({ redirectTo: getActivePath() });
@@ -208,7 +211,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         void logout({ redirectTo: getActivePath() });
       }, remainingMs);
     },
-    [clearLogoutTimer, getActivePath, isAuthenticated, logout],
+    [clearLogoutTimer, getActivePath, isAuthenticated, logout, sessionInactivityTimeoutMs],
   );
 
   const syncServerActivity = useCallback(async (): Promise<void> => {
@@ -237,7 +240,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
           setIsAuthenticated(true);
           setAuthChecked(true);
           setAuthError(null);
-          lastServerActivityRef.current = Date.now();
+          const timeoutMs = refreshed.sessionInactivityTimeoutMs ?? AUTH_INACTIVITY_TIMEOUT_MS;
+          setSessionInactivityTimeoutMs(timeoutMs);
+          const now = Date.now();
+          scheduleAutoLogout(now, timeoutMs);
+          lastServerActivityRef.current = now;
         } catch {
           await logout({ redirectTo });
         }
@@ -271,7 +278,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setAuthError(null);
 
     const lastActivityAt = readLastActivityAt();
-    if (lastActivityAt && Date.now() - lastActivityAt >= AUTH_INACTIVITY_TIMEOUT_MS) {
+    if (lastActivityAt && Date.now() - lastActivityAt >= sessionInactivityTimeoutMs) {
       await logout({ shouldRedirect: false });
       setIsLoadingAuth(false);
       return;
@@ -286,20 +293,24 @@ export function AuthProvider({ children }: AuthProviderProps) {
         setUser(refreshed.user);
         setIsAuthenticated(true);
         setAuthChecked(true);
+        const timeoutMs = refreshed.sessionInactivityTimeoutMs ?? AUTH_INACTIVITY_TIMEOUT_MS;
+        setSessionInactivityTimeoutMs(timeoutMs);
         const now = Date.now();
         persistLastActivityAt(now);
-        scheduleAutoLogout(now);
+        scheduleAutoLogout(now, timeoutMs);
         lastServerActivityRef.current = now;
         return;
       }
 
       const currentUser = await getCurrentUser();
-      setUser(currentUser);
+      setUser(currentUser.user);
       setIsAuthenticated(true);
       setAuthChecked(true);
+      const timeoutMs = currentUser.sessionInactivityTimeoutMs ?? AUTH_INACTIVITY_TIMEOUT_MS;
+      setSessionInactivityTimeoutMs(timeoutMs);
       const now = Date.now();
       persistLastActivityAt(now);
-      scheduleAutoLogout(now);
+      scheduleAutoLogout(now, timeoutMs);
       lastServerActivityRef.current = now;
     } catch (initialError: unknown) {
       try {
@@ -308,9 +319,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
         setIsAuthenticated(true);
         setAuthChecked(true);
         setAuthError(null);
+        const timeoutMs = refreshed.sessionInactivityTimeoutMs ?? AUTH_INACTIVITY_TIMEOUT_MS;
+        setSessionInactivityTimeoutMs(timeoutMs);
         const now = Date.now();
         persistLastActivityAt(now);
-        scheduleAutoLogout(now);
+        scheduleAutoLogout(now, timeoutMs);
         lastServerActivityRef.current = now;
       } catch (refreshError: unknown) {
         resetAuthState(false);
@@ -319,7 +332,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     } finally {
       setIsLoadingAuth(false);
     }
-  }, [logout, resetAuthState, scheduleAutoLogout]);
+  }, [logout, resetAuthState, scheduleAutoLogout, sessionInactivityTimeoutMs]);
 
   const checkAppState = useCallback(async (): Promise<void> => {
     await checkUserAuth();

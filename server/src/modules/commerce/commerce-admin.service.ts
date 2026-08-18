@@ -181,6 +181,7 @@ export class CommerceAdminService {
         vatPercent: toNumber(businessSettings.vatPercent),
         freeShippingThreshold: toNumber(businessSettings.freeShippingThreshold),
         minimumOrderValue: toNumber(businessSettings.minimumOrderValue),
+        bankTransferPaymentDeadlineHours: businessSettings.bankTransferPaymentDeadlineHours,
         returnPeriodDays: businessSettings.returnPeriodDays,
         country: businessSettings.country,
         createdAt: businessSettings.createdAt,
@@ -209,6 +210,7 @@ export class CommerceAdminService {
     vatPercent?: number;
     freeShippingThreshold?: number;
     minimumOrderValue?: number;
+    bankTransferPaymentDeadlineHours?: number;
     returnPeriodDays?: number;
   }) {
     const existing = await prisma.businessSettings.findFirst({
@@ -247,6 +249,7 @@ export class CommerceAdminService {
             : undefined,
         minimumOrderValue:
           input.minimumOrderValue !== undefined ? new Prisma.Decimal(input.minimumOrderValue) : undefined,
+        bankTransferPaymentDeadlineHours: input.bankTransferPaymentDeadlineHours,
         returnPeriodDays: input.returnPeriodDays,
       },
     });
@@ -270,6 +273,7 @@ export class CommerceAdminService {
       vatPercent: toNumber(updated.vatPercent),
       freeShippingThreshold: toNumber(updated.freeShippingThreshold),
       minimumOrderValue: toNumber(updated.minimumOrderValue),
+      bankTransferPaymentDeadlineHours: updated.bankTransferPaymentDeadlineHours,
       returnPeriodDays: updated.returnPeriodDays,
     };
   }
