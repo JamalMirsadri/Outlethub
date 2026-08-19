@@ -107,6 +107,20 @@ export interface EmailTemplateRecord {
   }>;
 }
 
+export interface AdminEmailNotificationRecipientRecord {
+  id: string;
+  name: string;
+  email: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminEmailNotificationSettingsRecord {
+  enabled: boolean;
+  recipients: AdminEmailNotificationRecipientRecord[];
+}
+
 function getTokenOrThrow(): string {
   const token = getAccessToken();
   if (!token) {
@@ -229,4 +243,65 @@ export async function sendTestEmail(id: string, targetEmail: string, variables: 
       body: JSON.stringify({ targetEmail, variables }),
     },
   );
+}
+
+export async function getAdminEmailNotificationSettings() {
+  return http<AdminEmailNotificationSettingsRecord>("/admin/email-notifications", {
+    token: getTokenOrThrow(),
+  });
+}
+
+export async function updateAdminEmailNotificationSettings(enabled: boolean) {
+  return http<AdminEmailNotificationSettingsRecord>("/admin/email-notifications", {
+    method: "PATCH",
+    token: getTokenOrThrow(),
+    body: JSON.stringify({ enabled }),
+  });
+}
+
+export async function createAdminEmailNotificationRecipient(payload: {
+  name: string;
+  email: string;
+  isActive?: boolean;
+}) {
+  return http<AdminEmailNotificationRecipientRecord>("/admin/email-notifications/recipients", {
+    method: "POST",
+    token: getTokenOrThrow(),
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function updateAdminEmailNotificationRecipient(
+  id: string,
+  payload: Partial<{
+    name: string;
+    email: string;
+    isActive: boolean;
+  }>,
+) {
+  return http<AdminEmailNotificationRecipientRecord>(`/admin/email-notifications/recipients/${id}`, {
+    method: "PATCH",
+    token: getTokenOrThrow(),
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function deleteAdminEmailNotificationRecipient(id: string) {
+  return http<void>(`/admin/email-notifications/recipients/${id}`, {
+    method: "DELETE",
+    token: getTokenOrThrow(),
+  });
+}
+
+export async function sendAdminEmailNotificationTestEmail() {
+  return http<{
+    eventId: string;
+    recipientCount: number;
+    deliveredCount: number;
+    failedCount: number;
+  }>("/admin/email-notifications/test", {
+    method: "POST",
+    token: getTokenOrThrow(),
+    body: JSON.stringify({}),
+  });
 }

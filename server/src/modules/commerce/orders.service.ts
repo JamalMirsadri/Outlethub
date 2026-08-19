@@ -838,6 +838,7 @@ export class OrdersService {
       message: `Order ${persistedOrder.orderNumber} created`,
     })
       .catch(() => undefined);
+    void notificationsService.sendAdminOrderCreatedEmailNotification(mapOrder(persistedOrder)).catch(() => undefined);
     await referralService.syncOrderReferralRewards(persistedOrder.id);
     return mapOrder(persistedOrder);
   }

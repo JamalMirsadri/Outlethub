@@ -20,6 +20,10 @@ export const notificationIdParamsSchema = z.object({
   id: cuidSchema,
 });
 
+export const adminEmailNotificationRecipientParamsSchema = z.object({
+  id: z.string().uuid(),
+});
+
 export const listNotificationsQuerySchema = z.object({
   category: z.nativeEnum(NotificationCategory).optional(),
   unreadOnly: z
@@ -70,3 +74,23 @@ export const sendTestEmailSchema = z.object({
 export const rollbackTemplateSchema = z.object({
   version: z.coerce.number().int().positive(),
 });
+
+export const updateAdminEmailNotificationSettingsSchema = z.object({
+  enabled: z.boolean(),
+});
+
+export const createAdminEmailNotificationRecipientSchema = z.object({
+  name: z.string().trim().min(2).max(120),
+  email: z.string().trim().email(),
+  isActive: z.boolean().optional().default(true),
+});
+
+export const updateAdminEmailNotificationRecipientSchema = z
+  .object({
+    name: z.string().trim().min(2).max(120).optional(),
+    email: z.string().trim().email().optional(),
+    isActive: z.boolean().optional(),
+  })
+  .refine((value) => Object.keys(value).length > 0, {
+    message: "At least one field must be provided.",
+  });

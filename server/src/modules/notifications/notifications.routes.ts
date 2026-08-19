@@ -7,11 +7,15 @@ import { validateBody, validateParams, validateQuery } from "../../middleware/va
 import { asyncHandler } from "../../utils/async-handler.js";
 import { notificationsController } from "./notifications.controller.js";
 import {
+  adminEmailNotificationRecipientParamsSchema,
+  createAdminEmailNotificationRecipientSchema,
   listNotificationsQuerySchema,
   notificationIdParamsSchema,
   previewEmailTemplateSchema,
   rollbackTemplateSchema,
   sendTestEmailSchema,
+  updateAdminEmailNotificationRecipientSchema,
+  updateAdminEmailNotificationSettingsSchema,
   updateEmailTemplateSchema,
   updateNotificationPreferencesSchema,
 } from "./notifications.schemas.js";
@@ -52,7 +56,7 @@ notificationsRouter.put(
 );
 
 notificationsRouter.use(
-  ["/admin/notifications", "/admin/email-templates"],
+  ["/admin/notifications", "/admin/email-templates", "/admin/email-notifications"],
   requireAuth,
   requireRoles(RoleCode.SUPER_ADMIN, RoleCode.ADMIN),
 );
@@ -66,6 +70,41 @@ notificationsRouter.get(
 notificationsRouter.get(
   "/admin/email-templates",
   asyncHandler(notificationsController.listEmailTemplates.bind(notificationsController)),
+);
+
+notificationsRouter.get(
+  "/admin/email-notifications",
+  asyncHandler(notificationsController.getAdminEmailNotificationSettings.bind(notificationsController)),
+);
+
+notificationsRouter.patch(
+  "/admin/email-notifications",
+  validateBody(updateAdminEmailNotificationSettingsSchema),
+  asyncHandler(notificationsController.updateAdminEmailNotificationSettings.bind(notificationsController)),
+);
+
+notificationsRouter.post(
+  "/admin/email-notifications/recipients",
+  validateBody(createAdminEmailNotificationRecipientSchema),
+  asyncHandler(notificationsController.createAdminEmailNotificationRecipient.bind(notificationsController)),
+);
+
+notificationsRouter.patch(
+  "/admin/email-notifications/recipients/:id",
+  validateParams(adminEmailNotificationRecipientParamsSchema),
+  validateBody(updateAdminEmailNotificationRecipientSchema),
+  asyncHandler(notificationsController.updateAdminEmailNotificationRecipient.bind(notificationsController)),
+);
+
+notificationsRouter.delete(
+  "/admin/email-notifications/recipients/:id",
+  validateParams(adminEmailNotificationRecipientParamsSchema),
+  asyncHandler(notificationsController.deleteAdminEmailNotificationRecipient.bind(notificationsController)),
+);
+
+notificationsRouter.post(
+  "/admin/email-notifications/test",
+  asyncHandler(notificationsController.sendAdminEmailNotificationTestEmail.bind(notificationsController)),
 );
 
 notificationsRouter.patch(

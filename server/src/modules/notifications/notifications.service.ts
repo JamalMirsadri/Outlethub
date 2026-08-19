@@ -9,6 +9,7 @@ import {
   RoleCode,
 } from "@prisma/client";
 import nodemailer, { type Transporter } from "nodemailer";
+import { randomUUID } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
@@ -70,7 +71,44 @@ interface TemplatePreviewInput {
   samplePayload: Record<string, unknown>;
 }
 
+interface AdminEmailNotificationRecipientRecord {
+  id: string;
+  name: string;
+  email: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface AdminEmailNotificationSettingsRecord {
+  enabled: boolean;
+  recipients: AdminEmailNotificationRecipientRecord[];
+}
+
+interface AdminOrderNotificationPayload {
+  id: string;
+  orderNumber: string;
+  customerName: string | null;
+  customerEmail: string;
+  totalAmount: number;
+  currency: string;
+  paymentProvider: string;
+  paymentMethodLabel: string | null;
+  createdAt: Date | string;
+  items: Array<{
+    title: string;
+    brandName: string | null;
+    size: string | null;
+    color: string | null;
+    quantity: number;
+    unitPrice: number;
+    totalPrice: number;
+    currency: string;
+  }>;
+}
+
 let emailTransporter: Transporter | null = null;
+const ADMIN_EMAIL_NOTIFICATION_SETTING_KEY = "admin_email_notifications";
 
 function shouldDeliverEmailInline() {
   return !env.REDIS_URL || env.SERVICE_MODE === "web";
@@ -179,6 +217,159 @@ function toOptionalString(value: string | null | undefined): string | null {
 
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
+}
+
+function normalizeEmail(value: string) {
+  return value.trim().toLowerCase();
+}
+
+function formatMoney(amount: number, currency: string) {
+  return `${currency} ${amount.toFixed(2)}`;
+}
+
+function escapeHtml(value: string) {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function buildAdminOrderLink(orderId: string) {
+  const baseUrl = env.CLIENT_URL.replace(/\/+$/, "");
+  return `${baseUrl}/admin/orders?orderId=${encodeURIComponent(orderId)}`;
+}
+
+function resolveAdminEmailNotificationSettings(
+  value: Prisma.JsonValue | Record<string, unknown> | null | undefined,
+): AdminEmailNotificationSettingsRecord {
+  const record = toJsonRecord(value);
+  const rawRecipients = Array.isArray(record.recipients) ? record.recipients : [];
+
+  const recipients = rawRecipients
+    .map((item) => {
+      if (!item || typeof item !== "object" || Array.isArray(item)) {
+        return null;
+      }
+
+      const candidate = item as Record<string, unknown>;
+      const id = typeof candidate.id === "string" && candidate.id.length > 0 ? candidate.id : randomUUID();
+      const name = typeof candidate.name === "string" ? candidate.name.trim() : "";
+      const email = typeof candidate.email === "string" ? normalizeEmail(candidate.email) : "";
+      const isActive = candidate.isActive !== false;
+      const createdAt =
+        typeof candidate.createdAt === "string" && candidate.createdAt.length > 0
+          ? candidate.createdAt
+          : new Date().toISOString();
+      const updatedAt =
+        typeof candidate.updatedAt === "string" && candidate.updatedAt.length > 0
+          ? candidate.updatedAt
+          : createdAt;
+
+      if (name.length === 0 || email.length === 0) {
+        return null;
+      }
+
+      return {
+        id,
+        name,
+        email,
+        isActive,
+        createdAt,
+        updatedAt,
+      };
+    })
+    .filter((recipient): recipient is AdminEmailNotificationRecipientRecord => Boolean(recipient))
+    .sort((left, right) => left.createdAt.localeCompare(right.createdAt));
+
+  return {
+    enabled: record.enabled !== false,
+    recipients,
+  };
+}
+
+function buildAdminOrderNotificationEmail(order: AdminOrderNotificationPayload) {
+  const orderDate = new Date(order.createdAt);
+  const orderLink = buildAdminOrderLink(order.id);
+  const paymentMethod = order.paymentMethodLabel ?? order.paymentProvider;
+  const customerName = toOptionalString(order.customerName) ?? "Customer";
+  const productsText = order.items
+    .map((item, index) => {
+      const variantBits = [item.brandName, item.size, item.color].filter(Boolean).join(" / ");
+      return `${index + 1}. ${item.title}${variantBits ? ` (${variantBits})` : ""} x${item.quantity} - ${formatMoney(item.totalPrice, item.currency || order.currency)}`;
+    })
+    .join("\n");
+  const productsHtml = order.items
+    .map((item) => {
+      const variantBits = [item.brandName, item.size, item.color].filter(Boolean).join(" / ");
+      return `<li><strong>${escapeHtml(item.title)}</strong>${variantBits ? ` <span style="color:#667085">(${escapeHtml(variantBits)})</span>` : ""} - Qty ${item.quantity} - ${escapeHtml(formatMoney(item.totalPrice, item.currency || order.currency))}</li>`;
+    })
+    .join("");
+  const subject = `New order ${order.orderNumber} received`;
+  const text = [
+    `A new order has been created.`,
+    ``,
+    `Order Number: ${order.orderNumber}`,
+    `Customer: ${customerName}`,
+    `Customer Email: ${order.customerEmail}`,
+    `Total Amount: ${formatMoney(order.totalAmount, order.currency)}`,
+    `Payment Method: ${paymentMethod}`,
+    `Order Date/Time: ${orderDate.toISOString()}`,
+    `Admin Link: ${orderLink}`,
+    ``,
+    `Products:`,
+    productsText,
+  ].join("\n");
+  const html = `
+    <div style="font-family:Arial,sans-serif;line-height:1.6;color:#111827">
+      <h2 style="margin:0 0 16px">New order received</h2>
+      <p style="margin:0 0 12px">A new order has been created in OutletHub.</p>
+      <table style="border-collapse:collapse;width:100%;max-width:640px;margin-bottom:16px">
+        <tbody>
+          <tr><td style="padding:6px 0;font-weight:600">Order Number</td><td style="padding:6px 0">${escapeHtml(order.orderNumber)}</td></tr>
+          <tr><td style="padding:6px 0;font-weight:600">Customer</td><td style="padding:6px 0">${escapeHtml(customerName)}</td></tr>
+          <tr><td style="padding:6px 0;font-weight:600">Customer Email</td><td style="padding:6px 0">${escapeHtml(order.customerEmail)}</td></tr>
+          <tr><td style="padding:6px 0;font-weight:600">Total Amount</td><td style="padding:6px 0">${escapeHtml(formatMoney(order.totalAmount, order.currency))}</td></tr>
+          <tr><td style="padding:6px 0;font-weight:600">Payment Method</td><td style="padding:6px 0">${escapeHtml(paymentMethod)}</td></tr>
+          <tr><td style="padding:6px 0;font-weight:600">Order Date/Time</td><td style="padding:6px 0">${escapeHtml(orderDate.toISOString())}</td></tr>
+        </tbody>
+      </table>
+      <h3 style="margin:0 0 12px">Products</h3>
+      <ul style="padding-left:20px;margin:0 0 20px">${productsHtml}</ul>
+      <p style="margin:0">
+        <a href="${escapeHtml(orderLink)}" style="display:inline-block;background:#111827;color:#ffffff;text-decoration:none;padding:10px 16px;border-radius:999px">View order in Admin Panel</a>
+      </p>
+    </div>
+  `.trim();
+
+  return {
+    subject,
+    text,
+    html,
+    orderLink,
+  };
+}
+
+function buildAdminTestNotificationEmail() {
+  const subject = "OutletHub admin order notification test";
+  const text = [
+    "This is a test email for the Admin Email Notification Management system.",
+    "",
+    "If you received this email, SMTP delivery for admin order notifications is working.",
+  ].join("\n");
+  const html = `
+    <div style="font-family:Arial,sans-serif;line-height:1.6;color:#111827">
+      <h2 style="margin:0 0 16px">Admin order notification test</h2>
+      <p style="margin:0">If you received this email, SMTP delivery for admin order notifications is working.</p>
+    </div>
+  `.trim();
+
+  return {
+    subject,
+    text,
+    html,
+  };
 }
 
 function prettifyEventName(value: string): string {
@@ -1156,6 +1347,352 @@ export class NotificationsService {
       channelSettings: preference.channelSettings,
       createdAt: preference.createdAt,
       updatedAt: preference.updatedAt,
+    };
+  }
+
+  private async readAdminEmailNotificationSettings() {
+    const setting = await prisma.setting.findUnique({
+      where: { key: ADMIN_EMAIL_NOTIFICATION_SETTING_KEY },
+    });
+
+    return resolveAdminEmailNotificationSettings(setting?.value);
+  }
+
+  private async writeAdminEmailNotificationSettings(settings: AdminEmailNotificationSettingsRecord) {
+    const normalized = {
+      enabled: settings.enabled,
+      recipients: settings.recipients.map((recipient) => ({
+        id: recipient.id,
+        name: recipient.name,
+        email: normalizeEmail(recipient.email),
+        isActive: recipient.isActive,
+        createdAt: recipient.createdAt,
+        updatedAt: recipient.updatedAt,
+      })),
+    } satisfies AdminEmailNotificationSettingsRecord;
+
+    await prisma.setting.upsert({
+      where: { key: ADMIN_EMAIL_NOTIFICATION_SETTING_KEY },
+      update: {
+        value: toPrismaJsonValue(normalized),
+        description: "Admin email notification recipients and enablement for new order emails.",
+        isPublic: false,
+      },
+      create: {
+        key: ADMIN_EMAIL_NOTIFICATION_SETTING_KEY,
+        value: toPrismaJsonValue(normalized),
+        description: "Admin email notification recipients and enablement for new order emails.",
+        isPublic: false,
+      },
+    });
+
+    return normalized;
+  }
+
+  private async deliverDirectAdminEmail(input: {
+    eventId: string;
+    eventSource: NotificationEventSource;
+    recipient: AdminEmailNotificationRecipientRecord;
+    subject: string;
+    html: string;
+    text: string;
+    metadata?: Record<string, unknown>;
+  }) {
+    const delivery = await prisma.notificationDelivery.create({
+      data: {
+        eventId: input.eventId,
+        channelCode: "EMAIL",
+        recipient: input.recipient.email,
+        state: "PENDING",
+        renderedSubject: input.subject,
+        renderedBody: input.html,
+        metadata: toNullablePrismaJsonValue({
+          recipientName: input.recipient.name,
+          ...input.metadata,
+        }),
+      },
+    });
+
+    try {
+      const result = await getEmailTransporter().sendMail({
+        from: env.SMTP_FROM,
+        to: input.recipient.email,
+        subject: input.subject,
+        text: input.text,
+        html: input.html,
+      });
+
+      const now = new Date();
+      await prisma.notificationDelivery.update({
+        where: { id: delivery.id },
+        data: {
+          provider: "nodemailer",
+          providerMessageId: result.messageId,
+          providerResponse: toPrismaJsonValue(result),
+          state: NotificationDeliveryState.DELIVERED,
+          sentAt: now,
+          deliveredAt: now,
+        },
+      });
+
+      await prisma.notificationAudit.create({
+        data: {
+          eventId: input.eventId,
+          deliveryId: delivery.id,
+          action: "DELIVERY_SENT",
+          eventSource: input.eventSource,
+          metadata: {
+            recipient: input.recipient.email,
+            recipientName: input.recipient.name,
+            messageId: result.messageId,
+          },
+        },
+      });
+
+      return {
+        deliveryId: delivery.id,
+        state: NotificationDeliveryState.DELIVERED,
+      };
+    } catch (error) {
+      const failureReason = error instanceof Error ? error.message : "Unknown email delivery error.";
+
+      await prisma.notificationDelivery.update({
+        where: { id: delivery.id },
+        data: {
+          provider: "nodemailer",
+          state: NotificationDeliveryState.FAILED,
+          failureReason,
+          failedAt: new Date(),
+        },
+      });
+
+      await prisma.notificationAudit.create({
+        data: {
+          eventId: input.eventId,
+          deliveryId: delivery.id,
+          action: "DELIVERY_FAILED",
+          eventSource: input.eventSource,
+          metadata: {
+            recipient: input.recipient.email,
+            recipientName: input.recipient.name,
+            failureReason,
+          },
+        },
+      });
+
+      return {
+        deliveryId: delivery.id,
+        state: NotificationDeliveryState.FAILED,
+        failureReason,
+      };
+    }
+  }
+
+  public async getAdminEmailNotificationSettings() {
+    return this.readAdminEmailNotificationSettings();
+  }
+
+  public async updateAdminEmailNotificationSettings(enabled: boolean) {
+    const current = await this.readAdminEmailNotificationSettings();
+    return this.writeAdminEmailNotificationSettings({
+      ...current,
+      enabled,
+    });
+  }
+
+  public async createAdminEmailNotificationRecipient(input: {
+    name: string;
+    email: string;
+    isActive?: boolean;
+  }) {
+    const current = await this.readAdminEmailNotificationSettings();
+    const normalizedEmail = normalizeEmail(input.email);
+
+    if (current.recipients.some((recipient) => normalizeEmail(recipient.email) === normalizedEmail)) {
+      throw new ApiError(409, "A recipient with this email already exists.");
+    }
+
+    const now = new Date().toISOString();
+    const recipient: AdminEmailNotificationRecipientRecord = {
+      id: randomUUID(),
+      name: input.name.trim(),
+      email: normalizedEmail,
+      isActive: input.isActive ?? true,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    await this.writeAdminEmailNotificationSettings({
+      ...current,
+      recipients: [...current.recipients, recipient],
+    });
+
+    return recipient;
+  }
+
+  public async updateAdminEmailNotificationRecipient(
+    recipientId: string,
+    input: Partial<{
+      name: string;
+      email: string;
+      isActive: boolean;
+    }>,
+  ) {
+    const current = await this.readAdminEmailNotificationSettings();
+    const existing = current.recipients.find((recipient) => recipient.id === recipientId);
+
+    if (!existing) {
+      throw new ApiError(404, "Notification recipient not found.");
+    }
+
+    const nextEmail = input.email ? normalizeEmail(input.email) : existing.email;
+    if (
+      current.recipients.some(
+        (recipient) => recipient.id !== recipientId && normalizeEmail(recipient.email) === nextEmail,
+      )
+    ) {
+      throw new ApiError(409, "A recipient with this email already exists.");
+    }
+
+    const updated: AdminEmailNotificationRecipientRecord = {
+      ...existing,
+      name: input.name !== undefined ? input.name.trim() : existing.name,
+      email: nextEmail,
+      isActive: input.isActive ?? existing.isActive,
+      updatedAt: new Date().toISOString(),
+    };
+
+    await this.writeAdminEmailNotificationSettings({
+      ...current,
+      recipients: current.recipients.map((recipient) => (recipient.id === recipientId ? updated : recipient)),
+    });
+
+    return updated;
+  }
+
+  public async deleteAdminEmailNotificationRecipient(recipientId: string) {
+    const current = await this.readAdminEmailNotificationSettings();
+    const exists = current.recipients.some((recipient) => recipient.id === recipientId);
+
+    if (!exists) {
+      throw new ApiError(404, "Notification recipient not found.");
+    }
+
+    await this.writeAdminEmailNotificationSettings({
+      ...current,
+      recipients: current.recipients.filter((recipient) => recipient.id !== recipientId),
+    });
+  }
+
+  public async sendAdminEmailNotificationTestEmail(adminUserId: string) {
+    const settings = await this.readAdminEmailNotificationSettings();
+    const activeRecipients = settings.recipients.filter((recipient) => recipient.isActive);
+
+    if (activeRecipients.length === 0) {
+      throw new ApiError(400, "At least one active recipient is required to send a test email.");
+    }
+
+    const event = await prisma.notificationEvent.create({
+      data: {
+        eventKey: `admin-email-notification-test:${Date.now()}`,
+        eventName: "ADMIN_EMAIL_NOTIFICATION_TEST",
+        eventSource: "SYSTEM",
+        category: "OPERATIONS",
+        priority: "LOW",
+        actorUserId: adminUserId,
+        title: "Admin email notification test",
+        message: `Test email queued for ${activeRecipients.length} active recipients.`,
+        metadata: toPrismaJsonValue({
+          recipientCount: activeRecipients.length,
+        }),
+      },
+    });
+
+    const rendered = buildAdminTestNotificationEmail();
+    const deliveries = await Promise.all(
+      activeRecipients.map((recipient) =>
+        this.deliverDirectAdminEmail({
+          eventId: event.id,
+          eventSource: "SYSTEM",
+          recipient,
+          subject: rendered.subject,
+          html: rendered.html,
+          text: rendered.text,
+          metadata: {
+            type: "test",
+          },
+        }),
+      ),
+    );
+
+    return {
+      eventId: event.id,
+      recipientCount: activeRecipients.length,
+      deliveredCount: deliveries.filter((delivery) => delivery.state === NotificationDeliveryState.DELIVERED).length,
+      failedCount: deliveries.filter((delivery) => delivery.state === NotificationDeliveryState.FAILED).length,
+    };
+  }
+
+  public async sendAdminOrderCreatedEmailNotification(order: AdminOrderNotificationPayload) {
+    const settings = await this.readAdminEmailNotificationSettings();
+    if (!settings.enabled) {
+      return {
+        skipped: true,
+        reason: "disabled",
+      };
+    }
+
+    const activeRecipients = settings.recipients.filter((recipient) => recipient.isActive);
+    if (activeRecipients.length === 0) {
+      return {
+        skipped: true,
+        reason: "no-active-recipients",
+      };
+    }
+
+    const rendered = buildAdminOrderNotificationEmail(order);
+    const event = await prisma.notificationEvent.create({
+      data: {
+        eventKey: `admin-order-email:${order.id}:${Date.now()}`,
+        eventName: "ADMIN_ORDER_CREATED_EMAIL",
+        eventSource: "ORDERS",
+        category: "ORDERS",
+        priority: "HIGH",
+        orderId: order.id,
+        title: `Admin notification for ${order.orderNumber}`,
+        message: `Admin email notification queued for order ${order.orderNumber}.`,
+        metadata: toPrismaJsonValue({
+          orderNumber: order.orderNumber,
+          customerEmail: order.customerEmail,
+          recipientCount: activeRecipients.length,
+          adminOrderLink: rendered.orderLink,
+        }),
+      },
+    });
+
+    const deliveries = await Promise.all(
+      activeRecipients.map((recipient) =>
+        this.deliverDirectAdminEmail({
+          eventId: event.id,
+          eventSource: "ORDERS",
+          recipient,
+          subject: rendered.subject,
+          html: rendered.html,
+          text: rendered.text,
+          metadata: {
+            type: "order-created",
+            orderId: order.id,
+            orderNumber: order.orderNumber,
+          },
+        }),
+      ),
+    );
+
+    return {
+      eventId: event.id,
+      recipientCount: activeRecipients.length,
+      deliveredCount: deliveries.filter((delivery) => delivery.state === NotificationDeliveryState.DELIVERED).length,
+      failedCount: deliveries.filter((delivery) => delivery.state === NotificationDeliveryState.FAILED).length,
     };
   }
 

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, Outlet } from "react-router-dom";
-import { LayoutDashboard, Package, ShoppingCart, Tag, Layers3, Link2, DollarSign, BarChart3, Activity, Bell, ChevronLeft, Menu, Sun, Moon, Globe, Truck, ClipboardList, CreditCard, Landmark, Users, FilePenLine, Award, TicketPercent, GitBranch, Megaphone, LogOut } from "lucide-react";
+import { LayoutDashboard, Package, ShoppingCart, Tag, Layers3, Link2, DollarSign, BarChart3, Activity, Bell, ChevronLeft, Menu, Sun, Moon, Globe, Truck, ClipboardList, CreditCard, Landmark, Users, FilePenLine, Award, TicketPercent, GitBranch, Megaphone, LogOut, Mail } from "lucide-react";
 import { useTheme } from "@/components/ThemeProvider";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { useAuth } from "@/contexts/AuthContext";
@@ -28,6 +28,7 @@ const NAV_ITEMS = [
   { icon: Activity, label: "Monitoring", path: "/admin/monitoring" },
   { icon: Bell, label: "Alerts", path: "/admin/alerts" },
   { icon: Bell, label: "Ops Center", path: "/admin/notifications" },
+  { icon: Mail, label: "Email Notif", path: "/admin/email-notifications" },
   { icon: Bell, label: "Email Tmpl", path: "/admin/email-templates" },
   { icon: BarChart3, label: "Analytics", path: "/admin/analytics" },
 ];
@@ -79,7 +80,7 @@ const NAV_SECTIONS = [
     id: "operations",
     title: "Operations",
     icon: Activity,
-    items: ["/admin/monitoring", "/admin/alerts", "/admin/notifications", "/admin/email-templates"],
+    items: ["/admin/monitoring", "/admin/alerts", "/admin/notifications", "/admin/email-notifications", "/admin/email-templates"],
   },
   {
     id: "integrations",

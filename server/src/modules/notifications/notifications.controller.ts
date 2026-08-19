@@ -76,6 +76,37 @@ export class NotificationsController {
     response.status(200).json({ items: await notificationsService.listEmailTemplates() });
   }
 
+  public async getAdminEmailNotificationSettings(_request: Request, response: Response) {
+    response.status(200).json(await notificationsService.getAdminEmailNotificationSettings());
+  }
+
+  public async updateAdminEmailNotificationSettings(request: Request, response: Response) {
+    response
+      .status(200)
+      .json(await notificationsService.updateAdminEmailNotificationSettings(request.body.enabled));
+  }
+
+  public async createAdminEmailNotificationRecipient(request: Request, response: Response) {
+    response.status(201).json(await notificationsService.createAdminEmailNotificationRecipient(request.body));
+  }
+
+  public async updateAdminEmailNotificationRecipient(request: Request, response: Response) {
+    response
+      .status(200)
+      .json(await notificationsService.updateAdminEmailNotificationRecipient(getParam(request, "id"), request.body));
+  }
+
+  public async deleteAdminEmailNotificationRecipient(request: Request, response: Response) {
+    await notificationsService.deleteAdminEmailNotificationRecipient(getParam(request, "id"));
+    response.status(204).send();
+  }
+
+  public async sendAdminEmailNotificationTestEmail(request: Request, response: Response) {
+    response
+      .status(202)
+      .json(await notificationsService.sendAdminEmailNotificationTestEmail(requireUserId(request)));
+  }
+
   public async updateEmailTemplate(request: Request, response: Response) {
     response
       .status(200)

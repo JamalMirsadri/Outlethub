@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { listAdminOrders, refundAdminOrder, updateAdminOrder } from "@/api/commerce";
 import { Eye, Search, Truck } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -28,6 +29,7 @@ const STATUS_COLORS = {
 
 export default function AdminOrders() {
   const { convertAmount } = useCurrency();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -49,6 +51,22 @@ export default function AdminOrders() {
   useEffect(() => {
     listAdminOrders().then(setOrders).catch(()=>{}).finally(()=>setLoading(false));
   }, []);
+
+  useEffect(() => {
+    const orderId = searchParams.get("orderId");
+    if (!orderId || orders.length === 0) {
+      return;
+    }
+
+    if (selectedOrder?.id === orderId && orderDialogOpen) {
+      return;
+    }
+
+    const matchingOrder = orders.find((order) => order.id === orderId);
+    if (matchingOrder) {
+      openOrder(matchingOrder);
+    }
+  }, [orderDialogOpen, orders, searchParams, selectedOrder?.id]);
 
   const filtered = useMemo(() => orders.filter((order) => {
     if (
@@ -208,7 +226,17 @@ export default function AdminOrders() {
         </div>
       </div>
 
-      <Dialog open={orderDialogOpen} onOpenChange={setOrderDialogOpen}>
+      <Dialog
+        open={orderDialogOpen}
+        onOpenChange={(open) => {
+          setOrderDialogOpen(open);
+          if (!open && searchParams.get("orderId")) {
+            const nextParams = new URLSearchParams(searchParams);
+            nextParams.delete("orderId");
+            setSearchParams(nextParams);
+          }
+        }}
+      >
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="font-display">Order Detail</DialogTitle>
