@@ -287,6 +287,7 @@ async function publishOrderEvent(input: {
   eventKey: string;
   eventName:
     | "ORDER_CREATED"
+    | "ORDER_CANCELLED"
     | "PROCUREMENT_STARTED"
     | "PRODUCT_SHIPPED"
     | "TRACKING_UPDATED"
@@ -935,6 +936,16 @@ export class OrdersService {
       });
     }
 
+    if (status === "CANCELLED") {
+      await publishOrderEvent({
+        eventKey: `order-cancelled:${order.id}:${order.cancelledAt?.toISOString() ?? Date.now()}`,
+        eventName: "ORDER_CANCELLED",
+        targetUserId: order.userId,
+        order,
+        message: `Order ${order.orderNumber} cancelled`,
+      });
+    }
+
     if (status === "DELIVERED" || status === "CANCELLED" || status === "REFUNDED") {
       await loyaltyService.reconcileOrderPoints(order.id);
     }
@@ -1100,6 +1111,16 @@ export class OrdersService {
         targetUserId: order.userId,
         order,
         message: `Order ${order.orderNumber} delivered`,
+      });
+    }
+
+    if (input.status === "CANCELLED") {
+      await publishOrderEvent({
+        eventKey: `order-cancelled:${order.id}:${order.cancelledAt?.toISOString() ?? Date.now()}`,
+        eventName: "ORDER_CANCELLED",
+        targetUserId: order.userId,
+        order,
+        message: `Order ${order.orderNumber} cancelled`,
       });
     }
 

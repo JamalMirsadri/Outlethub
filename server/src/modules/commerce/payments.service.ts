@@ -283,6 +283,7 @@ function mapProviderConfiguration(config: PaymentProviderConfig) {
 async function publishPaymentEvent(input: {
   eventKey: string;
   eventName:
+    | "PAYMENT_INSTRUCTIONS"
     | "RECEIPT_UPLOADED"
     | "NEW_RECEIPT_UPLOAD"
     | "PAYMENT_WAITING_REVIEW"
@@ -294,9 +295,14 @@ async function publishPaymentEvent(input: {
     id: string;
     userId: string;
     orderId: string | null;
+    provider: PaymentProvider;
+    status: PaymentStatus;
     amount: Prisma.Decimal;
     currency: string;
+    displayCurrency?: string | null;
     paymentReference: string | null;
+    expiresAt?: Date | null;
+    metadata?: Prisma.JsonValue | null;
     order?: {
       id: string;
       orderNumber: string;
@@ -305,6 +311,11 @@ async function publishPaymentEvent(input: {
   };
   message: string;
 }) {
+  const paymentMetadata =
+    input.payment.metadata && typeof input.payment.metadata === "object" && !Array.isArray(input.payment.metadata)
+      ? (input.payment.metadata as Record<string, unknown>)
+      : null;
+
   await notificationsService.publishEvent({
     eventKey: input.eventKey,
     eventName: input.eventName,
@@ -322,6 +333,12 @@ async function publishPaymentEvent(input: {
       paymentAmount: toNumber(input.payment.amount).toFixed(2),
       currency: input.payment.currency,
       paymentReference: input.payment.paymentReference,
+      paymentStatus: input.eventName === "PAYMENT_COMPLETED" ? PaymentStatus.PAID : input.payment.status,
+      paymentMethod:
+        paymentMetadata && typeof paymentMetadata.paymentMethodLabel === "string"
+          ? paymentMetadata.paymentMethodLabel
+          : providerDisplayName(input.payment.provider),
+      paymentExpiresAt: input.payment.expiresAt?.toISOString(),
     },
   });
 }
@@ -473,7 +490,7 @@ export class PaymentsService {
     });
 
     for (const expiredPayment of expiredPayments) {
-      await prisma.$transaction(async (transaction) => {
+      const cancelledOrderEvent = await prisma.$transaction(async (transaction) => {
         const payment = await transaction.payment.findUnique({
           where: { id: expiredPayment.id },
           include: {
@@ -481,6 +498,8 @@ export class PaymentsService {
               select: {
                 id: true,
                 status: true,
+                userId: true,
+                orderNumber: true,
               },
             },
           },
@@ -493,7 +512,7 @@ export class PaymentsService {
           || payment.expiresAt > now
           || !EXPIRABLE_BANK_TRANSFER_STATUSES.has(payment.status)
         ) {
-          return;
+          return null;
         }
 
         await transaction.payment.update({
@@ -540,8 +559,34 @@ export class PaymentsService {
               status: "CANCELLED",
             },
           });
+
+          return {
+            orderId: payment.order.id,
+            userId: payment.order.userId,
+            orderNumber: payment.order.orderNumber,
+          };
         }
+
+        return null;
       });
+
+      if (cancelledOrderEvent) {
+        await notificationsService.publishEvent({
+          eventKey: `order-cancelled:expired-payment:${expiredPayment.id}:${now.toISOString()}`,
+          eventName: "ORDER_CANCELLED",
+          eventSource: "PAYMENTS",
+          targetUserId: cancelledOrderEvent.userId,
+          orderId: cancelledOrderEvent.orderId,
+          entityType: "order",
+          entityId: cancelledOrderEvent.orderId,
+          title: `Order ${cancelledOrderEvent.orderNumber} cancelled`,
+          message: `Order ${cancelledOrderEvent.orderNumber} was cancelled because the payment expired.`,
+          metadata: {
+            orderNumber: cancelledOrderEvent.orderNumber,
+            paymentStatus: PaymentStatus.EXPIRED,
+          },
+        });
+      }
     }
   }
 
@@ -803,6 +848,16 @@ export class PaymentsService {
         },
       },
     });
+
+    if (payment.provider === PaymentProvider.BANK_TRANSFER) {
+      void publishPaymentEvent({
+        eventKey: `payment-instructions:${payment.id}:${payment.createdAt.toISOString()}`,
+        eventName: "PAYMENT_INSTRUCTIONS",
+        actorUserId: input.userId,
+        payment,
+        message: `Payment instructions for ${payment.order?.orderNumber ?? payment.id}`,
+      }).catch(() => undefined);
+    }
 
     return mapPayment(payment);
   }

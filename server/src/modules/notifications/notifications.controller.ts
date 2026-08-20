@@ -76,6 +76,14 @@ export class NotificationsController {
     response.status(200).json({ items: await notificationsService.listEmailTemplates() });
   }
 
+  public async listCustomerEmailTemplates(_request: Request, response: Response) {
+    response.status(200).json({ items: await notificationsService.listCustomerEmailTemplates() });
+  }
+
+  public async listCustomerEmailHistory(_request: Request, response: Response) {
+    response.status(200).json(await notificationsService.listCustomerEmailHistory());
+  }
+
   public async getAdminEmailNotificationSettings(_request: Request, response: Response) {
     response.status(200).json(await notificationsService.getAdminEmailNotificationSettings());
   }

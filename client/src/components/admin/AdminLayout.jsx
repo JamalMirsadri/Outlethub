@@ -29,6 +29,7 @@ const NAV_ITEMS = [
   { icon: Bell, label: "Alerts", path: "/admin/alerts" },
   { icon: Bell, label: "Ops Center", path: "/admin/notifications" },
   { icon: Mail, label: "Email Notif", path: "/admin/email-notifications" },
+  { icon: Mail, label: "Cust Email", path: "/admin/customer-email-templates" },
   { icon: Bell, label: "Email Tmpl", path: "/admin/email-templates" },
   { icon: BarChart3, label: "Analytics", path: "/admin/analytics" },
 ];
@@ -80,7 +81,7 @@ const NAV_SECTIONS = [
     id: "operations",
     title: "Operations",
     icon: Activity,
-    items: ["/admin/monitoring", "/admin/alerts", "/admin/notifications", "/admin/email-notifications", "/admin/email-templates"],
+    items: ["/admin/monitoring", "/admin/alerts", "/admin/notifications", "/admin/email-notifications", "/admin/customer-email-templates", "/admin/email-templates"],
   },
   {
     id: "integrations",

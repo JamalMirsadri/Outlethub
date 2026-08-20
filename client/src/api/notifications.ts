@@ -121,6 +121,33 @@ export interface AdminEmailNotificationSettingsRecord {
   recipients: AdminEmailNotificationRecipientRecord[];
 }
 
+export interface CustomerEmailHistoryRecord {
+  id: string;
+  eventId: string;
+  eventName: string;
+  templateId: string | null;
+  templateKey: string;
+  templateName: string | null;
+  templateVersion: number | null;
+  customer: {
+    id: string;
+    name: string;
+    email: string;
+  } | null;
+  orderId: string | null;
+  orderNumber: string | null;
+  recipient: string | null;
+  state: NotificationDeliveryState;
+  retryCount: number;
+  renderedSubject: string | null;
+  failureReason: string | null;
+  queuedAt: string | null;
+  sentAt: string | null;
+  deliveredAt: string | null;
+  failedAt: string | null;
+  createdAt: string;
+}
+
 function getTokenOrThrow(): string {
   const token = getAccessToken();
   if (!token) {
@@ -195,6 +222,20 @@ export async function listEmailTemplates() {
   });
 
   return response.items;
+}
+
+export async function listCustomerEmailTemplates() {
+  const response = await http<{ items: EmailTemplateRecord[] }>("/admin/customer-email-templates", {
+    token: getTokenOrThrow(),
+  });
+
+  return response.items;
+}
+
+export async function listCustomerEmailHistory() {
+  return http<{ items: CustomerEmailHistoryRecord[] }>("/admin/customer-email-history", {
+    token: getTokenOrThrow(),
+  });
 }
 
 export async function updateEmailTemplate(

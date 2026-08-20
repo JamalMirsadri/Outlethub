@@ -56,7 +56,7 @@ notificationsRouter.put(
 );
 
 notificationsRouter.use(
-  ["/admin/notifications", "/admin/email-templates", "/admin/email-notifications"],
+  ["/admin/notifications", "/admin/email-templates", "/admin/customer-email-templates", "/admin/customer-email-history", "/admin/email-notifications"],
   requireAuth,
   requireRoles(RoleCode.SUPER_ADMIN, RoleCode.ADMIN),
 );
@@ -70,6 +70,16 @@ notificationsRouter.get(
 notificationsRouter.get(
   "/admin/email-templates",
   asyncHandler(notificationsController.listEmailTemplates.bind(notificationsController)),
+);
+
+notificationsRouter.get(
+  "/admin/customer-email-templates",
+  asyncHandler(notificationsController.listCustomerEmailTemplates.bind(notificationsController)),
+);
+
+notificationsRouter.get(
+  "/admin/customer-email-history",
+  asyncHandler(notificationsController.listCustomerEmailHistory.bind(notificationsController)),
 );
 
 notificationsRouter.get(

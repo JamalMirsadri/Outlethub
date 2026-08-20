@@ -11,6 +11,7 @@ import {
 
 import { prisma } from "../../config/prisma.js";
 import { ApiError } from "../../utils/api-error.js";
+import { notificationsService } from "../notifications/notifications.service.js";
 import { couponService } from "./coupon.service.js";
 
 const DEFAULT_LEVELS = [
@@ -81,6 +82,29 @@ export function toNumber(value: Prisma.Decimal | null | undefined): number | nul
   }
 
   return Number(value);
+}
+
+function resolveRewardCouponDiscountLabel(input: {
+  percentage?: Prisma.Decimal | null;
+  fixedAmount?: Prisma.Decimal | null;
+  freeShipping?: boolean | null;
+  currency?: string | null;
+}) {
+  const percentage = toNumber(input.percentage);
+  if (percentage && percentage > 0) {
+    return `${percentage}%`;
+  }
+
+  const fixedAmount = toNumber(input.fixedAmount);
+  if (fixedAmount && fixedAmount > 0) {
+    return `${input.currency ?? "EUR"} ${fixedAmount.toFixed(2)}`;
+  }
+
+  if (input.freeShipping) {
+    return "Free Shipping";
+  }
+
+  return "";
 }
 
 function toStringArray(value: unknown): string[] {
@@ -1122,7 +1146,7 @@ export class LoyaltyService {
   }
 
   public async redeemReward(userId: string, rewardId: string) {
-    return prisma.$transaction(async (transaction) => {
+    const result = await prisma.$transaction(async (transaction) => {
       await ensureBootstrap(transaction);
 
       const [account, reward, levels] = await Promise.all([
@@ -1195,7 +1219,7 @@ export class LoyaltyService {
         },
       });
 
-      await applyPointsDelta(transaction, {
+      const pointsTransaction = await applyPointsDelta(transaction, {
         userId,
         rewardId,
         redemptionId: redemption.id,
@@ -1223,8 +1247,76 @@ export class LoyaltyService {
           description: issuedCoupon.description,
           endsAt: issuedCoupon.endsAt,
         },
+        notificationContext: {
+          userId,
+          redemptionId: redemption.id,
+          rewardTitle: reward.title,
+          pointsSpent: reward.pointsCost,
+          pointsBalance: pointsTransaction.balanceAfter,
+          couponCode: issuedCoupon.code,
+          couponDiscount: resolveRewardCouponDiscountLabel({
+            percentage: issuedCoupon.percentage,
+            fixedAmount: issuedCoupon.fixedAmount,
+            freeShipping: issuedCoupon.freeShipping,
+            currency: "EUR",
+          }),
+        },
       };
     });
+
+    void Promise.allSettled([
+      notificationsService.publishEvent({
+        eventKey: `loyalty-points-redeemed:${result.notificationContext.redemptionId}`,
+        eventName: "LOYALTY_POINTS_REDEEMED",
+        eventSource: "SYSTEM",
+        targetUserId: result.notificationContext.userId,
+        entityType: "loyaltyRewardRedemption",
+        entityId: result.notificationContext.redemptionId,
+        title: `You redeemed ${result.notificationContext.pointsSpent} loyalty points`,
+        message: `You redeemed ${result.notificationContext.pointsSpent} loyalty points.`,
+        metadata: {
+          points: result.notificationContext.pointsSpent,
+          pointsBalance: result.notificationContext.pointsBalance,
+          rewardTitle: result.notificationContext.rewardTitle,
+          couponCode: result.notificationContext.couponCode,
+        },
+      }),
+      notificationsService.publishEvent({
+        eventKey: `reward-granted:${result.notificationContext.redemptionId}`,
+        eventName: "REWARD_GRANTED",
+        eventSource: "SYSTEM",
+        targetUserId: result.notificationContext.userId,
+        entityType: "loyaltyRewardRedemption",
+        entityId: result.notificationContext.redemptionId,
+        title: `Reward granted: ${result.notificationContext.rewardTitle}`,
+        message: `Your reward ${result.notificationContext.rewardTitle} is ready.`,
+        metadata: {
+          rewardTitle: result.notificationContext.rewardTitle,
+          couponCode: result.notificationContext.couponCode,
+          couponDiscount: result.notificationContext.couponDiscount,
+        },
+      }),
+      notificationsService.publishEvent({
+        eventKey: `coupon-received:${result.notificationContext.redemptionId}:${result.coupon.id}`,
+        eventName: "COUPON_RECEIVED",
+        eventSource: "SYSTEM",
+        targetUserId: result.notificationContext.userId,
+        entityType: "coupon",
+        entityId: result.coupon.id,
+        title: `Your coupon ${result.notificationContext.couponCode} is ready`,
+        message: `You received coupon ${result.notificationContext.couponCode}.`,
+        metadata: {
+          rewardTitle: result.notificationContext.rewardTitle,
+          couponCode: result.notificationContext.couponCode,
+          couponDiscount: result.notificationContext.couponDiscount,
+        },
+      }),
+    ]);
+
+    return {
+      redemption: result.redemption,
+      coupon: result.coupon,
+    };
   }
 
   public async applyManualAdjustment(
@@ -1261,7 +1353,7 @@ export class LoyaltyService {
   }
 
   public async reconcileOrderPoints(orderId: string) {
-    return prisma.$transaction(async (transaction) => {
+    const result = await prisma.$transaction(async (transaction) => {
       await ensureBootstrap(transaction);
 
       const order = await transaction.order.findUnique({
@@ -1289,11 +1381,17 @@ export class LoyaltyService {
         const defaultRule = await getDefaultRule(transaction);
 
         if (!defaultRule) {
-          return null;
+          return {
+            award: null,
+            loyaltyEarnedEvent: null,
+          };
         }
 
         if (existingAward?.status === LoyaltyOrderAwardStatus.AWARDED) {
-          return existingAward;
+          return {
+            award: existingAward,
+            loyaltyEarnedEvent: null,
+          };
         }
 
         const awardedPoints =
@@ -1302,10 +1400,13 @@ export class LoyaltyService {
             : calculatePoints(Number(order.totalAmount), defaultRule);
 
         if (awardedPoints <= 0) {
-          return null;
+          return {
+            award: null,
+            loyaltyEarnedEvent: null,
+          };
         }
 
-        await applyPointsDelta(transaction, {
+        const pointsTransaction = await applyPointsDelta(transaction, {
           userId: order.userId,
           orderId: order.id,
           pointsDelta: awardedPoints,
@@ -1319,7 +1420,15 @@ export class LoyaltyService {
           },
         });
 
-        return transaction.loyaltyOrderPointAward.upsert({
+        const loyaltyEarnedEvent = {
+          userId: order.userId,
+          orderId: order.id,
+          orderNumber: order.orderNumber,
+          points: awardedPoints,
+          pointsBalance: pointsTransaction.balanceAfter,
+        };
+
+        const award = await transaction.loyaltyOrderPointAward.upsert({
           where: { orderId: order.id },
           update: {
             accountId: account.id,
@@ -1350,6 +1459,11 @@ export class LoyaltyService {
             },
           },
         });
+
+        return {
+          award,
+          loyaltyEarnedEvent,
+        };
       }
 
       if (
@@ -1370,17 +1484,46 @@ export class LoyaltyService {
           },
         });
 
-        return transaction.loyaltyOrderPointAward.update({
+        const award = await transaction.loyaltyOrderPointAward.update({
           where: { orderId: order.id },
           data: {
             status: LoyaltyOrderAwardStatus.REVERSED,
             reversedAt: new Date(),
           },
         });
+
+        return {
+          award,
+          loyaltyEarnedEvent: null,
+        };
       }
 
-      return existingAward;
+      return {
+        award: existingAward,
+        loyaltyEarnedEvent: null,
+      };
     });
+
+    if (result.loyaltyEarnedEvent) {
+      void notificationsService.publishEvent({
+        eventKey: `loyalty-points-earned:${result.loyaltyEarnedEvent.orderId}`,
+        eventName: "LOYALTY_POINTS_EARNED",
+        eventSource: "SYSTEM",
+        targetUserId: result.loyaltyEarnedEvent.userId,
+        orderId: result.loyaltyEarnedEvent.orderId,
+        entityType: "order",
+        entityId: result.loyaltyEarnedEvent.orderId,
+        title: `You earned ${result.loyaltyEarnedEvent.points} loyalty points`,
+        message: `You earned ${result.loyaltyEarnedEvent.points} loyalty points from order ${result.loyaltyEarnedEvent.orderNumber}.`,
+        metadata: {
+          orderNumber: result.loyaltyEarnedEvent.orderNumber,
+          points: result.loyaltyEarnedEvent.points,
+          pointsBalance: result.loyaltyEarnedEvent.pointsBalance,
+        },
+      }).catch(() => undefined);
+    }
+
+    return result.award;
   }
 
   public async recalculateMembershipLevels() {

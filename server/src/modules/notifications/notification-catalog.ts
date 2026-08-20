@@ -10,6 +10,8 @@ export type NotificationEventName =
   | "EMAIL_VERIFICATION"
   | "PASSWORD_RESET"
   | "ORDER_CREATED"
+  | "ORDER_CANCELLED"
+  | "PAYMENT_INSTRUCTIONS"
   | "RECEIPT_UPLOADED"
   | "PAYMENT_WAITING_REVIEW"
   | "PAYMENT_APPROVED"
@@ -23,6 +25,10 @@ export type NotificationEventName =
   | "TRACKING_UPDATED"
   | "PRODUCT_DELIVERED"
   | "REFUND_ISSUED"
+  | "LOYALTY_POINTS_EARNED"
+  | "LOYALTY_POINTS_REDEEMED"
+  | "REWARD_GRANTED"
+  | "COUPON_RECEIVED"
   | "NEW_ORDER"
   | "NEW_RECEIPT_UPLOAD"
   | "PROCUREMENT_REQUIRED"
@@ -121,7 +127,7 @@ export const EVENT_DEFINITIONS: Record<NotificationEventName, EventDefinition> =
     category: "SYSTEM",
     priority: "MEDIUM",
     notificationType: "SYSTEM",
-    customerChannels: ["IN_APP"],
+    customerChannels: ["EMAIL", "IN_APP"],
     adminChannels: [],
   },
   EMAIL_VERIFICATION: {
@@ -147,6 +153,22 @@ export const EVENT_DEFINITIONS: Record<NotificationEventName, EventDefinition> =
     notificationType: "ORDER_UPDATE",
     customerChannels: ["EMAIL", "IN_APP"],
     adminChannels: ["ADMIN_OPERATIONAL"],
+  },
+  ORDER_CANCELLED: {
+    name: "ORDER_CANCELLED",
+    category: "ORDERS",
+    priority: "HIGH",
+    notificationType: "ORDER_UPDATE",
+    customerChannels: ["EMAIL", "IN_APP"],
+    adminChannels: [],
+  },
+  PAYMENT_INSTRUCTIONS: {
+    name: "PAYMENT_INSTRUCTIONS",
+    category: "PAYMENTS",
+    priority: "HIGH",
+    notificationType: "PAYMENT_UPDATE",
+    customerChannels: ["EMAIL", "IN_APP"],
+    adminChannels: [],
   },
   RECEIPT_UPLOADED: {
     name: "RECEIPT_UPLOADED",
@@ -251,6 +273,38 @@ export const EVENT_DEFINITIONS: Record<NotificationEventName, EventDefinition> =
     notificationType: "PAYMENT_UPDATE",
     customerChannels: ["EMAIL", "IN_APP"],
     adminChannels: ["ADMIN_OPERATIONAL"],
+  },
+  LOYALTY_POINTS_EARNED: {
+    name: "LOYALTY_POINTS_EARNED",
+    category: "SYSTEM",
+    priority: "MEDIUM",
+    notificationType: "SYSTEM",
+    customerChannels: ["EMAIL", "IN_APP"],
+    adminChannels: [],
+  },
+  LOYALTY_POINTS_REDEEMED: {
+    name: "LOYALTY_POINTS_REDEEMED",
+    category: "SYSTEM",
+    priority: "MEDIUM",
+    notificationType: "SYSTEM",
+    customerChannels: ["EMAIL", "IN_APP"],
+    adminChannels: [],
+  },
+  REWARD_GRANTED: {
+    name: "REWARD_GRANTED",
+    category: "SYSTEM",
+    priority: "MEDIUM",
+    notificationType: "SYSTEM",
+    customerChannels: ["EMAIL", "IN_APP"],
+    adminChannels: [],
+  },
+  COUPON_RECEIVED: {
+    name: "COUPON_RECEIVED",
+    category: "SYSTEM",
+    priority: "MEDIUM",
+    notificationType: "SYSTEM",
+    customerChannels: ["EMAIL", "IN_APP"],
+    adminChannels: [],
   },
   NEW_ORDER: {
     name: "NEW_ORDER",
@@ -408,9 +462,47 @@ export const TEMPLATE_SEEDS: TemplateSeedDefinition[] = [
   ...buildTemplate(
     "ORDER_CREATED",
     "ORDERS",
-    "Order {{orderNumber}} created",
-    "We received your order {{orderNumber}} for {{paymentAmount}} {{currency}}.",
-    { customerName: "Customer Name", orderNumber: "OH-123", paymentAmount: "299.00", currency: "EUR" },
+    "Order {{orderNumber}} confirmed",
+    "Thank you {{customerName}}. Your order {{orderNumber}} was created on {{orderDate}} for {{orderTotal}}. Payment method: {{paymentMethod}}. Products: {{productList}} {{couponCode}} {{couponDiscount}}",
+    {
+      customerName: "Customer Name",
+      customerEmail: "customer@example.com",
+      orderNumber: "OH-123",
+      orderDate: "2026-08-20T10:00:00.000Z",
+      orderTotal: "EUR 299.00",
+      paymentMethod: "Bank Transfer",
+      paymentStatus: "PAYMENT_PENDING",
+      productList: "Bag x1, Shoes x1",
+      couponCode: "WELCOME10",
+      couponDiscount: "10%",
+    },
+  ),
+  ...buildTemplate(
+    "ORDER_CANCELLED",
+    "ORDERS",
+    "Order {{orderNumber}} cancelled",
+    "Your order {{orderNumber}} has been cancelled. If a payment was already captured, our team will follow up about the refund.",
+    {
+      customerName: "Customer Name",
+      orderNumber: "OH-123",
+      orderDate: "2026-08-20T10:00:00.000Z",
+      orderTotal: "EUR 299.00",
+    },
+  ),
+  ...buildTemplate(
+    "PAYMENT_INSTRUCTIONS",
+    "PAYMENTS",
+    "Payment instructions for {{orderNumber}}",
+    "Payment method: {{paymentMethod}}. Payment reference: {{paymentReference}}. Payment amount: {{orderTotal}}. Payment status: {{paymentStatus}}. Complete payment before {{paymentExpiresAt}}.",
+    {
+      customerName: "Customer Name",
+      orderNumber: "OH-123",
+      orderTotal: "EUR 299.00",
+      paymentMethod: "Bank Transfer",
+      paymentStatus: "PAYMENT_PENDING",
+      paymentReference: "BT-ABC12345",
+      paymentExpiresAt: "2026-08-21T10:00:00.000Z",
+    },
   ),
   ...buildTemplate(
     "RECEIPT_UPLOADED",
@@ -430,15 +522,15 @@ export const TEMPLATE_SEEDS: TemplateSeedDefinition[] = [
     "PAYMENT_APPROVED",
     "PAYMENTS",
     "Payment approved for {{orderNumber}}",
-    "Your payment for order {{orderNumber}} has been approved.",
-    { customerName: "Customer Name", orderNumber: "OH-123" },
+    "Your receipt for order {{orderNumber}} has been approved. Payment status: {{paymentStatus}}.",
+    { customerName: "Customer Name", orderNumber: "OH-123", paymentStatus: "PAYMENT_APPROVED" },
   ),
   ...buildTemplate(
     "PAYMENT_REJECTED",
     "PAYMENTS",
     "Payment rejected for {{orderNumber}}",
-    "Your payment for order {{orderNumber}} was rejected. Please review your receipt and try again.",
-    { customerName: "Customer Name", orderNumber: "OH-123" },
+    "Your payment for order {{orderNumber}} was rejected. Payment status: {{paymentStatus}}. Please review your receipt and try again.",
+    { customerName: "Customer Name", orderNumber: "OH-123", paymentStatus: "PAYMENT_REJECTED" },
   ),
   ...buildTemplate(
     "PAYMENT_COMPLETED",
@@ -500,8 +592,55 @@ export const TEMPLATE_SEEDS: TemplateSeedDefinition[] = [
     "REFUND_ISSUED",
     "PAYMENTS",
     "Refund issued for {{orderNumber}}",
-    "A refund of {{paymentAmount}} {{currency}} was issued for order {{orderNumber}}.",
-    { customerName: "Customer Name", orderNumber: "OH-123", paymentAmount: "299.00", currency: "EUR" },
+    "A refund of {{refundAmount}} was issued for order {{orderNumber}}.",
+    { customerName: "Customer Name", orderNumber: "OH-123", refundAmount: "EUR 299.00" },
+  ),
+  ...buildTemplate(
+    "LOYALTY_POINTS_EARNED",
+    "SYSTEM",
+    "You earned {{points}} loyalty points",
+    "You earned {{points}} loyalty points from order {{orderNumber}}. Your current balance is {{pointsBalance}}.",
+    {
+      customerName: "Customer Name",
+      points: "25",
+      pointsBalance: "120",
+      orderNumber: "OH-123",
+    },
+  ),
+  ...buildTemplate(
+    "LOYALTY_POINTS_REDEEMED",
+    "SYSTEM",
+    "You redeemed {{points}} loyalty points",
+    "You redeemed {{points}} loyalty points for {{rewardTitle}}. Your current balance is {{pointsBalance}}.",
+    {
+      customerName: "Customer Name",
+      points: "50",
+      pointsBalance: "70",
+      rewardTitle: "10% Off Reward",
+    },
+  ),
+  ...buildTemplate(
+    "REWARD_GRANTED",
+    "SYSTEM",
+    "Reward granted: {{rewardTitle}}",
+    "Your reward {{rewardTitle}} is ready. {{couponCode}} {{couponDiscount}}",
+    {
+      customerName: "Customer Name",
+      rewardTitle: "10% Off Reward",
+      couponCode: "WELCOME10",
+      couponDiscount: "10%",
+    },
+  ),
+  ...buildTemplate(
+    "COUPON_RECEIVED",
+    "SYSTEM",
+    "Your coupon {{couponCode}} is ready",
+    "You received coupon {{couponCode}} with discount {{couponDiscount}}.",
+    {
+      customerName: "Customer Name",
+      couponCode: "WELCOME10",
+      couponDiscount: "10%",
+    },
   ),
   ...buildTemplate(
     "NEW_ORDER",

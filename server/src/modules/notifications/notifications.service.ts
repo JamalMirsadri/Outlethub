@@ -109,6 +109,9 @@ interface AdminOrderNotificationPayload {
 
 let emailTransporter: Transporter | null = null;
 const ADMIN_EMAIL_NOTIFICATION_SETTING_KEY = "admin_email_notifications";
+const CUSTOMER_EMAIL_EVENT_NAMES = Object.entries(EVENT_DEFINITIONS)
+  .filter(([, definition]) => definition.customerChannels.includes("EMAIL"))
+  .map(([eventName]) => eventName as NotificationEventName);
 
 function shouldDeliverEmailInline() {
   return !env.REDIS_URL || env.SERVICE_MODE === "web";
@@ -372,6 +375,92 @@ function buildAdminTestNotificationEmail() {
   };
 }
 
+function buildProductListText(
+  items:
+    | Array<{
+        title?: string | null;
+        quantity?: number | null;
+        brandName?: string | null;
+        size?: string | null;
+        color?: string | null;
+      }>
+    | undefined,
+) {
+  if (!items?.length) {
+    return "";
+  }
+
+  return items
+    .map((item) => {
+      const title = toOptionalString(item.title) ?? "Product";
+      const details = [item.brandName, item.size, item.color].filter(Boolean).join(" / ");
+      const quantity = item.quantity ?? 1;
+      return `${title}${details ? ` (${details})` : ""} x${quantity}`;
+    })
+    .join(", ");
+}
+
+function buildCustomerName(input: {
+  fullName?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+  fallbackEmail?: string | null;
+}) {
+  const fullName = toOptionalString(input.fullName);
+  if (fullName) {
+    return fullName;
+  }
+
+  const joinedName = [toOptionalString(input.firstName), toOptionalString(input.lastName)].filter(Boolean).join(" ");
+  if (joinedName) {
+    return joinedName;
+  }
+
+  return toOptionalString(input.fallbackEmail) ?? "Customer";
+}
+
+function toIsoString(value: Date | string | null | undefined) {
+  if (!value) {
+    return "";
+  }
+
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
+
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? String(value) : parsed.toISOString();
+}
+
+function resolveCouponDiscountLabel(input: {
+  percentage?: Prisma.Decimal | number | null;
+  fixedAmount?: Prisma.Decimal | number | null;
+  freeShipping?: boolean | null;
+  currency?: string | null;
+}) {
+  if (typeof input.percentage === "number" && input.percentage > 0) {
+    return `${input.percentage}%`;
+  }
+
+  if (input.percentage instanceof Prisma.Decimal && input.percentage.greaterThan(0)) {
+    return `${Number(input.percentage).toFixed(2)}%`;
+  }
+
+  if (typeof input.fixedAmount === "number" && input.fixedAmount > 0) {
+    return formatMoney(input.fixedAmount, input.currency ?? "EUR");
+  }
+
+  if (input.fixedAmount instanceof Prisma.Decimal && input.fixedAmount.greaterThan(0)) {
+    return formatMoney(Number(input.fixedAmount), input.currency ?? "EUR");
+  }
+
+  if (input.freeShipping) {
+    return "Free Shipping";
+  }
+
+  return "";
+}
+
 function prettifyEventName(value: string): string {
   return value
     .replaceAll("_", " ")
@@ -523,20 +612,6 @@ export class NotificationsService {
 
           continue;
         }
-
-        await tx.notificationTemplate.update({
-          where: { id: existing.id },
-          data: {
-            name: template.name,
-            category: template.category,
-            subjectTemplate: template.subjectTemplate,
-            htmlTemplate: template.htmlTemplate,
-            textTemplate: template.textTemplate,
-            variablesSchema: toNullablePrismaJsonValue(template.variablesSchema),
-            samplePayload: toNullablePrismaJsonValue(template.samplePayload),
-            isActive: true,
-          },
-        });
 
         const versionExists = await tx.notificationTemplateVersion.findUnique({
           where: {
@@ -861,7 +936,53 @@ export class NotificationsService {
     const delivery = await prisma.notificationDelivery.findUnique({
       where: { id: deliveryId },
       include: {
-        event: true,
+        event: {
+          include: {
+            targetUser: {
+              select: {
+                id: true,
+                email: true,
+                fullName: true,
+                firstName: true,
+                lastName: true,
+              },
+            },
+            order: {
+              include: {
+                items: true,
+                couponApplication: {
+                  include: {
+                    coupon: true,
+                  },
+                },
+                payments: {
+                  orderBy: {
+                    createdAt: "desc",
+                  },
+                },
+              },
+            },
+            payment: {
+              include: {
+                order: {
+                  include: {
+                    items: true,
+                    couponApplication: {
+                      include: {
+                        coupon: true,
+                      },
+                    },
+                    payments: {
+                      orderBy: {
+                        createdAt: "desc",
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
         notification: {
           include: {
             user: {
@@ -869,6 +990,8 @@ export class NotificationsService {
                 id: true,
                 email: true,
                 fullName: true,
+                firstName: true,
+                lastName: true,
               },
             },
           },
@@ -903,16 +1026,101 @@ export class NotificationsService {
     });
 
     const eventMetadata = toJsonRecord(delivery.event.metadata);
-    const variables = mergeSamplePayload(delivery.event.metadata, {
-      customerName: delivery.notification?.user.fullName ?? delivery.notification?.user.email ?? "Customer",
+    const order = delivery.event.order ?? delivery.event.payment?.order ?? null;
+    const payment = delivery.event.payment ?? order?.payments[0] ?? null;
+    const paymentMetadata = toJsonRecord(payment?.metadata);
+    const notificationUser = delivery.notification?.user ?? delivery.event.targetUser ?? null;
+    const customerName = buildCustomerName({
+      fullName: notificationUser?.fullName ?? order?.customerName,
+      firstName: notificationUser?.firstName,
+      lastName: notificationUser?.lastName,
+      fallbackEmail: notificationUser?.email ?? order?.customerEmail ?? delivery.recipient,
+    });
+    const customerEmail = toOptionalString(notificationUser?.email ?? order?.customerEmail ?? delivery.recipient) ?? "";
+    const orderCurrency = toOptionalString(order?.displayCurrency ?? order?.currency ?? payment?.currency) ?? "EUR";
+    const paymentCurrency = toOptionalString(payment?.displayCurrency ?? payment?.currency ?? order?.currency) ?? "EUR";
+    const couponDiscount = order?.couponApplication
+      ? resolveCouponDiscountLabel({
+          percentage: order.couponApplication.coupon?.percentage,
+          fixedAmount: order.couponApplication.coupon?.fixedAmount,
+          freeShipping: order.couponApplication.coupon?.freeShipping,
+          currency: order.currency,
+        })
+      : toOptionalString(String(eventMetadata.couponDiscount ?? "")) ?? "";
+    const baseVariables = {
+      customerName,
+      customerEmail,
       eventName: delivery.event.eventName,
-      orderNumber: eventMetadata.orderNumber,
-      paymentAmount: eventMetadata.paymentAmount,
-      currency: eventMetadata.currency,
-      trackingNumber: eventMetadata.trackingNumber,
-      carrier: eventMetadata.carrier,
-      productName: eventMetadata.productName,
-      supplierName: eventMetadata.supplierName,
+      orderNumber: toOptionalString(order?.orderNumber ?? String(eventMetadata.orderNumber ?? "")) ?? "",
+      orderDate: toIsoString(
+        order?.createdAt ?? (typeof eventMetadata.orderDate === "string" ? eventMetadata.orderDate : undefined),
+      ),
+      orderTotal:
+        order?.totalAmount !== undefined && order?.totalAmount !== null
+          ? formatMoney(Number(order.totalAmount), orderCurrency)
+          : payment?.amount !== undefined && payment?.amount !== null
+            ? formatMoney(Number(payment.amount), paymentCurrency)
+            : toOptionalString(String(eventMetadata.orderTotal ?? "")) ?? "",
+      paymentMethod:
+        toOptionalString(
+          order?.paymentMethodLabel
+          ?? (typeof paymentMetadata.paymentMethodLabel === "string" ? paymentMetadata.paymentMethodLabel : null)
+          ?? (payment?.provider ? String(payment.provider) : null)
+          ?? (order?.paymentProvider ? String(order.paymentProvider) : null),
+        ) ?? "",
+      paymentStatus: toOptionalString(payment?.status ?? order?.status ?? String(eventMetadata.paymentStatus ?? "")) ?? "",
+      paymentAmount:
+        payment?.amount !== undefined && payment?.amount !== null
+          ? formatMoney(Number(payment.amount), paymentCurrency)
+          : eventMetadata.paymentAmount,
+      paymentReference:
+        toOptionalString(payment?.paymentReference ?? String(eventMetadata.paymentReference ?? "")) ?? "",
+      paymentExpiresAt: toIsoString(
+        payment?.expiresAt ?? (typeof eventMetadata.paymentExpiresAt === "string" ? eventMetadata.paymentExpiresAt : undefined),
+      ),
+      trackingNumber:
+        toOptionalString(order?.trackingNumber ?? String(eventMetadata.trackingNumber ?? "")) ?? "",
+      carrier: toOptionalString(order?.carrier ?? String(eventMetadata.carrier ?? "")) ?? "",
+      deliveryDate: toIsoString(
+        order?.deliveredAt
+        ?? order?.estimatedDeliveryDate
+        ?? (typeof eventMetadata.deliveryDate === "string" ? eventMetadata.deliveryDate : undefined),
+      ),
+      refundAmount:
+        order?.refundedAmount !== undefined && order?.refundedAmount !== null && Number(order.refundedAmount) > 0
+          ? formatMoney(Number(order.refundedAmount), orderCurrency)
+          : toOptionalString(String(eventMetadata.refundAmount ?? "")) ?? "",
+      walletBalance: toOptionalString(String(eventMetadata.walletBalance ?? "")) ?? "",
+      points: eventMetadata.points ?? eventMetadata.pointsDelta ?? "",
+      pointsBalance: eventMetadata.pointsBalance ?? eventMetadata.balanceAfter ?? "",
+      couponCode:
+        toOptionalString(
+          order?.couponApplication?.codeSnapshot
+          ?? order?.couponApplication?.coupon?.code
+          ?? String(eventMetadata.couponCode ?? ""),
+        ) ?? "",
+      couponDiscount,
+      productList:
+        buildProductListText(
+          order?.items.map((item) => ({
+            title: item.title,
+            quantity: item.quantity,
+            brandName: item.brandName,
+            size: item.size,
+            color: item.color,
+          })),
+        )
+        || (toOptionalString(String(eventMetadata.productList ?? "")) ?? ""),
+      adminPanelLink: order ? buildAdminOrderLink(order.id) : env.CLIENT_URL,
+      productName: toOptionalString(String(eventMetadata.productName ?? "")) ?? "",
+      supplierName: toOptionalString(String(eventMetadata.supplierName ?? "")) ?? "",
+      rewardTitle: toOptionalString(String(eventMetadata.rewardTitle ?? "")) ?? "",
+      resetToken: toOptionalString(String(eventMetadata.resetToken ?? "")) ?? "",
+      verificationToken: toOptionalString(String(eventMetadata.verificationToken ?? "")) ?? "",
+    };
+    const variables = mergeSamplePayload(delivery.event.metadata, {
+      ...baseVariables,
+      currency: toOptionalString(order?.currency ?? payment?.currency ?? String(eventMetadata.currency ?? "")) ?? "",
     });
 
     const rendered = renderTemplate({
@@ -937,6 +1145,17 @@ export class NotificationsService {
     });
     // #endregion
 
+    const templateMetadata = template
+      ? {
+          templateId: template.id,
+          templateKey: template.key,
+          templateName: template.name,
+          templateVersion: template.version,
+        }
+      : {
+          templateKey: delivery.event.eventName,
+        };
+
     await prisma.notificationDelivery.update({
       where: { id: delivery.id },
       data: {
@@ -944,6 +1163,13 @@ export class NotificationsService {
         queuedAt: new Date(),
         renderedSubject: rendered.subject,
         renderedBody: rendered.html,
+        metadata: toNullablePrismaJsonValue({
+          ...toJsonRecord(delivery.metadata),
+          ...templateMetadata,
+          customerName,
+          customerEmail,
+          orderNumber: baseVariables.orderNumber,
+        }),
       },
     });
 
@@ -961,7 +1187,7 @@ export class NotificationsService {
     });
 
     if (delivery.channelCode === "EMAIL") {
-      const recipient = delivery.recipient ?? delivery.notification?.user.email;
+      const recipient = delivery.recipient ?? delivery.notification?.user.email ?? customerEmail;
       if (!recipient) {
         // #region debug-point E:process-delivery-missing-recipient
         reportDebugEvent({
@@ -1700,21 +1926,14 @@ export class NotificationsService {
     return this.listCustomerNotifications(userId, filters);
   }
 
-  public async listEmailTemplates() {
-    const templates = await prisma.notificationTemplate.findMany({
-      where: {
-        channelCode: "EMAIL",
-      },
+  private mapEmailTemplateRecord(
+    template: Prisma.NotificationTemplateGetPayload<{
       include: {
-        versions: {
-          orderBy: { version: "desc" },
-          take: 20,
-        },
-      },
-      orderBy: [{ key: "asc" }, { updatedAt: "desc" }],
-    });
-
-    return templates.map((template) => ({
+        versions: true;
+      };
+    }>,
+  ) {
+    return {
       id: template.id,
       key: template.key,
       name: template.name,
@@ -1741,7 +1960,126 @@ export class NotificationsService {
         changeNotes: version.changeNotes,
         createdAt: version.createdAt,
       })),
-    }));
+    };
+  }
+
+  private async listEmailTemplatesByEventNames(eventNames?: NotificationEventName[]) {
+    const templates = await prisma.notificationTemplate.findMany({
+      where: {
+        channelCode: "EMAIL",
+        ...(eventNames ? { key: { in: eventNames } } : {}),
+      },
+      include: {
+        versions: {
+          orderBy: { version: "desc" },
+          take: 20,
+        },
+      },
+      orderBy: [{ key: "asc" }, { updatedAt: "desc" }],
+    });
+
+    return templates.map((template) => this.mapEmailTemplateRecord(template));
+  }
+
+  public async listEmailTemplates() {
+    return this.listEmailTemplatesByEventNames();
+  }
+
+  public async listCustomerEmailTemplates() {
+    return this.listEmailTemplatesByEventNames(CUSTOMER_EMAIL_EVENT_NAMES);
+  }
+
+  public async listCustomerEmailHistory() {
+    const deliveries = await prisma.notificationDelivery.findMany({
+      where: {
+        channelCode: "EMAIL",
+        event: {
+          eventName: {
+            in: CUSTOMER_EMAIL_EVENT_NAMES,
+          },
+        },
+      },
+      include: {
+        event: {
+          include: {
+            targetUser: {
+              select: {
+                id: true,
+                email: true,
+                fullName: true,
+                firstName: true,
+                lastName: true,
+              },
+            },
+            order: {
+              select: {
+                id: true,
+                orderNumber: true,
+              },
+            },
+          },
+        },
+        notification: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                email: true,
+                fullName: true,
+                firstName: true,
+                lastName: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+      take: 250,
+    });
+
+    return {
+      items: deliveries.map((delivery) => {
+        const deliveryMetadata = toJsonRecord(delivery.metadata);
+        const notificationUser = delivery.notification?.user ?? delivery.event.targetUser ?? null;
+        return {
+          id: delivery.id,
+          eventId: delivery.eventId,
+          eventName: delivery.event.eventName,
+          templateId: typeof deliveryMetadata.templateId === "string" ? toOptionalString(deliveryMetadata.templateId) : null,
+          templateKey: toOptionalString(String(deliveryMetadata.templateKey ?? "")) ?? delivery.event.eventName,
+          templateName:
+            typeof deliveryMetadata.templateName === "string" ? toOptionalString(deliveryMetadata.templateName) : null,
+          templateVersion:
+            typeof deliveryMetadata.templateVersion === "number" ? deliveryMetadata.templateVersion : null,
+          customer: notificationUser
+            ? {
+                id: notificationUser.id,
+                name: buildCustomerName({
+                  fullName: notificationUser.fullName,
+                  firstName: notificationUser.firstName,
+                  lastName: notificationUser.lastName,
+                  fallbackEmail: notificationUser.email,
+                }),
+                email: notificationUser.email,
+              }
+            : null,
+          orderId: delivery.event.order?.id ?? null,
+          orderNumber: delivery.event.order?.orderNumber ?? null,
+          recipient: delivery.recipient,
+          state: delivery.state,
+          retryCount: delivery.retryCount,
+          renderedSubject: delivery.renderedSubject,
+          failureReason: delivery.failureReason,
+          queuedAt: delivery.queuedAt,
+          sentAt: delivery.sentAt,
+          deliveredAt: delivery.deliveredAt,
+          failedAt: delivery.failedAt,
+          createdAt: delivery.createdAt,
+        };
+      }),
+    };
   }
 
   public async updateEmailTemplate(

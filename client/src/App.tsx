@@ -52,6 +52,7 @@ import AdminMonitoring from "@/pages/admin/AdminMonitoring";
 import AdminAlerts from "@/pages/admin/AdminAlerts";
 import AdminEmailTemplates from "@/pages/admin/AdminEmailTemplates";
 import AdminEmailNotifications from "@/pages/admin/AdminEmailNotifications";
+import AdminCustomerEmailTemplates from "@/pages/admin/AdminCustomerEmailTemplates";
 import AdminNotificationsCenter from "@/pages/admin/AdminNotificationsCenter";
 import AdminSiteContent from "@/pages/admin/AdminSiteContent";
 import AdminCoupons from "@/pages/admin/AdminCoupons";
@@ -121,6 +122,7 @@ function AppRoutes() {
           <Route path="/admin/notifications" element={<AdminNotificationsCenter />} />
           <Route path="/admin/email-notifications" element={<AdminEmailNotifications />} />
           <Route path="/admin/email-templates" element={<AdminEmailTemplates />} />
+          <Route path="/admin/customer-email-templates" element={<AdminCustomerEmailTemplates />} />
           <Route path="/admin/analytics" element={<AdminAnalytics />} />
         </Route>
       </Route>
