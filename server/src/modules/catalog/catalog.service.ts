@@ -84,6 +84,7 @@ const PRODUCT_CSV_REQUIRED_COLUMNS = [
 ] as const;
 
 const PRODUCT_CSV_IMPORT_BATCH_SIZE = 100;
+const PRODUCT_CSV_DELETE_BATCH_SIZE = 500;
 const DEFAULT_IMPORTED_STOCK_QUANTITY = 10;
 
 interface ParsedCsvDocument {
@@ -1881,12 +1882,13 @@ export class CatalogService {
         });
         const scopedProductIds = scopedProducts.map((product) => product.id);
 
-        if (scopedProductIds.length > 0) {
-          await cleanupImportedProductDependencies(transaction, scopedProductIds);
+        for (let startIndex = 0; startIndex < scopedProductIds.length; startIndex += PRODUCT_CSV_DELETE_BATCH_SIZE) {
+          const batchIds = scopedProductIds.slice(startIndex, startIndex + PRODUCT_CSV_DELETE_BATCH_SIZE);
+          await cleanupImportedProductDependencies(transaction, batchIds);
           await transaction.product.deleteMany({
             where: {
               id: {
-                in: scopedProductIds,
+                in: batchIds,
               },
             },
           });
