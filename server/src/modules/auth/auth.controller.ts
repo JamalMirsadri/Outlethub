@@ -3,7 +3,7 @@ import type { Request, Response } from "express";
 import { env } from "../../config/env.js";
 import { parseDurationToMilliseconds } from "../../services/jwt.service.js";
 import { authService } from "./auth.service.js";
-import { getSessionContext } from "./session.utils.js";
+import { getSessionContext, SESSION_INACTIVITY_TIMEOUT_MS } from "./session.utils.js";
 
 const refreshCookieOptions = {
   httpOnly: true,
@@ -102,7 +102,7 @@ export class AuthController {
     const user = await authService.getCurrentUser(request.auth!.userId);
     response.status(200).json({
       user,
-      sessionInactivityTimeoutMs: env.AUTH_INACTIVITY_TIMEOUT_MINUTES * 60_000,
+      sessionInactivityTimeoutMs: SESSION_INACTIVITY_TIMEOUT_MS,
     });
   }
 

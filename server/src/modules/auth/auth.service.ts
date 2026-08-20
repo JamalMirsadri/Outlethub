@@ -16,7 +16,7 @@ import {
 } from "../../services/jwt.service.js";
 import { notificationsService } from "../notifications/notifications.service.js";
 import { referralService } from "../commerce/referral.service.js";
-import { isSessionInactive } from "./session.utils.js";
+import { isSessionInactive, SESSION_INACTIVITY_TIMEOUT_MS } from "./session.utils.js";
 import type {
   AdminResetUserPasswordInput,
   AdminUsersQueryInput,
@@ -79,7 +79,7 @@ function parseDurationToDate(duration: string): Date {
 }
 
 function getSessionInactivityTimeoutMs() {
-  return env.AUTH_INACTIVITY_TIMEOUT_MINUTES * 60_000;
+  return SESSION_INACTIVITY_TIMEOUT_MS;
 }
 
 function toAuthUser(user: {
