@@ -1,4 +1,4 @@
-const FIXED_INACTIVITY_TIMEOUT_MINUTES = 12 * 60;
+const FIXED_INACTIVITY_TIMEOUT_MINUTES = 120 * 60;
 const DEFAULT_ACTIVITY_PING_INTERVAL_MS = 5 * 60 * 1000;
 
 function parsePositiveNumber(value: string | undefined, fallback: number): number {
