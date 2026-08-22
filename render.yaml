@@ -30,7 +30,7 @@ services:
       - key: JWT_REFRESH_SECRET
         generateValue: true
       - key: JWT_ACCESS_EXPIRES_IN
-        value: 15m
+        value: 24h
       - key: JWT_REFRESH_EXPIRES_IN
         value: 7d
       - key: REFRESH_TOKEN_COOKIE_NAME
@@ -99,7 +99,7 @@ services:
           name: outlethub-api
           envVarKey: JWT_REFRESH_SECRET
       - key: JWT_ACCESS_EXPIRES_IN
-        value: 15m
+        value: 24h
       - key: JWT_REFRESH_EXPIRES_IN
         value: 7d
       - key: REFRESH_TOKEN_COOKIE_NAME
