@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { LogIn, Mail, Lock, Loader2 } from "lucide-react";
+import { LogIn, Mail, Lock, Loader2, ArrowLeft } from "lucide-react";
 import AuthLayout from "@/components/AuthLayout";
 import GoogleIcon from "@/components/GoogleIcon";
 import { mergeGuestCart } from "@/api/commerce";
@@ -49,6 +49,15 @@ export default function Login() {
       icon={LogIn}
       title={t("auth.welcomeBack")}
       subtitle={t("auth.loginSubtitle")}
+      back={
+        <Link
+          to="/"
+          className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"
+        >
+          <ArrowLeft className="w-4 h-4" aria-hidden="true" />
+          Back to Store
+        </Link>
+      }
       footer={
         <>
           {t("auth.noAccount")}{" "}
