@@ -1,5 +1,7 @@
 import { CampaignDisplayType, CampaignPopupDisplayMode, CampaignStatus } from "@prisma/client";
 
+import { cloudinary } from "../../config/cloudinary.js";
+import { env } from "../../config/env.js";
 import { prisma } from "../../config/prisma.js";
 import { ApiError } from "../../utils/api-error.js";
 
@@ -169,6 +171,27 @@ export class CampaignService {
     });
 
     return mapCampaign(updated);
+  }
+
+  public async uploadImage(input: { dataUrl?: string; imageUrl?: string }) {
+    if (input.imageUrl) {
+      return { imageUrl: input.imageUrl };
+    }
+
+    if (!input.dataUrl) {
+      throw new ApiError(400, "No image payload was provided.");
+    }
+
+    if (!env.CLOUDINARY_CLOUD_NAME || !env.CLOUDINARY_API_KEY || !env.CLOUDINARY_API_SECRET) {
+      throw new ApiError(503, "Cloudinary is not configured.");
+    }
+
+    const result = await cloudinary.uploader.upload(input.dataUrl, {
+      folder: "outlethub/campaigns",
+      resource_type: "image",
+    });
+
+    return { imageUrl: result.secure_url };
   }
 
   public async delete(id: string) {

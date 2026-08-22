@@ -43,6 +43,7 @@ import {
   updateProductPricingOverrideSchema,
   updateTrackingSchema,
   updatePaymentProviderConfigSchema,
+  uploadCampaignImageSchema,
   uploadPaymentReceiptSchema,
   upsertBankAccountSchema,
   upsertSourceSchema,
@@ -216,6 +217,11 @@ commerceRouter.post(
   "/admin/campaigns",
   validateBody(createCampaignSchema),
   asyncHandler(commerceController.createCampaign.bind(commerceController)),
+);
+commerceRouter.post(
+  "/admin/campaigns/upload-image",
+  validateBody(uploadCampaignImageSchema),
+  asyncHandler(commerceController.uploadCampaignImage.bind(commerceController)),
 );
 commerceRouter.patch(
   "/admin/campaigns/:id",

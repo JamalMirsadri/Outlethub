@@ -24,6 +24,7 @@ export interface CampaignRecord {
   status: CampaignStatus;
   startsAt: string | null;
   endsAt: string | null;
+  maxDisplaysPerUser: number | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -46,6 +47,7 @@ export interface CampaignPayload {
   status?: CampaignStatus;
   startsAt?: string | null;
   endsAt?: string | null;
+  maxDisplaysPerUser?: number | null;
 }
 
 export async function getAdminCampaignOverview() {
@@ -84,5 +86,13 @@ export async function deleteCampaign(id: string) {
   return http<void>(`/admin/campaigns/${id}`, {
     method: "DELETE",
     token: getRequiredToken(),
+  });
+}
+
+export async function uploadCampaignImage(payload: { dataUrl?: string; imageUrl?: string }) {
+  return http<{ imageUrl: string }>("/admin/campaigns/upload-image", {
+    method: "POST",
+    token: getRequiredToken(),
+    body: JSON.stringify(payload),
   });
 }

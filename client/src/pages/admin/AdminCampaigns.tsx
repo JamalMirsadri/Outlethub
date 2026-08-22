@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from "react";
-import { CalendarRange, ExternalLink, EyeOff, ImagePlus, Loader2, Megaphone, Plus, Save, Trash2 } from "lucide-react";
+import React, { useEffect, useRef, useState } from "react";
+import { CalendarRange, ExternalLink, EyeOff, ImagePlus, Loader2, Megaphone, Plus, Save, Trash2, Upload } from "lucide-react";
 import moment from "moment";
 
 import {
@@ -10,6 +10,7 @@ import {
   type CampaignPayload,
   type CampaignRecord,
   updateCampaign,
+  uploadCampaignImage,
 } from "@/api/campaigns";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -39,7 +40,17 @@ const DEFAULT_FORM = {
   status: "DRAFT" as CampaignRecord["status"],
   startsAt: "",
   endsAt: "",
+  maxDisplaysPerUser: null as number | null,
 };
+
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error ?? new Error("Failed to read file."));
+    reader.readAsDataURL(file);
+  });
+}
 
 function StatCard({ label, value, hint }: { label: string; value: string | number; hint: string }) {
   return (
@@ -61,7 +72,9 @@ export default function AdminCampaigns() {
   const [saving, setSaving] = useState(false);
   const [busyId, setBusyId] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [form, setForm] = useState(DEFAULT_FORM);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const load = async ({ silent = false } = {}) => {
     if (!silent) {
@@ -103,6 +116,7 @@ export default function AdminCampaigns() {
       status: campaign.status,
       startsAt: campaign.startsAt ? moment(campaign.startsAt).format("YYYY-MM-DDTHH:mm") : "",
       endsAt: campaign.endsAt ? moment(campaign.endsAt).format("YYYY-MM-DDTHH:mm") : "",
+      maxDisplaysPerUser: campaign.maxDisplaysPerUser,
     });
     setDialogOpen(true);
   };
@@ -119,6 +133,7 @@ export default function AdminCampaigns() {
       status: form.status,
       startsAt: form.startsAt ? new Date(form.startsAt).toISOString() : null,
       endsAt: form.endsAt ? new Date(form.endsAt).toISOString() : null,
+      maxDisplaysPerUser: form.maxDisplaysPerUser,
     };
 
     try {
@@ -164,6 +179,35 @@ export default function AdminCampaigns() {
       });
     } finally {
       setBusyId("");
+    }
+  };
+
+  const handleImageFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    setUploadingImage(true);
+    try {
+      const dataUrl = await readFileAsDataUrl(file);
+      const uploaded = await uploadCampaignImage({ dataUrl });
+      setForm((current) => ({ ...current, image: uploaded.imageUrl }));
+      toast({
+        title: "Image uploaded",
+        description: "Campaign image was uploaded successfully.",
+      });
+    } catch (error) {
+      toast({
+        title: "Unable to upload image",
+        description: error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setUploadingImage(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
     }
   };
 
@@ -263,9 +307,47 @@ export default function AdminCampaigns() {
               <Label>Description</Label>
               <Textarea className="mt-1" value={form.description} onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))} />
             </div>
-            <div className="md:col-span-2">
+            <div className="md:col-span-2 space-y-3">
               <Label>Image</Label>
-              <Input className="mt-1" placeholder="https://..." value={form.image} onChange={(event) => setForm((current) => ({ ...current, image: event.target.value }))} />
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+                <div className="h-32 w-full shrink-0 overflow-hidden rounded-xl border border-border bg-muted sm:w-48">
+                  {form.image ? (
+                    <img src={form.image} alt="Campaign preview" className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="flex h-full items-center justify-center text-muted-foreground">
+                      <ImagePlus className="h-6 w-6" />
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1 space-y-2">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(event) => void handleImageFile(event)}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full"
+                    disabled={uploadingImage}
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    {uploadingImage ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Upload className="mr-2 h-4 w-4" />
+                    )}
+                    {uploadingImage ? "Uploading..." : "Upload image"}
+                  </Button>
+                  <Input
+                    placeholder="Or paste image URL (https://...)"
+                    value={form.image}
+                    onChange={(event) => setForm((current) => ({ ...current, image: event.target.value }))}
+                  />
+                </div>
+              </div>
             </div>
             <div>
               <Label>Display Type</Label>
@@ -298,6 +380,30 @@ export default function AdminCampaigns() {
               <Label>Link</Label>
               <Input className="mt-1" placeholder="/shop or https://..." value={form.link} onChange={(event) => setForm((current) => ({ ...current, link: event.target.value }))} />
             </div>
+            <div className="md:col-span-2">
+              <Label>Display frequency per user</Label>
+              <Select
+                value={form.maxDisplaysPerUser == null ? "unlimited" : String(form.maxDisplaysPerUser)}
+                onValueChange={(value) =>
+                  setForm((current) => ({
+                    ...current,
+                    maxDisplaysPerUser: value === "unlimited" ? null : Number(value),
+                  }))
+                }
+              >
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Select frequency" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="unlimited">Unlimited</SelectItem>
+                  <SelectItem value="1">Once per day</SelectItem>
+                  <SelectItem value="2">2 times per day</SelectItem>
+                  <SelectItem value="3">3 times per day</SelectItem>
+                  <SelectItem value="4">4 times per day</SelectItem>
+                  <SelectItem value="5">5 times per day</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <div>
               <Label>Start Date</Label>
               <Input className="mt-1" type="datetime-local" value={form.startsAt} onChange={(event) => setForm((current) => ({ ...current, startsAt: event.target.value }))} />
@@ -307,6 +413,25 @@ export default function AdminCampaigns() {
               <Input className="mt-1" type="datetime-local" value={form.endsAt} onChange={(event) => setForm((current) => ({ ...current, endsAt: event.target.value }))} />
             </div>
           </div>
+
+          {form.displayType === "POPUP" && (
+            <div className="mt-6">
+              <Label>Preview</Label>
+              <div className="relative mt-2 h-72 w-full overflow-hidden rounded-2xl border border-border">
+                {form.image ? (
+                  <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${form.image})` }} />
+                ) : (
+                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,hsl(var(--accent)/0.3),transparent_60%),linear-gradient(180deg,hsl(var(--card)),hsl(var(--background)))]" />
+                )}
+                <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.25),rgba(6,10,20,0.82))]" />
+                <div className="relative flex h-full flex-col justify-end p-5">
+                  <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[hsl(var(--accent))]">Campaign</p>
+                  <h3 className="font-display text-xl font-semibold text-foreground">{form.title || "Campaign title"}</h3>
+                  <p className="text-sm text-foreground/90">{form.description || "Campaign description"}</p>
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="flex justify-end">
             <Button onClick={() => void submit()} disabled={saving} className="rounded-full">

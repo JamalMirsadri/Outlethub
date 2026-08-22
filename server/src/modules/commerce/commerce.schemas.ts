@@ -308,6 +308,15 @@ export const updateCampaignSchema = z
     validateCampaignSchema(value, context);
   });
 
+export const uploadCampaignImageSchema = z
+  .object({
+    dataUrl: z.string().trim().min(1).optional(),
+    imageUrl: z.string().trim().url().optional(),
+  })
+  .refine((value) => Boolean(value.dataUrl || value.imageUrl), {
+    message: "Provide either dataUrl or imageUrl.",
+  });
+
 export const updatePreferredCurrencySchema = z.object({
   currency: z.string().trim().min(3).max(10),
 });
