@@ -110,7 +110,7 @@ const envSchema = z.object({
   JWT_REFRESH_SECRET: z.string().min(32, "JWT_REFRESH_SECRET must be at least 32 characters"),
   JWT_ACCESS_EXPIRES_IN: z.string().default("15m"),
   JWT_REFRESH_EXPIRES_IN: z.string().default("7d"),
-  AUTH_INACTIVITY_TIMEOUT_MINUTES: z.coerce.number().int().positive().default(720),
+  AUTH_INACTIVITY_TIMEOUT_MINUTES: z.coerce.number().int().positive().default(1440),
   REFRESH_TOKEN_COOKIE_NAME: z.string().default("outlethub_refresh_token"),
   BCRYPT_SALT_ROUNDS: z.coerce.number().int().min(8).max(14).default(12),
   SMTP_HOST: z.string().optional(),
