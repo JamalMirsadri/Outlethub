@@ -167,7 +167,7 @@ export function createApp() {
   app.use(morgan("dev"));
   app.use(express.json({ limit: "15mb" }));
   app.use(cookieParser());
-  app.use("/uploads", express.static(resolve(process.cwd(), "uploads")));
+  app.use("/uploads", express.static(resolve(process.cwd(), env.UPLOAD_DIR)));
 
   app.use("/api/v1", apiRouter);
 
