@@ -25,6 +25,32 @@ function createRandomSeed() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
+const GOOGLE_ANALYTICS_ID = "G-216CW6YP13";
+const GOOGLE_ANALYTICS_SCRIPT_ID = "outlethub-google-analytics";
+
+function initGoogleAnalytics() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  if (document.getElementById(GOOGLE_ANALYTICS_SCRIPT_ID)) {
+    return;
+  }
+
+  const script = document.createElement("script");
+  script.id = GOOGLE_ANALYTICS_SCRIPT_ID;
+  script.async = true;
+  script.src = `https://www.googletagmanager.com/gtag/js?id=${GOOGLE_ANALYTICS_ID}`;
+  document.head.appendChild(script);
+
+  window.dataLayer = window.dataLayer || [];
+  window.gtag = function gtag(...args) {
+    window.dataLayer.push(args);
+  };
+  window.gtag("js", new Date());
+  window.gtag("config", GOOGLE_ANALYTICS_ID);
+}
+
 export default function Home() {
   const { t } = useTranslation();
   const { settings } = useSiteContent();
@@ -55,6 +81,10 @@ export default function Home() {
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [catalogSeed]);
+
+  useEffect(() => {
+    initGoogleAnalytics();
+  }, []);
 
   const featuredRandomNewProduct = useMemo(() => {
     if (catalogProducts.length === 0) {
