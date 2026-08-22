@@ -317,6 +317,10 @@ export const uploadCampaignImageSchema = z
     message: "Provide either dataUrl or imageUrl.",
   });
 
+export const uploadHeroImageSchema = z.object({
+  dataUrl: z.string().trim().min(1),
+});
+
 export const updatePreferredCurrencySchema = z.object({
   currency: z.string().trim().min(3).max(10),
 });

@@ -726,6 +726,14 @@ export async function updateAdminSiteContentSettings(payload: SiteContentSetting
   });
 }
 
+export async function uploadHeroImage(payload: { dataUrl: string }) {
+  return http<{ imageUrl: string }>("/admin/site-content/upload-hero-image", {
+    method: "POST",
+    token: getRequiredToken(),
+    body: JSON.stringify(payload),
+  });
+}
+
 export async function updateBusinessSettings(payload: Partial<CommerceSettingsResponse["businessSettings"]>) {
   return http<CommerceSettingsResponse["businessSettings"]>("/admin/pricing/business", {
     method: "PATCH",

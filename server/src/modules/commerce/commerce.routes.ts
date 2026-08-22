@@ -44,6 +44,7 @@ import {
   updateTrackingSchema,
   updatePaymentProviderConfigSchema,
   uploadCampaignImageSchema,
+  uploadHeroImageSchema,
   uploadPaymentReceiptSchema,
   upsertBankAccountSchema,
   upsertSourceSchema,
@@ -198,6 +199,11 @@ commerceRouter.patch(
   "/admin/site-content",
   validateBody(updateSiteContentSettingsSchema),
   asyncHandler(commerceController.updateSiteContentSettings.bind(commerceController)),
+);
+commerceRouter.post(
+  "/admin/site-content/upload-hero-image",
+  validateBody(uploadHeroImageSchema),
+  asyncHandler(commerceController.uploadHeroImage.bind(commerceController)),
 );
 commerceRouter.patch(
   "/admin/pricing/business",

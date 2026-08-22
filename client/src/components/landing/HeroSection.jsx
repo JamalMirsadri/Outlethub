@@ -128,25 +128,37 @@ export default function HeroSection() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
                 >
-                  <p className="mb-3 text-xs font-semibold uppercase tracking-[0.22em] text-white/80">
-                    {currentSlide.eyebrow}
-                  </p>
-                  <h1 className="mb-4 max-w-[320px] font-display text-4xl font-semibold leading-[1.02] lg:text-6xl">
-                    {currentSlide.titleTop}
-                    <br />
-                    {currentSlide.titleAccent}
-                  </h1>
-                  <p className="max-w-[340px] text-sm leading-7 text-white/84 lg:text-base">
-                    {currentSlide.description}
-                  </p>
-                  <div className="mt-7 flex flex-wrap gap-3">
-                    <Button asChild size="lg" className="h-11 px-6 text-xs font-semibold uppercase tracking-[0.2em]">
-                      <Link to={currentSlide.primaryHref}>{currentSlide.primaryLabel}</Link>
-                    </Button>
-                    <Button asChild variant="outline" size="lg" className="h-11 border-white/50 bg-white/10 px-6 text-xs font-semibold uppercase tracking-[0.2em] text-white hover:bg-white/20">
-                      <Link to={currentSlide.secondaryHref}>{currentSlide.secondaryLabel}</Link>
-                    </Button>
-                  </div>
+                  {currentSlide.eyebrow ? (
+                    <p className="mb-3 text-xs font-semibold uppercase tracking-[0.22em] text-white/80">
+                      {currentSlide.eyebrow}
+                    </p>
+                  ) : null}
+                  {currentSlide.titleTop || currentSlide.titleAccent ? (
+                    <h1 className="mb-4 max-w-[320px] font-display text-4xl font-semibold leading-[1.02] lg:text-6xl">
+                      {currentSlide.titleTop}
+                      {currentSlide.titleTop && currentSlide.titleAccent ? <br /> : null}
+                      {currentSlide.titleAccent}
+                    </h1>
+                  ) : null}
+                  {currentSlide.description ? (
+                    <p className="max-w-[340px] text-sm leading-7 text-white/84 lg:text-base">
+                      {currentSlide.description}
+                    </p>
+                  ) : null}
+                  {currentSlide.primaryLabel || currentSlide.secondaryLabel ? (
+                    <div className="mt-7 flex flex-wrap gap-3">
+                      {currentSlide.primaryLabel ? (
+                        <Button asChild size="lg" className="h-11 px-6 text-xs font-semibold uppercase tracking-[0.2em]">
+                          <Link to={currentSlide.primaryHref || "#"}>{currentSlide.primaryLabel}</Link>
+                        </Button>
+                      ) : null}
+                      {currentSlide.secondaryLabel ? (
+                        <Button asChild variant="outline" size="lg" className="h-11 border-white/50 bg-white/10 px-6 text-xs font-semibold uppercase tracking-[0.2em] text-white hover:bg-white/20">
+                          <Link to={currentSlide.secondaryHref || "#"}>{currentSlide.secondaryLabel}</Link>
+                        </Button>
+                      ) : null}
+                    </div>
+                  ) : null}
                 </motion.div>
               </div>
             </div>
@@ -163,22 +175,30 @@ export default function HeroSection() {
               ))}
             </div>
 
-            <div className="absolute bottom-7 right-7 hidden w-full max-w-[300px] rounded-[26px] border border-white/40 bg-[linear-gradient(180deg,rgba(255,255,255,0.88),rgba(255,248,244,0.80))] p-6 shadow-[0_24px_50px_rgba(42,24,24,0.16)] backdrop-blur md:block">
-              <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-[hsl(var(--accent))]">
-                {currentSlide.cardEyebrow}
-              </p>
-              <h3 className="font-display text-2xl leading-tight text-[hsl(var(--primary))]">
-                {currentSlide.cardTitle}
-              </h3>
-              <p className="mt-3 text-sm leading-6 text-[hsl(var(--primary))/0.75]">
-                {currentSlide.cardDescription}
-              </p>
-              <Button asChild className="mt-5 h-11 px-5 text-xs font-semibold uppercase tracking-[0.2em]">
-                <Link to={currentSlide.primaryHref}>
-                  Shop Now <ArrowRight className="h-4 w-4" />
-                </Link>
-              </Button>
-            </div>
+            {currentSlide.cardEyebrow || currentSlide.cardTitle || currentSlide.cardDescription ? (
+              <div className="absolute bottom-7 right-7 hidden w-full max-w-[300px] rounded-[26px] border border-white/40 bg-[linear-gradient(180deg,rgba(255,255,255,0.88),rgba(255,248,244,0.80))] p-6 shadow-[0_24px_50px_rgba(42,24,24,0.16)] backdrop-blur md:block">
+                {currentSlide.cardEyebrow ? (
+                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-[hsl(var(--accent))]">
+                    {currentSlide.cardEyebrow}
+                  </p>
+                ) : null}
+                {currentSlide.cardTitle ? (
+                  <h3 className="font-display text-2xl leading-tight text-[hsl(var(--primary))]">
+                    {currentSlide.cardTitle}
+                  </h3>
+                ) : null}
+                {currentSlide.cardDescription ? (
+                  <p className="mt-3 text-sm leading-6 text-[hsl(var(--primary))/0.75]">
+                    {currentSlide.cardDescription}
+                  </p>
+                ) : null}
+                <Button asChild className="mt-5 h-11 px-5 text-xs font-semibold uppercase tracking-[0.2em]">
+                  <Link to={currentSlide.primaryHref || "#"}>
+                    Shop Now <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </Button>
+              </div>
+            ) : null}
           </div>
         </motion.div>
 

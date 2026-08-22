@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
-import { ImagePlus, Plus, Save, Search, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useState, type ChangeEvent } from "react";
+import { ImagePlus, Loader2, Plus, Save, Search, Trash2, Upload } from "lucide-react";
 
 import {
   getAdminSiteContentSettings,
   updateAdminSiteContentSettings,
+  uploadHeroImage,
 } from "@/api/commerce";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -69,12 +70,22 @@ function createFooterLink(section: string, index: number): FooterLinkContent {
   };
 }
 
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error ?? new Error("Failed to read file."));
+    reader.readAsDataURL(file);
+  });
+}
+
 type FooterLinkKey = "shopLinks" | "supportLinks" | "aboutLinks";
 
 export default function AdminSiteContent() {
   const [form, setForm] = useState<SiteContentSettings>(cloneSiteContentSettings(DEFAULT_SITE_CONTENT_SETTINGS));
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploadingSlideId, setUploadingSlideId] = useState<string | null>(null);
 
   const load = async () => {
     const settings = await getAdminSiteContentSettings();
@@ -132,6 +143,38 @@ export default function AdminSiteContent() {
         ),
       },
     }));
+  };
+
+  const handleHeroImageFile = async (event: ChangeEvent<HTMLInputElement>, slideId: string) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    setUploadingSlideId(slideId);
+    try {
+      const dataUrl = await readFileAsDataUrl(file);
+      const uploaded = await uploadHeroImage({ dataUrl });
+      setForm((current) => ({
+        ...current,
+        heroSlides: current.heroSlides.map((item) =>
+          item.id === slideId ? { ...item, imageUrl: uploaded.imageUrl } : item,
+        ),
+      }));
+      toast({
+        title: "Image uploaded",
+        description: "Hero slide image was uploaded successfully.",
+      });
+    } catch (error) {
+      toast({
+        title: "Unable to upload image",
+        description: error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setUploadingSlideId(null);
+      event.target.value = "";
+    }
   };
 
   if (loading) {
@@ -276,9 +319,47 @@ export default function AdminSiteContent() {
                   <Label className="text-xs">Eyebrow</Label>
                   <Input className="mt-1" value={slide.eyebrow} onChange={(event) => setForm((current) => ({ ...current, heroSlides: current.heroSlides.map((item) => item.id === slide.id ? { ...item, eyebrow: event.target.value } : item) }))} />
                 </div>
-                <div>
-                  <Label className="text-xs">Image URL</Label>
-                  <Input className="mt-1" value={slide.imageUrl} onChange={(event) => setForm((current) => ({ ...current, heroSlides: current.heroSlides.map((item) => item.id === slide.id ? { ...item, imageUrl: event.target.value } : item) }))} />
+                <div className="md:col-span-2 space-y-3">
+                  <Label className="text-xs">Hero Image</Label>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+                    <div className="h-32 w-full shrink-0 overflow-hidden rounded-xl border border-border bg-muted sm:w-48">
+                      {slide.imageUrl ? (
+                        <img src={slide.imageUrl} alt={`Slide ${index + 1} preview`} className="h-full w-full object-cover" />
+                      ) : (
+                        <div className="flex h-full items-center justify-center text-muted-foreground">
+                          <ImagePlus className="h-6 w-6" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1 space-y-2">
+                      <input
+                        id={`hero-image-input-${slide.id}`}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(event) => void handleHeroImageFile(event, slide.id)}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full"
+                        disabled={uploadingSlideId === slide.id}
+                        onClick={() => document.getElementById(`hero-image-input-${slide.id}`)?.click()}
+                      >
+                        {uploadingSlideId === slide.id ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <Upload className="mr-2 h-4 w-4" />
+                        )}
+                        {uploadingSlideId === slide.id ? "Uploading..." : slide.imageUrl ? "Replace image" : "Upload image"}
+                      </Button>
+                      <Input
+                        placeholder="Or paste existing image URL (https://...)"
+                        value={slide.imageUrl}
+                        onChange={(event) => setForm((current) => ({ ...current, heroSlides: current.heroSlides.map((item) => item.id === slide.id ? { ...item, imageUrl: event.target.value } : item) }))}
+                      />
+                    </div>
+                  </div>
                 </div>
                 <div>
                   <Label className="text-xs">Title Top</Label>

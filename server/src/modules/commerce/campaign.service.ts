@@ -1,12 +1,8 @@
-import { randomUUID } from "node:crypto";
-import { mkdir, unlink, writeFile } from "node:fs/promises";
-import { basename, resolve, sep } from "node:path";
-
 import { CampaignDisplayType, CampaignPopupDisplayMode, CampaignStatus } from "@prisma/client";
 
-import { env } from "../../config/env.js";
 import { prisma } from "../../config/prisma.js";
 import { ApiError } from "../../utils/api-error.js";
+import { deleteLocalImage, saveLocalImage } from "./local-image-storage.js";
 
 function mapCampaign(campaign: {
   id: string;
@@ -44,58 +40,6 @@ function validateCampaignSchedule(input: { startsAt?: string | null; endsAt?: st
   if (input.startsAt && input.endsAt && new Date(input.endsAt) < new Date(input.startsAt)) {
     throw new ApiError(400, "Campaign end date must be after the start date.");
   }
-}
-
-const CAMPAIGN_IMAGE_MIME_TYPES: Record<string, string> = {
-  "image/jpeg": "jpg",
-  "image/jpg": "jpg",
-  "image/png": "png",
-  "image/webp": "webp",
-};
-
-const MAX_CAMPAIGN_IMAGE_BYTES = 5 * 1024 * 1024;
-
-function getCampaignUploadDir(): string {
-  return resolve(process.cwd(), env.UPLOAD_DIR, "campaigns");
-}
-
-function decodeCampaignImageDataUrl(dataUrl: string): { buffer: Buffer; extension: string } {
-  const match = dataUrl.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/);
-  if (!match || !match[1] || !match[2]) {
-    throw new ApiError(400, "Campaign image must be a base64 data URL.");
-  }
-
-  const mimeType = match[1].toLowerCase();
-  const extension = CAMPAIGN_IMAGE_MIME_TYPES[mimeType];
-  if (!extension) {
-    throw new ApiError(400, "Campaign image must be JPG, JPEG, PNG, or WEBP.");
-  }
-
-  const buffer = Buffer.from(match[2], "base64");
-  if (buffer.length === 0 || buffer.length > MAX_CAMPAIGN_IMAGE_BYTES) {
-    throw new ApiError(400, "Campaign image must be between 1 byte and 5 MB.");
-  }
-
-  return { buffer, extension };
-}
-
-function deleteLocalCampaignImage(imageUrl: string | null): void {
-  if (!imageUrl || !imageUrl.startsWith("/uploads/campaigns/")) {
-    return;
-  }
-
-  const filename = basename(imageUrl);
-  if (!filename) {
-    return;
-  }
-
-  const campaignsDir = resolve(getCampaignUploadDir());
-  const filePath = resolve(campaignsDir, filename);
-  if (!filePath.startsWith(`${campaignsDir}${sep}`)) {
-    return;
-  }
-
-  void unlink(filePath).catch(() => undefined);
 }
 
 export class CampaignService {
@@ -226,7 +170,7 @@ export class CampaignService {
     });
 
     if (input.image !== undefined && input.image !== existing.image) {
-      deleteLocalCampaignImage(existing.image);
+      deleteLocalImage(existing.image, "campaigns");
     }
 
     return mapCampaign(updated);
@@ -241,14 +185,9 @@ export class CampaignService {
       throw new ApiError(400, "No image payload was provided.");
     }
 
-    const { buffer, extension } = decodeCampaignImageDataUrl(input.dataUrl);
-    const campaignsDir = getCampaignUploadDir();
-    await mkdir(campaignsDir, { recursive: true });
+    const { publicUrl } = await saveLocalImage(input.dataUrl, "campaigns", "Campaign image");
 
-    const filename = `${randomUUID()}.${extension}`;
-    await writeFile(resolve(campaignsDir, filename), buffer);
-
-    return { imageUrl: `/uploads/campaigns/${filename}` };
+    return { imageUrl: publicUrl };
   }
 
   public async delete(id: string) {

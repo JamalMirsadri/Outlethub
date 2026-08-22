@@ -227,6 +227,10 @@ export class CommerceController {
     response.status(200).json(await campaignService.uploadImage(request.body));
   }
 
+  public async uploadHeroImage(request: Request, response: Response) {
+    response.status(200).json(await commerceAdminService.uploadHeroImage(request.body));
+  }
+
   public async createCoupon(request: Request, response: Response) {
     response.status(201).json(await couponService.createCoupon(request.body));
   }

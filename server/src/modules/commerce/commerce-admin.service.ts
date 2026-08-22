@@ -15,6 +15,7 @@ import {
   resolveSiteContentSettings,
   type SiteContentSettings,
 } from "./site-content.js";
+import { deleteLocalImage, saveLocalImage } from "./local-image-storage.js";
 
 const SITE_CONTENT_SETTING_KEY = "site_content";
 
@@ -108,6 +109,10 @@ export class CommerceAdminService {
   public async updateSiteContentSettings(input: SiteContentSettings) {
     const resolved = resolveSiteContentSettings(input);
 
+    const previous = await prisma.setting.findUnique({
+      where: { key: SITE_CONTENT_SETTING_KEY },
+    });
+
     const setting = await prisma.setting.upsert({
       where: { key: SITE_CONTENT_SETTING_KEY },
       update: {
@@ -123,7 +128,29 @@ export class CommerceAdminService {
       },
     });
 
+    if (previous?.value) {
+      const previousSettings = resolveSiteContentSettings(previous.value);
+      this.cleanupRemovedHeroImages(previousSettings.heroSlides, resolved.heroSlides);
+    }
+
     return resolveSiteContentSettings(setting.value);
+  }
+
+  public async uploadHeroImage(input: { dataUrl: string }) {
+    return saveLocalImage(input.dataUrl, "heroes", "Hero image");
+  }
+
+  private cleanupRemovedHeroImages(
+    previousSlides: SiteContentSettings["heroSlides"],
+    nextSlides: SiteContentSettings["heroSlides"],
+  ) {
+    const nextImageUrls = new Set(nextSlides.map((slide) => slide.imageUrl).filter(Boolean));
+
+    for (const slide of previousSlides) {
+      if (slide.imageUrl && !nextImageUrls.has(slide.imageUrl)) {
+        deleteLocalImage(slide.imageUrl, "heroes");
+      }
+    }
   }
 
   public async getCommerceSettings() {
