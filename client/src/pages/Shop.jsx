@@ -23,7 +23,7 @@ const COLORS = [
   { name: "Green", value: "#388e3c" },
   { name: "Blue", value: "#1976d2" },
 ];
-const PAGE_SIZE = 15;
+const PAGE_SIZE = 21;
 const SORT_OPTIONS = new Set(["random", "price_low", "price_high"]);
 
 function createRandomSeed() {
