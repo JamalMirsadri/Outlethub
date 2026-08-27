@@ -51,36 +51,140 @@ function initGoogleAnalytics() {
   window.gtag("config", GOOGLE_ANALYTICS_ID);
 }
 
+function normalizeItems(response) {
+  return Array.isArray(response?.items)
+    ? response.items.map(normalizeCatalogProduct).filter(Boolean)
+    : [];
+}
+
+function getSectionMeta(sectionId, settings) {
+  switch (sectionId) {
+    case "outlet":
+      return {
+        title: settings.homeSections?.newArrivalsTitle || "Outlet",
+        cta: {
+          to: settings.homeSections?.newArrivalsCtaHref || "/shop",
+          label: settings.homeSections?.newArrivalsCtaLabel || "View all",
+        },
+      };
+    case "sport":
+      return { title: "Sport", cta: { to: "/shop", label: "Shop All" } };
+    case "best_sellers":
+      return {
+        title: settings.homeSections?.bestSellersTitle || "Best Sellers",
+        cta: {
+          to: settings.homeSections?.bestSellersCtaHref || "/shop",
+          label: settings.homeSections?.bestSellersCtaLabel || "View all",
+        },
+      };
+    default:
+      return { title: "", cta: null };
+  }
+}
+
+async function fetchSectionProducts(section, seed) {
+  if (section.id === "best_sellers") {
+    const response = await http(
+      `/products?page=1&pageSize=${section.productCount}&sort=best_sellers`,
+    );
+    return normalizeItems(response);
+  }
+
+  const brandIds = Array.isArray(section.brandIds) ? section.brandIds.filter(Boolean) : [];
+  if (brandIds.length === 0) {
+    if (section.id === "sport") {
+      return [];
+    }
+    const response = await http(
+      `/products?page=1&pageSize=${section.productCount}&sort=random&seed=${encodeURIComponent(seed)}`,
+    );
+    return normalizeItems(response);
+  }
+
+  const responses = await Promise.all(
+    brandIds.map((brandId) =>
+      http(
+        `/products?page=1&pageSize=${section.productCount}&brand=${encodeURIComponent(brandId)}&sort=random&seed=${encodeURIComponent(seed)}`,
+      ),
+    ),
+  );
+
+  const seen = new Set();
+  return responses
+    .flatMap((response) => normalizeItems(response))
+    .filter((product) => {
+      if (!product?.id || seen.has(product.id)) {
+        return false;
+      }
+      seen.add(product.id);
+      return true;
+    })
+    .slice(0, section.productCount);
+}
+
 export default function Home() {
   const { t } = useTranslation();
   const { settings } = useSiteContent();
   const [catalogProducts, setCatalogProducts] = useState([]);
-  const [bestSellerProducts, setBestSellerProducts] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [sectionProducts, setSectionProducts] = useState({
+    outlet: [],
+    sport: [],
+    best_sellers: [],
+  });
   const [loading, setLoading] = useState(true);
+  const [loadingSections, setLoadingSections] = useState(true);
   const [catalogSeed] = useState(() => createRandomSeed());
 
   useEffect(() => {
     Promise.all([
       http(`/products?page=1&pageSize=24&sort=random&seed=${encodeURIComponent(catalogSeed)}`),
-      http("/products?page=1&pageSize=8&sort=best_sellers"),
       http("/products/meta/filters"),
     ])
-      .then(([latestProductsResponse, bestSellersResponse, filtersResponse]) => {
-        const latestProducts = Array.isArray(latestProductsResponse.items)
-          ? latestProductsResponse.items.map(normalizeCatalogProduct).filter(Boolean)
-          : [];
-        const bestSellers = Array.isArray(bestSellersResponse.items)
-          ? bestSellersResponse.items.map(normalizeCatalogProduct).filter(Boolean)
-          : [];
-
-        setCatalogProducts(latestProducts);
-        setBestSellerProducts(bestSellers);
-        setCategories(Array.isArray(filtersResponse.categories) ? filtersResponse.categories.filter((category) => !category.parentId).slice(0, 4) : []);
+      .then(([catalogResponse, filtersResponse]) => {
+        setCatalogProducts(normalizeItems(catalogResponse));
+        setCategories(
+          Array.isArray(filtersResponse.categories)
+            ? filtersResponse.categories.filter((category) => !category.parentId).slice(0, 4)
+            : [],
+        );
       })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [catalogSeed]);
+
+  const sections = Array.isArray(settings.homepageSections) ? settings.homepageSections : [];
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadSections = async () => {
+      const next = { outlet: [], sport: [], best_sellers: [] };
+      await Promise.all(
+        sections
+          .filter((section) => section.enabled)
+          .map(async (section) => {
+            try {
+              next[section.id] = await fetchSectionProducts(section, catalogSeed);
+            } catch {
+              next[section.id] = [];
+            }
+          }),
+      );
+      if (!cancelled) {
+        setSectionProducts(next);
+      }
+    };
+
+    setLoadingSections(true);
+    loadSections().finally(() => {
+      if (!cancelled) {
+        setLoadingSections(false);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [settings.homepageSections, catalogSeed]);
 
   useEffect(() => {
     initGoogleAnalytics();
@@ -94,9 +198,6 @@ export default function Home() {
     const candidatePool = catalogProducts.slice(0, Math.min(catalogProducts.length, 8));
     return candidatePool[Math.floor(Math.random() * candidatePool.length)] ?? candidatePool[0];
   }, [catalogProducts]);
-
-  const newArrivalProducts = catalogProducts.slice(0, 8);
-  const bestsellerProducts = bestSellerProducts.slice(0, 8);
 
   const categoryCards = useMemo(
     () =>
@@ -119,36 +220,50 @@ export default function Home() {
       <Navbar />
       <HeroSection />
       <main className="luxe-shell pb-16">
-        <section className="py-12">
-          <div className="mb-8 flex items-center justify-between">
-            <h2 className="font-display text-3xl font-semibold uppercase tracking-tight">
-              {settings.homeSections.newArrivalsTitle || t("home.newArrivalsTitle")}
-            </h2>
-            <Button asChild variant="ghost" className="rounded-full px-0">
-              <Link to={settings.homeSections.newArrivalsCtaHref}>
-                {settings.homeSections.newArrivalsCtaLabel || t("home.newArrivalsCta")} <ArrowRight className="ml-2 h-4 w-4" />
-              </Link>
-            </Button>
-          </div>
+        {sections
+          .filter((section) => section.enabled)
+          .map((section) => {
+            const products = sectionProducts[section.id] ?? [];
+            const meta = getSectionMeta(section.id, settings);
+            if (!loadingSections && products.length === 0) {
+              return null;
+            }
 
-          {loading ? (
-            <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-              {Array.from({ length: 8 }).map((_, index) => (
-                <div key={index} className="luxe-panel p-4 animate-pulse">
-                  <div className="aspect-[4/5] rounded-[20px] bg-secondary" />
-                  <div className="mt-4 h-4 w-24 rounded bg-secondary" />
-                  <div className="mt-2 h-4 w-16 rounded bg-secondary" />
+            return (
+              <section className="py-12" key={section.id}>
+                <div className="mb-8 flex items-center justify-between">
+                  <h2 className="font-display text-3xl font-semibold uppercase tracking-tight">
+                    {meta.title}
+                  </h2>
+                  {meta.cta ? (
+                    <Button asChild variant="ghost" className="rounded-full px-0">
+                      <Link to={meta.cta.to}>
+                        {meta.cta.label} <ArrowRight className="ml-2 h-4 w-4" />
+                      </Link>
+                    </Button>
+                  ) : null}
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-              {newArrivalProducts.map((product, index) => (
-                <ProductCard key={product.id} product={product} index={index} />
-              ))}
-            </div>
-          )}
-        </section>
+
+                {loadingSections ? (
+                  <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+                    {Array.from({ length: section.productCount || 4 }).map((_, index) => (
+                      <div key={index} className="luxe-panel p-4 animate-pulse">
+                        <div className="aspect-[4/5] rounded-[20px] bg-secondary" />
+                        <div className="mt-4 h-4 w-24 rounded bg-secondary" />
+                        <div className="mt-2 h-4 w-16 rounded bg-secondary" />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+                    {products.map((product, index) => (
+                      <ProductCard key={product.id} product={product} index={index} />
+                    ))}
+                  </div>
+                )}
+              </section>
+            );
+          })}
 
         <section className="py-8">
           <h2 className="mb-8 text-center font-display text-3xl font-semibold uppercase tracking-tight">
@@ -184,36 +299,6 @@ export default function Home() {
               </Button>
             </div>
           </div>
-        </section>
-
-        <section className="py-12">
-          <div className="mb-8 flex items-center justify-between">
-            <h2 className="font-display text-3xl font-semibold uppercase tracking-tight">
-              {settings.homeSections.bestSellersTitle || t("home.bestsellersTitle")}
-            </h2>
-            <Button asChild variant="ghost" className="rounded-full px-0">
-              <Link to={settings.homeSections.bestSellersCtaHref}>
-                {settings.homeSections.bestSellersCtaLabel || t("home.bestsellersCta")} <ArrowRight className="ml-2 h-4 w-4" />
-              </Link>
-            </Button>
-          </div>
-          {loading ? (
-            <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-              {Array.from({ length: 8 }).map((_, index) => (
-                <div key={index} className="luxe-panel p-4 animate-pulse">
-                  <div className="aspect-[4/5] rounded-[20px] bg-secondary" />
-                  <div className="mt-4 h-4 w-24 rounded bg-secondary" />
-                  <div className="mt-2 h-4 w-16 rounded bg-secondary" />
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-              {bestsellerProducts.map((product, index) => (
-                <ProductCard key={product.id} product={product} index={index} />
-              ))}
-            </div>
-          )}
         </section>
 
         <section className="luxe-panel py-8">

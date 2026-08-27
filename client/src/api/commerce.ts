@@ -734,6 +734,18 @@ export async function uploadHeroImage(payload: { dataUrl: string }) {
   });
 }
 
+export interface AdminBrandOption {
+  id: string;
+  name: string;
+  slug: string;
+}
+
+export async function listAdminBrands() {
+  return http<{ items: AdminBrandOption[] }>("/admin/brands", {
+    token: getRequiredToken(),
+  });
+}
+
 export async function updateBusinessSettings(payload: Partial<CommerceSettingsResponse["businessSettings"]>) {
   return http<CommerceSettingsResponse["businessSettings"]>("/admin/pricing/business", {
     method: "PATCH",

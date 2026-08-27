@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState, type ChangeEvent } from "react";
-import { ImagePlus, Loader2, Plus, Save, Search, Trash2, Upload } from "lucide-react";
+import { ChevronDown, ChevronUp, ImagePlus, Loader2, Plus, Save, Search, Trash2, Upload } from "lucide-react";
 
 import {
   getAdminSiteContentSettings,
+  listAdminBrands,
   updateAdminSiteContentSettings,
   uploadHeroImage,
 } from "@/api/commerce";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -19,6 +21,7 @@ import {
   type FooterLinkContent,
   type HeroSlideContent,
   type HeroStatContent,
+  type HomepageSectionConfig,
   type SiteContentSettings,
   type TrustBadgeContent,
 } from "@/lib/site-content";
@@ -81,11 +84,18 @@ function readFileAsDataUrl(file: File): Promise<string> {
 
 type FooterLinkKey = "shopLinks" | "supportLinks" | "aboutLinks";
 
+const SECTION_LABELS = {
+  outlet: "OUTLET",
+  sport: "SPORT",
+  best_sellers: "BEST SELLERS",
+} as const;
+
 export default function AdminSiteContent() {
   const [form, setForm] = useState<SiteContentSettings>(cloneSiteContentSettings(DEFAULT_SITE_CONTENT_SETTINGS));
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingSlideId, setUploadingSlideId] = useState<string | null>(null);
+  const [brands, setBrands] = useState<Array<{ id: string; name: string }>>([]);
 
   const load = async () => {
     const settings = await getAdminSiteContentSettings();
@@ -102,6 +112,12 @@ export default function AdminSiteContent() {
         });
       })
       .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    listAdminBrands()
+      .then((response) => setBrands(Array.isArray(response.items) ? response.items : []))
+      .catch(() => {});
   }, []);
 
   const save = async () => {
@@ -122,6 +138,45 @@ export default function AdminSiteContent() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const updateSection = (sectionId: string, patch: Partial<HomepageSectionConfig>) => {
+    setForm((current) => ({
+      ...current,
+      homepageSections: current.homepageSections.map((section) =>
+        section.id === sectionId ? { ...section, ...patch } : section,
+      ),
+    }));
+  };
+
+  const toggleSectionBrand = (sectionId: string, brandId: string) => {
+    setForm((current) => ({
+      ...current,
+      homepageSections: current.homepageSections.map((section) => {
+        if (section.id !== sectionId) return section;
+        const selected = section.brandIds.includes(brandId);
+        return {
+          ...section,
+          brandIds: selected
+            ? section.brandIds.filter((id) => id !== brandId)
+            : [...section.brandIds, brandId],
+        };
+      }),
+    }));
+  };
+
+  const moveSection = (index: number, direction: -1 | 1) => {
+    setForm((current) => {
+      const target = index + direction;
+      if (target < 0 || target >= current.homepageSections.length) return current;
+      const sections = [...current.homepageSections];
+      const currentSection = sections[index];
+      const targetSection = sections[target];
+      if (!currentSection || !targetSection) return current;
+      sections[index] = targetSection;
+      sections[target] = currentSection;
+      return { ...current, homepageSections: sections };
+    });
   };
 
   const heroSlides = useMemo(() => form.heroSlides, [form.heroSlides]);
@@ -421,6 +476,87 @@ export default function AdminSiteContent() {
 
       <div className="rounded-xl border border-border bg-card p-6">
         <h2 className="font-semibold">Homepage Sections</h2>
+
+        <div className="mt-6 space-y-4">
+          <div>
+            <h3 className="font-medium">Section Management</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Reorder, enable, and configure the homepage product sections (OUTLET, SPORT, BEST SELLERS).
+            </p>
+          </div>
+
+          {form.homepageSections.map((section, index) => (
+            <div key={section.id} className="rounded-xl border border-border p-4">
+              <div className="flex items-center justify-between gap-3">
+                <h4 className="font-medium">{SECTION_LABELS[section.id] ?? section.id}</h4>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={index === 0}
+                    onClick={() => moveSection(index, -1)}
+                    aria-label={`Move ${SECTION_LABELS[section.id] ?? section.id} up`}
+                  >
+                    <ChevronUp className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={index === form.homepageSections.length - 1}
+                    onClick={() => moveSection(index, 1)}
+                    aria-label={`Move ${SECTION_LABELS[section.id] ?? section.id} down`}
+                  >
+                    <ChevronDown className="h-4 w-4" />
+                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Label className="text-xs">Enabled</Label>
+                    <Switch
+                      checked={section.enabled}
+                      onCheckedChange={(checked) => updateSection(section.id, { enabled: checked })}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-3 grid gap-4 md:grid-cols-2">
+                <div>
+                  <Label className="text-xs">Display Count</Label>
+                  <Input
+                    className="mt-1"
+                    type="number"
+                    min="1"
+                    max="24"
+                    value={section.productCount}
+                    onChange={(event) =>
+                      updateSection(section.id, { productCount: Math.max(1, Number(event.target.value) || 1) })
+                    }
+                  />
+                </div>
+                {section.id !== "best_sellers" ? (
+                  <div>
+                    <Label className="text-xs">Brands</Label>
+                    <div className="mt-1 max-h-48 space-y-1 overflow-y-auto rounded-lg border border-border p-2">
+                      {brands.length === 0 ? (
+                        <p className="text-xs text-muted-foreground">No brands available.</p>
+                      ) : (
+                        brands.map((brand) => (
+                          <label key={brand.id} className="flex cursor-pointer items-center gap-2 text-sm">
+                            <Checkbox
+                              checked={section.brandIds.includes(brand.id)}
+                              onCheckedChange={() => toggleSectionBrand(section.id, brand.id)}
+                            />
+                            <span>{brand.name}</span>
+                          </label>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          ))}
+        </div>
+
         <div className="mt-4 grid gap-4 md:grid-cols-2">
           <div>
             <Label className="text-xs">New Arrivals Title</Label>

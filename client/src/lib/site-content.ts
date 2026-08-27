@@ -39,6 +39,15 @@ export interface TrustBadgeContent {
   description: string;
 }
 
+export type HomepageSectionId = "outlet" | "sport" | "best_sellers";
+
+export interface HomepageSectionConfig {
+  id: HomepageSectionId;
+  enabled: boolean;
+  brandIds: string[];
+  productCount: number;
+}
+
 export interface SiteContentSettings {
   siteName: string;
   siteTagline: string;
@@ -83,6 +92,7 @@ export interface SiteContentSettings {
     bestSellersCtaHref: string;
     trustBadgesTitle: string;
   };
+  homepageSections: HomepageSectionConfig[];
   trustBadges: TrustBadgeContent[];
   footer: {
     newsletterEyebrow: string;
@@ -197,6 +207,11 @@ export const DEFAULT_SITE_CONTENT_SETTINGS: SiteContentSettings = {
     bestSellersCtaHref: "/shop",
     trustBadgesTitle: "Trust Badges",
   },
+  homepageSections: [
+    { id: "outlet", enabled: true, brandIds: [], productCount: 12 },
+    { id: "sport", enabled: true, brandIds: [], productCount: 12 },
+    { id: "best_sellers", enabled: true, brandIds: [], productCount: 12 },
+  ],
   trustBadges: [
     { id: "badge-1", icon: "truck", title: "Free Shipping", description: "On qualifying orders" },
     { id: "badge-2", icon: "shield", title: "Secure Payment", description: "Protected checkout" },

@@ -33,6 +33,13 @@ const heroStatSchema = z.object({
   suffix: z.string().trim().max(20),
 });
 
+const homepageSectionSchema = z.object({
+  id: z.enum(["outlet", "sport", "best_sellers"]),
+  enabled: z.boolean(),
+  brandIds: z.array(z.string().trim().min(1)).max(60),
+  productCount: z.number().int().min(1).max(24),
+});
+
 const footerLinkSchema = z.object({
   id: z.string().trim().min(1).max(120),
   label: z.string().trim().min(1).max(120),
@@ -83,6 +90,7 @@ export const siteContentSettingsSchema = z.object({
     bestSellersCtaHref: z.string().trim().min(1).max(255),
     trustBadgesTitle: z.string().trim().min(1).max(120),
   }),
+  homepageSections: z.array(homepageSectionSchema).max(10),
   trustBadges: z.array(trustBadgeSchema).min(1).max(8),
   footer: z.object({
     newsletterEyebrow: z.string().trim().min(1).max(120),
@@ -199,6 +207,11 @@ export const DEFAULT_SITE_CONTENT_SETTINGS: SiteContentSettings = {
     bestSellersCtaHref: "/shop",
     trustBadgesTitle: "Trust Badges",
   },
+  homepageSections: [
+    { id: "outlet", enabled: true, brandIds: [], productCount: 12 },
+    { id: "sport", enabled: true, brandIds: [], productCount: 12 },
+    { id: "best_sellers", enabled: true, brandIds: [], productCount: 12 },
+  ],
   trustBadges: [
     { id: "badge-1", icon: "truck", title: "Free Shipping", description: "On qualifying orders" },
     { id: "badge-2", icon: "shield", title: "Secure Payment", description: "Protected checkout" },
