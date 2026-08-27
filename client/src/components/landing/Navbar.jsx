@@ -96,10 +96,10 @@ export default function Navbar() {
           <div className="flex h-20 items-center justify-between gap-4">
               <Link to="/" className="flex items-center gap-3">
                 <span className="flex flex-col">
-                  <span className="font-display text-[30px] font-semibold leading-none tracking-[-0.05em] text-[hsl(var(--accent))]">
+                  <span className="font-display text-2xl font-semibold leading-none tracking-[-0.05em] text-[hsl(var(--accent))] sm:text-[30px]">
                     {settings.header.logoTop || "OUTLETHUBS"}
                   </span>
-                  <span className="text-[10px] font-semibold uppercase tracking-[0.34em] text-muted-foreground">
+                  <span className="text-[9px] font-semibold uppercase tracking-[0.34em] text-muted-foreground sm:text-[10px]">
                     {settings.header.logoBottom || "LUXE HUBS"}
                   </span>
                 </span>
@@ -120,7 +120,7 @@ export default function Navbar() {
               ))}
             </div>
 
-            <div className="flex items-center gap-2 lg:gap-3">
+            <div className="flex items-center gap-1.5 sm:gap-2 lg:gap-3">
               <Link
                 to="/shop"
                 className="hidden h-11 w-[260px] items-center gap-3 rounded-full border border-border bg-card/75 px-4 text-sm text-muted-foreground shadow-sm transition hover:border-[hsl(var(--accent))/0.45] lg:flex"
