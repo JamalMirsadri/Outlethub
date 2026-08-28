@@ -2,6 +2,8 @@ import { randomUUID } from "node:crypto";
 import { mkdir, unlink, writeFile } from "node:fs/promises";
 import { basename, resolve, sep } from "node:path";
 
+import sharp from "sharp";
+
 import { env } from "../../config/env.js";
 import { ApiError } from "../../utils/api-error.js";
 
@@ -38,17 +40,41 @@ function decodeImageDataUrl(dataUrl: string, label: string): { buffer: Buffer; e
   return { buffer, extension };
 }
 
+const MAX_OPTIMIZED_DIMENSION = 1920;
+const WEBP_QUALITY = 82;
+
+async function optimizeImage(buffer: Buffer): Promise<Buffer> {
+  return sharp(buffer)
+    .resize({
+      width: MAX_OPTIMIZED_DIMENSION,
+      height: MAX_OPTIMIZED_DIMENSION,
+      fit: "inside",
+      withoutEnlargement: true,
+    })
+    .webp({ quality: WEBP_QUALITY })
+    .toBuffer();
+}
+
 export async function saveLocalImage(
   dataUrl: string,
   subfolder: string,
   label = "Image",
+  options: { optimize?: boolean } = {},
 ): Promise<{ publicUrl: string }> {
   const { buffer, extension } = decodeImageDataUrl(dataUrl, label);
   const targetDir = getSubfolderDir(subfolder);
   await mkdir(targetDir, { recursive: true });
 
-  const filename = `${randomUUID()}.${extension}`;
-  await writeFile(resolve(targetDir, filename), buffer);
+  let finalBuffer = buffer;
+  let finalExtension = extension;
+
+  if (options.optimize) {
+    finalBuffer = await optimizeImage(buffer);
+    finalExtension = "webp";
+  }
+
+  const filename = `${randomUUID()}.${finalExtension}`;
+  await writeFile(resolve(targetDir, filename), finalBuffer);
 
   return { publicUrl: `/uploads/${subfolder}/${filename}` };
 }

@@ -89,7 +89,8 @@ export default function HeroSection() {
                 <img
                   src={currentSlide.imageUrl || HERO_PLACEHOLDER_IMAGE}
                   alt={currentSlide.titleTop}
-                  className="h-full min-h-[520px] w-full object-contain lg:min-h-[560px]"
+                  className="h-full min-h-[520px] w-full object-cover object-center lg:min-h-[560px]"
+                  decoding="async"
                 />
                 <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(16,21,31,0.68)_0%,rgba(16,21,31,0.28)_42%,rgba(16,21,31,0.12)_100%)]" />
                 <div
