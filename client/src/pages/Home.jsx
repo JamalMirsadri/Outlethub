@@ -57,8 +57,17 @@ function normalizeItems(response) {
     : [];
 }
 
-function getSectionMeta(sectionId, settings) {
-  switch (sectionId) {
+function shuffle(items) {
+  const result = [...items];
+  for (let i = result.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}
+
+function getSectionMeta(section, settings) {
+  switch (section.id) {
     case "outlet":
       return {
         title: settings.homeSections?.newArrivalsTitle || "Outlet",
@@ -67,8 +76,11 @@ function getSectionMeta(sectionId, settings) {
           label: settings.homeSections?.newArrivalsCtaLabel || "View all",
         },
       };
-    case "sport":
-      return { title: "Sport", cta: { to: "/shop", label: "Shop All" } };
+    case "sport": {
+      const brandIds = Array.isArray(section.brandIds) ? section.brandIds.filter(Boolean) : [];
+      const to = brandIds.length > 0 ? `/shop?brand=${encodeURIComponent(brandIds.join(","))}` : "/shop";
+      return { title: "Sport", cta: { to, label: "View All" } };
+    }
     case "best_sellers":
       return {
         title: settings.homeSections?.bestSellersTitle || "Best Sellers",
@@ -110,7 +122,7 @@ async function fetchSectionProducts(section, seed) {
   );
 
   const seen = new Set();
-  return responses
+  const combined = responses
     .flatMap((response) => normalizeItems(response))
     .filter((product) => {
       if (!product?.id || seen.has(product.id)) {
@@ -118,8 +130,9 @@ async function fetchSectionProducts(section, seed) {
       }
       seen.add(product.id);
       return true;
-    })
-    .slice(0, section.productCount);
+    });
+
+  return shuffle(combined).slice(0, section.productCount);
 }
 
 export default function Home() {
@@ -224,7 +237,7 @@ export default function Home() {
           .filter((section) => section.enabled)
           .map((section) => {
             const products = sectionProducts[section.id] ?? [];
-            const meta = getSectionMeta(section.id, settings);
+            const meta = getSectionMeta(section, settings);
             if (!loadingSections && products.length === 0) {
               return null;
             }

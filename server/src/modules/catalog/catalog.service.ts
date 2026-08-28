@@ -921,7 +921,14 @@ async function resolveCategoryFilterIds(categoryFilter: string): Promise<string[
 }
 
 async function resolveBrandFilterIds(brandFilter: string): Promise<string[]> {
-  const normalizedFilter = brandFilter.trim().toLowerCase();
+  const filters = brandFilter
+    .split(",")
+    .map((filter) => filter.trim())
+    .filter(Boolean);
+
+  if (filters.length === 0) {
+    return [];
+  }
 
   const brands = await prisma.brand.findMany({
     select: {
@@ -932,11 +939,13 @@ async function resolveBrandFilterIds(brandFilter: string): Promise<string[]> {
   });
 
   return brands
-    .filter(
-      (brand) =>
-        brand.id === brandFilter
-        || brand.slug === brandFilter
-        || brand.name.trim().toLowerCase() === normalizedFilter,
+    .filter((brand) =>
+      filters.some(
+        (filter) =>
+          brand.id === filter
+          || brand.slug === filter
+          || brand.name.trim().toLowerCase() === filter.toLowerCase(),
+      ),
     )
     .map((brand) => brand.id);
 }
