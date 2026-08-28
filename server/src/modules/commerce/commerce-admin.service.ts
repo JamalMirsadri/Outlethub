@@ -137,7 +137,8 @@ export class CommerceAdminService {
   }
 
   public async uploadHeroImage(input: { dataUrl: string }) {
-    return saveLocalImage(input.dataUrl, "heroes", "Hero image");
+    const { publicUrl } = await saveLocalImage(input.dataUrl, "heroes", "Hero image");
+    return { imageUrl: publicUrl };
   }
 
   private cleanupRemovedHeroImages(
