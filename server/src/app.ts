@@ -160,6 +160,16 @@ export function createApp() {
         useDefaults: true,
         directives: {
           "img-src": ["'self'", "data:", "blob:", "https:"],
+          "script-src": [
+            "'self'",
+            "https://www.googletagmanager.com",
+            "https://www.google-analytics.com",
+          ],
+          "connect-src": [
+            "'self'",
+            "https://www.google-analytics.com",
+            "https://region1.google-analytics.com",
+          ],
         },
       },
     }),
