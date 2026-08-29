@@ -291,6 +291,8 @@ export const en = {
     sendResetLink: "Send reset link",
     sendingResetLink: "Sending reset link...",
     resetEmailSent: "If your account exists, a reset link has been sent.",
+    verificationEmailHint:
+      "Your verification code has been sent to your email. If you don't see it in your inbox, please check your Spam/Junk folder.",
     backToLogin: "Back to log in",
     resetTitle: "Create new password",
     resetSubtitle: "Please enter a new password for your account.",

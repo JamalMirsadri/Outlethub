@@ -293,6 +293,8 @@ export const fa: TranslationResource = {
     sendResetLink: "ارسال لینک بازنشانی",
     sendingResetLink: "در حال ارسال لینک...",
     resetEmailSent: "در صورت وجود حساب، لینک بازنشانی ارسال شد.",
+    verificationEmailHint:
+      "کد تأیید به ایمیل شما ارسال شد. اگر آن را در صندوق ورودی نمی‌بینید، لطفاً پوشه اسپم/ناخواسته را بررسی کنید.",
     backToLogin: "بازگشت به ورود",
     resetTitle: "رمز عبور جدید",
     resetSubtitle: "لطفاً یک رمز عبور جدید برای حساب خود وارد کنید.",

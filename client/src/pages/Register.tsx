@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { UserPlus, Mail, Lock, Loader2 } from "lucide-react";
+import { UserPlus, Mail, Lock, Loader2, Info } from "lucide-react";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import AuthLayout from "@/components/AuthLayout";
 import GoogleIcon from "@/components/GoogleIcon";
@@ -120,6 +120,10 @@ export default function Register() {
             {error}
           </div>
         )}
+        <div className="mb-4 flex items-start gap-3 rounded-lg border bg-muted/40 p-3 text-sm text-foreground">
+          <Info className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+          <span>{t("auth.verificationEmailHint")}</span>
+        </div>
         <div className="flex justify-center mb-6">
           <InputOTP
             maxLength={6}
