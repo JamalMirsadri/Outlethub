@@ -159,7 +159,15 @@ export function createApp() {
       contentSecurityPolicy: {
         useDefaults: true,
         directives: {
-          "img-src": ["'self'", "data:", "blob:", "https:"],
+          "img-src": [
+            "'self'",
+            "data:",
+            "blob:",
+            "https:",
+            "https://*.google-analytics.com",
+            "https://www.googletagmanager.com",
+          ],
+          "script-src-elem": ["'self'", "https://www.googletagmanager.com"],
           "script-src": [
             "'self'",
             "https://www.googletagmanager.com",
@@ -167,8 +175,9 @@ export function createApp() {
           ],
           "connect-src": [
             "'self'",
-            "https://www.google-analytics.com",
-            "https://region1.google-analytics.com",
+            "https://*.google-analytics.com",
+            "https://*.analytics.google.com",
+            "https://www.googletagmanager.com",
           ],
         },
       },
