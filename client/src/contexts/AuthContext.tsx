@@ -224,6 +224,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
       return;
     }
 
+    // Establish the throttle window before the ping so re-entrant triggers
+    // (e.g. the "outlethub:auth-activity" event dispatched by http) and failed
+    // pings (e.g. 429) do not fire additional activity requests.
+    lastServerActivityRef.current = now;
+
     const redirectTo = getActivePath();
     activityPingPromiseRef.current = (async () => {
       try {

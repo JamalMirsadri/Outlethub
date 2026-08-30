@@ -77,6 +77,10 @@ function captureErrorLog(request: Request, error: unknown): void {
       message = String(error);
     }
 
+    if (statusCode === 429 && request.originalUrl.includes("/auth/activity")) {
+      return;
+    }
+
     errorLogger.capture({
       type,
       message,

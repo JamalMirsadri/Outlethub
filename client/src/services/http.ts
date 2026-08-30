@@ -69,7 +69,8 @@ export async function http<T>(path: string, options: RequestOptions = {}): Promi
     | undefined;
 
   if (!response.ok) {
-    if (!isErrorReportingPath(path)) {
+    const isActivityRateLimit = response.status === 429 && path.includes("/auth/activity");
+    if (!isErrorReportingPath(path) && !isActivityRateLimit) {
       try {
         reportApiError({
           message: data?.message ?? "Request failed",
