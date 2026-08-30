@@ -4,6 +4,8 @@ import { resolve } from "node:path";
 import { ZodError } from "zod";
 
 import { ApiError } from "../utils/api-error.js";
+import { buildRequestContext } from "../modules/system-logs/system-logs.context.js";
+import { errorLogger } from "../modules/system-logs/system-logs.service.js";
 
 // #region debug-point A:global-error
 const DEBUG_SESSION_ID = "payment-runtime-blockers";
@@ -44,6 +46,53 @@ function reportDebugEvent(payload: Record<string, unknown>) {
 }
 // #endregion debug-point A:global-error
 
+function captureErrorLog(request: Request, error: unknown): void {
+  try {
+    const context = buildRequestContext(request);
+
+    let type: "API" | "BACKEND" = "BACKEND";
+    let message = "Unknown error";
+    let stack: string | null = null;
+    let source: string | null = null;
+    let statusCode: number | null = null;
+
+    if (error instanceof ApiError) {
+      type = "API";
+      message = error.message;
+      statusCode = error.statusCode;
+      stack = error.stack ?? null;
+      source = error.name;
+    } else if (error instanceof ZodError) {
+      type = "API";
+      message = "Validation failed.";
+      statusCode = 400;
+      stack = error.stack ?? null;
+      source = error.name;
+    } else if (error instanceof Error) {
+      type = "BACKEND";
+      message = error.message;
+      stack = error.stack ?? null;
+      source = error.name;
+    } else {
+      message = String(error);
+    }
+
+    errorLogger.capture({
+      type,
+      message,
+      stack,
+      source,
+      endpoint: request.originalUrl,
+      method: request.method,
+      statusCode,
+      durationMs: request.startTime ? Date.now() - request.startTime : null,
+      ...context,
+    });
+  } catch {
+    // Logging must never throw or affect the request lifecycle.
+  }
+}
+
 export function notFoundMiddleware(request: Request, _response: Response, next: NextFunction): void {
   next(new ApiError(404, `Route not found: ${request.method} ${request.originalUrl}`));
 }
@@ -54,6 +103,8 @@ export function errorMiddleware(
   response: Response,
   _next: NextFunction,
 ): void {
+  captureErrorLog(_request, error);
+
   if (error instanceof ZodError) {
     // #region debug-point A:error-zod
     reportDebugEvent({

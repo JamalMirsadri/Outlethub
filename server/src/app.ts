@@ -1,4 +1,5 @@
 import { existsSync, readFileSync } from "node:fs";
+import { randomUUID } from "node:crypto";
 
 import cookieParser from "cookie-parser";
 import cors from "cors";
@@ -184,6 +185,11 @@ export function createApp() {
     }),
   );
   app.use(morgan("dev"));
+  app.use((request, _response, next) => {
+    request.id = request.header("x-request-id") ?? randomUUID();
+    request.startTime = Date.now();
+    next();
+  });
   app.use(express.json({ limit: "15mb" }));
   app.use(cookieParser());
   app.use("/uploads", express.static(resolve(process.cwd(), env.UPLOAD_DIR)));

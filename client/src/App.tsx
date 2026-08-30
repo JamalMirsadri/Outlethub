@@ -50,6 +50,7 @@ import AdminIntegrations from "@/pages/admin/AdminIntegrations";
 import AdminAnalytics from "@/pages/admin/AdminAnalytics";
 import AdminMonitoring from "@/pages/admin/AdminMonitoring";
 import AdminAlerts from "@/pages/admin/AdminAlerts";
+import AdminSystemLogs from "@/pages/admin/AdminSystemLogs";
 import AdminEmailTemplates from "@/pages/admin/AdminEmailTemplates";
 import AdminEmailNotifications from "@/pages/admin/AdminEmailNotifications";
 import AdminCustomerEmailTemplates from "@/pages/admin/AdminCustomerEmailTemplates";
@@ -119,6 +120,7 @@ function AppRoutes() {
           <Route path="/admin/integrations" element={<AdminIntegrations />} />
           <Route path="/admin/monitoring" element={<AdminMonitoring />} />
           <Route path="/admin/alerts" element={<AdminAlerts />} />
+          <Route path="/admin/system-logs" element={<AdminSystemLogs />} />
           <Route path="/admin/notifications" element={<AdminNotificationsCenter />} />
           <Route path="/admin/email-notifications" element={<AdminEmailNotifications />} />
           <Route path="/admin/email-templates" element={<AdminEmailTemplates />} />

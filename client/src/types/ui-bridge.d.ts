@@ -95,6 +95,21 @@ declare module "@/components/ui/dialog" {
   export function DialogContent(props: HTMLAttributes<HTMLDivElement> & { children?: ReactNode }): JSX.Element;
   export function DialogHeader(props: HTMLAttributes<HTMLDivElement> & { children?: ReactNode }): JSX.Element;
   export function DialogTitle(props: HTMLAttributes<HTMLHeadingElement> & { children?: ReactNode }): JSX.Element;
+  export function DialogDescription(props: HTMLAttributes<HTMLParagraphElement> & { children?: ReactNode }): JSX.Element;
+  export function DialogFooter(props: HTMLAttributes<HTMLDivElement> & { children?: ReactNode }): JSX.Element;
+}
+
+declare module "@/components/ui/alert-dialog" {
+  import type { ButtonHTMLAttributes, HTMLAttributes, ReactNode } from "react";
+
+  export function AlertDialog(props: { open?: boolean; onOpenChange?: (open: boolean) => void; children?: ReactNode }): JSX.Element;
+  export function AlertDialogContent(props: HTMLAttributes<HTMLDivElement> & { children?: ReactNode }): JSX.Element;
+  export function AlertDialogHeader(props: HTMLAttributes<HTMLDivElement> & { children?: ReactNode }): JSX.Element;
+  export function AlertDialogFooter(props: HTMLAttributes<HTMLDivElement> & { children?: ReactNode }): JSX.Element;
+  export function AlertDialogTitle(props: HTMLAttributes<HTMLHeadingElement> & { children?: ReactNode }): JSX.Element;
+  export function AlertDialogDescription(props: HTMLAttributes<HTMLParagraphElement> & { children?: ReactNode }): JSX.Element;
+  export function AlertDialogAction(props: ButtonHTMLAttributes<HTMLButtonElement> & { children?: ReactNode }): JSX.Element;
+  export function AlertDialogCancel(props: ButtonHTMLAttributes<HTMLButtonElement> & { children?: ReactNode }): JSX.Element;
 }
 
 declare module "@/components/ui/dropdown-menu" {

@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, Outlet } from "react-router-dom";
-import { LayoutDashboard, Package, ShoppingCart, Tag, Layers3, Link2, DollarSign, BarChart3, Activity, Bell, ChevronLeft, Menu, Sun, Moon, Globe, Truck, ClipboardList, CreditCard, Landmark, Users, FilePenLine, Award, TicketPercent, GitBranch, Megaphone, LogOut, Mail } from "lucide-react";
+import { LayoutDashboard, Package, ShoppingCart, Tag, Layers3, Link2, DollarSign, BarChart3, Activity, Bell, ChevronLeft, Menu, Sun, Moon, Globe, Truck, ClipboardList, CreditCard, Landmark, Users, FilePenLine, Award, TicketPercent, GitBranch, Megaphone, LogOut, Mail, Bug } from "lucide-react";
 import { useTheme } from "@/components/ThemeProvider";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { useAuth } from "@/contexts/AuthContext";
+import { getSystemLogsSummary } from "@/api/system-logs";
 
 const NAV_ITEMS = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/admin" },
@@ -26,6 +27,7 @@ const NAV_ITEMS = [
   { icon: GitBranch, label: "Referrals", path: "/admin/referrals" },
   { icon: Link2, label: "Integrations", path: "/admin/integrations" },
   { icon: Activity, label: "Monitoring", path: "/admin/monitoring" },
+  { icon: Bug, label: "System Logs", path: "/admin/system-logs" },
   { icon: Bell, label: "Alerts", path: "/admin/alerts" },
   { icon: Bell, label: "Ops Center", path: "/admin/notifications" },
   { icon: Mail, label: "Email Notif", path: "/admin/email-notifications" },
@@ -81,7 +83,7 @@ const NAV_SECTIONS = [
     id: "operations",
     title: "Operations",
     icon: Activity,
-    items: ["/admin/monitoring", "/admin/alerts", "/admin/notifications", "/admin/email-notifications", "/admin/customer-email-templates", "/admin/email-templates"],
+    items: ["/admin/monitoring", "/admin/system-logs", "/admin/alerts", "/admin/notifications", "/admin/email-notifications", "/admin/customer-email-templates", "/admin/email-templates"],
   },
   {
     id: "integrations",
@@ -104,6 +106,32 @@ export default function AdminLayout() {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [openSections, setOpenSections] = useState(DEFAULT_OPEN_SECTIONS);
+  const [criticalHighCount, setCriticalHighCount] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const poll = async () => {
+      try {
+        const summary = await getSystemLogsSummary();
+        if (!cancelled) {
+          setCriticalHighCount(summary.critical + summary.high);
+        }
+      } catch {
+        // Ignore polling failures.
+      }
+    };
+
+    void poll();
+    const interval = window.setInterval(() => {
+      void poll();
+    }, 20000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, []);
 
   const groupedSections = useMemo(
     () =>
@@ -185,6 +213,11 @@ export default function AdminLayout() {
                             >
                               <Icon className="w-4 h-4 flex-shrink-0" />
                               {!collapsed && <span className="truncate">{label}</span>}
+                              {!collapsed && path === "/admin/system-logs" && criticalHighCount > 0 ? (
+                                <span className="ml-auto rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                                  {criticalHighCount}
+                                </span>
+                              ) : null}
                             </Link>
                           );
                         })}

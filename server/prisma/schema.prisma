@@ -170,6 +170,20 @@ enum AlertSeverity {
   CRITICAL
 }
 
+enum ErrorLogType {
+  FRONTEND
+  API
+  BACKEND
+}
+
+enum ErrorLogSeverity {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+  INFO
+}
+
 enum IntegrationType {
   AWIN
   CJ
@@ -2387,4 +2401,42 @@ model CouponOrderApplication {
   @@index([userId])
   @@index([cartApplicationId])
   @@index([createdAt])
+}
+
+model ErrorLog {
+  id          String           @id @default(cuid())
+  type        ErrorLogType
+  severity    ErrorLogSeverity @default(LOW)
+  message     String
+  stack       String?
+  source      String?
+  page        String?
+  endpoint    String?
+  method      String?
+  statusCode  Int?
+  durationMs  Int?
+  userId      String?
+  userEmail   String?
+  userRole    String?
+  browser     String?
+  os          String?
+  device      String?
+  ip          String?
+  requestId   String?
+  fingerprint String           @unique
+  occurrences Int              @default(1)
+  firstSeenAt DateTime         @default(now())
+  lastSeenAt  DateTime         @default(now())
+  resolved    Boolean          @default(false)
+  note        String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@index([type, createdAt])
+  @@index([severity, createdAt])
+  @@index([resolved, createdAt])
+  @@index([userId, createdAt])
+  @@index([page])
+  @@index([endpoint])
+  @@index([lastSeenAt])
 }

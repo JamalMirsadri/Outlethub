@@ -9,6 +9,7 @@ import { importsRouter } from "../modules/imports/imports.routes.js";
 import { monitoringRouter } from "../modules/monitoring/monitoring.routes.js";
 import { notificationsRouter } from "../modules/notifications/notifications.routes.js";
 import { scrapersRouter } from "../modules/scrapers/scrapers.routes.js";
+import { systemLogsRouter } from "../modules/system-logs/system-logs.routes.js";
 
 export const apiRouter = Router();
 
@@ -27,3 +28,4 @@ apiRouter.use(importsRouter);
 apiRouter.use(scrapersRouter);
 apiRouter.use(monitoringRouter);
 apiRouter.use(notificationsRouter);
+apiRouter.use(systemLogsRouter);

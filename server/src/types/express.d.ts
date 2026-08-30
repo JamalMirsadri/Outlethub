@@ -9,6 +9,8 @@ declare global {
         email: string;
         role: RoleCode;
       };
+      id?: string;
+      startTime?: number;
     }
   }
 }
