@@ -9,6 +9,9 @@ const MESSAGE_MAX_LENGTH = 4000;
 const STACK_MAX_LENGTH = 16000;
 const SHORT_FIELD_MAX_LENGTH = 500;
 const EXPORT_MAX_RECORDS = 5000;
+const SECURITY_ALERT_EVALUATION_COOLDOWN_MS = 30_000;
+
+let lastSecurityAlertEvaluationAt = 0;
 
 const SENSITIVE_PATTERNS: RegExp[] = [
   /(authorization\s*[:=]\s*)(bearer\s+)?[^\s,;"']+/gi,
@@ -157,7 +160,7 @@ function normalizeSeverity(value?: ErrorLogSeverity | null): ErrorLogSeverity | 
   return Object.values(ErrorLogSeverity).includes(value) ? value : null;
 }
 
-function toListOutput(log: Prisma.ErrorLogGetPayload<{}>): ErrorLogView {
+export function toListOutput(log: Prisma.ErrorLogGetPayload<{}>): ErrorLogView {
   return {
     id: log.id,
     type: log.type,
@@ -251,7 +254,25 @@ export class SystemLogsService {
         lastSeenAt: now,
         resolved: false,
       },
+    }).then((result) => {
+      if (input.type === ErrorLogType.SECURITY_SCAN) {
+        this.triggerSecurityAlertEvaluation();
+      }
+
+      return result;
     });
+  }
+
+  private triggerSecurityAlertEvaluation(): void {
+    const now = Date.now();
+    if (now - lastSecurityAlertEvaluationAt < SECURITY_ALERT_EVALUATION_COOLDOWN_MS) {
+      return;
+    }
+
+    lastSecurityAlertEvaluationAt = now;
+    void import("./security.service.js")
+      .then(({ securityService }) => securityService.evaluateAlerts())
+      .catch(() => undefined);
   }
 
   private buildWhere(query: ListErrorLogsQuery): Prisma.ErrorLogWhereInput {

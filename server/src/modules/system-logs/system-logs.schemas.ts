@@ -55,3 +55,14 @@ export const exportErrorLogsQuerySchema = z.object({
   to: z.string().max(100).optional(),
   sort: z.enum(["newest", "oldest", "occurrences"]).default("newest"),
 });
+
+export const updateSecurityAlertsConfigSchema = z
+  .object({
+    enabled: z.boolean().optional(),
+    threshold: z.coerce.number().int().min(1).max(100000).optional(),
+    windowMinutes: z.coerce.number().int().min(1).max(1440).optional(),
+    minSeverity: z.nativeEnum(ErrorLogSeverity).optional(),
+  })
+  .refine((value) => Object.keys(value).length > 0, {
+    message: "At least one field must be provided.",
+  });

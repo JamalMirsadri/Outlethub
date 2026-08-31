@@ -162,6 +162,7 @@ enum AlertType {
   STOCK_CHANGE
   SYNC_FAILURE
   SCRAPER_FAILURE
+  SECURITY
 }
 
 enum AlertSeverity {

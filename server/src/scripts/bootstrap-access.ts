@@ -212,7 +212,7 @@ async function ensureDefaultAdmin() {
     } as Prisma.UserUpsertArgs,
   );
 
-  console.info(`Default admin ready: ${DEFAULT_ADMIN_EMAIL} / ${DEFAULT_ADMIN_PASSWORD}`);
+  console.info("Default admin account initialized.");
 }
 
 async function main() {

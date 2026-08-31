@@ -52,6 +52,41 @@ export interface SystemLogsSummary {
   bySeverity: Array<{ severity: ErrorLogSeverity; count: number }>;
 }
 
+export interface SecurityOverview {
+  summary: {
+    scansToday: number;
+    uniqueIps: number;
+    totalRequests: number;
+    phpProbes: number;
+    wordpressProbes: number;
+    rceProbes: number;
+    otherProbes: number;
+    highRiskEvents: number;
+    topIp: string | null;
+    topIpRequests: number;
+    lastEventAt: string | null;
+  };
+  attackTypes: Array<{ category: string; count: number }>;
+  topAttackers: Array<{ ip: string; count: number }>;
+  recentEvents: ErrorLogRecord[];
+}
+
+export interface SecurityAlertsConfig {
+  enabled: boolean;
+  threshold: number;
+  windowMinutes: number;
+  minSeverity: ErrorLogSeverity;
+}
+
+export interface SecurityAlertView {
+  id: string;
+  severity: string;
+  title: string;
+  message: string;
+  isRead: boolean;
+  createdAt: string;
+}
+
 export interface ListSystemLogsParams {
   page?: number;
   pageSize?: number;
@@ -180,4 +215,37 @@ export async function downloadSystemLogs(params: ExportSystemLogsParams): Promis
   link.click();
   link.remove();
   URL.revokeObjectURL(url);
+}
+
+export async function getSecurityOverview() {
+  return http<SecurityOverview>("/admin/security/overview", {
+    token: getTokenOrThrow(),
+  });
+}
+
+export async function getSecurityAlerts() {
+  return http<{ items: SecurityAlertView[] }>("/admin/security/alerts", {
+    token: getTokenOrThrow(),
+  });
+}
+
+export async function evaluateSecurityAlerts() {
+  return http<{ items: SecurityAlertView[] }>("/admin/security/alerts/evaluate", {
+    method: "POST",
+    token: getTokenOrThrow(),
+  });
+}
+
+export async function getSecurityAlertsConfig() {
+  return http<SecurityAlertsConfig>("/admin/security/alerts/config", {
+    token: getTokenOrThrow(),
+  });
+}
+
+export async function updateSecurityAlertsConfig(payload: Partial<SecurityAlertsConfig>) {
+  return http<SecurityAlertsConfig>("/admin/security/alerts/config", {
+    method: "PATCH",
+    token: getTokenOrThrow(),
+    body: JSON.stringify(payload),
+  });
 }

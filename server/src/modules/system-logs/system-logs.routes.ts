@@ -12,6 +12,7 @@ import {
   entityIdParamsSchema,
   exportErrorLogsQuerySchema,
   listErrorLogsQuerySchema,
+  updateSecurityAlertsConfigSchema,
 } from "./system-logs.schemas.js";
 
 export const systemLogsRouter = Router();
@@ -27,7 +28,7 @@ systemLogsRouter.post(
 
 // Admin endpoints.
 systemLogsRouter.use(
-  ["/admin/system-logs", "/admin/system-logs/summary", "/admin/system-logs/export"],
+  ["/admin/system-logs", "/admin/system-logs/summary", "/admin/system-logs/export", "/admin/security"],
   requireAuth,
   requireRoles(RoleCode.SUPER_ADMIN, RoleCode.ADMIN),
 );
@@ -72,4 +73,31 @@ systemLogsRouter.delete(
   "/admin/system-logs/:id",
   validateParams(entityIdParamsSchema),
   asyncHandler(systemLogsController.remove.bind(systemLogsController)),
+);
+
+// Security dashboard and alert endpoints.
+systemLogsRouter.get(
+  "/admin/security/overview",
+  asyncHandler(systemLogsController.securityOverview.bind(systemLogsController)),
+);
+
+systemLogsRouter.get(
+  "/admin/security/alerts",
+  asyncHandler(systemLogsController.listSecurityAlerts.bind(systemLogsController)),
+);
+
+systemLogsRouter.post(
+  "/admin/security/alerts/evaluate",
+  asyncHandler(systemLogsController.evaluateSecurityAlerts.bind(systemLogsController)),
+);
+
+systemLogsRouter.get(
+  "/admin/security/alerts/config",
+  asyncHandler(systemLogsController.getSecurityAlertsConfig.bind(systemLogsController)),
+);
+
+systemLogsRouter.patch(
+  "/admin/security/alerts/config",
+  validateBody(updateSecurityAlertsConfigSchema),
+  asyncHandler(systemLogsController.updateSecurityAlertsConfig.bind(systemLogsController)),
 );

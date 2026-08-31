@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 
 import { buildRequestContext } from "./system-logs.context.js";
 import { serializeLogsToCsv, serializeLogsToTxt } from "./system-logs.export.js";
+import { securityService } from "./security.service.js";
 import { systemLogsService, type ListErrorLogsQuery } from "./system-logs.service.js";
 
 function getParam(request: Request, key: string): string {
@@ -84,6 +85,26 @@ export class SystemLogsController {
 
   public async remove(request: Request, response: Response) {
     response.status(200).json(await systemLogsService.remove(getParam(request, "id")));
+  }
+
+  public async securityOverview(_request: Request, response: Response) {
+    response.status(200).json(await securityService.getOverview());
+  }
+
+  public async getSecurityAlertsConfig(_request: Request, response: Response) {
+    response.status(200).json(await securityService.getAlertsConfig());
+  }
+
+  public async updateSecurityAlertsConfig(request: Request, response: Response) {
+    response.status(200).json(await securityService.updateAlertsConfig(request.body));
+  }
+
+  public async listSecurityAlerts(_request: Request, response: Response) {
+    response.status(200).json({ items: await securityService.listAlerts() });
+  }
+
+  public async evaluateSecurityAlerts(_request: Request, response: Response) {
+    response.status(200).json({ items: await securityService.evaluateAlerts() });
   }
 }
 
