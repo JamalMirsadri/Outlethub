@@ -1,7 +1,7 @@
 import { getAccessToken } from "@/services/auth.service";
-import { http } from "@/services/http";
+import { getApiBaseUrl, http } from "@/services/http";
 
-export type ErrorLogType = "FRONTEND" | "API" | "BACKEND";
+export type ErrorLogType = "FRONTEND" | "API" | "BACKEND" | "SECURITY_SCAN";
 export type ErrorLogSeverity = "CRITICAL" | "HIGH" | "MEDIUM" | "LOW" | "INFO";
 export type ErrorLogSort = "newest" | "oldest" | "occurrences";
 
@@ -140,4 +140,44 @@ export async function deleteSystemLog(id: string) {
     method: "DELETE",
     token: getTokenOrThrow(),
   });
+}
+
+export type ExportSystemLogsParams = Omit<ListSystemLogsParams, "page" | "pageSize"> & {
+  format: "csv" | "txt";
+};
+
+export async function downloadSystemLogs(params: ExportSystemLogsParams): Promise<void> {
+  const query = buildQueryString({
+    format: params.format,
+    search: params.search,
+    severity: params.severity,
+    type: params.type,
+    resolved: params.resolved,
+    userId: params.userId,
+    route: params.route,
+    from: params.from,
+    to: params.to,
+    sort: params.sort,
+  });
+
+  const response = await fetch(`${getApiBaseUrl()}/admin/system-logs/export${query}`, {
+    headers: {
+      Authorization: `Bearer ${getTokenOrThrow()}`,
+    },
+    credentials: "include",
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to export logs.");
+  }
+
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `system-logs.${params.format}`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
 }

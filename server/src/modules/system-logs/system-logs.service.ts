@@ -8,6 +8,7 @@ import { ApiError } from "../../utils/api-error.js";
 const MESSAGE_MAX_LENGTH = 4000;
 const STACK_MAX_LENGTH = 16000;
 const SHORT_FIELD_MAX_LENGTH = 500;
+const EXPORT_MAX_RECORDS = 5000;
 
 const SENSITIVE_PATTERNS: RegExp[] = [
   /(authorization\s*[:=]\s*)(bearer\s+)?[^\s,;"']+/gi,
@@ -54,6 +55,34 @@ export interface ListErrorLogsQuery {
   from?: string;
   to?: string;
   sort?: "newest" | "oldest" | "occurrences";
+}
+
+export interface ErrorLogView {
+  id: string;
+  type: ErrorLogType;
+  severity: ErrorLogSeverity;
+  message: string;
+  stack: string | null;
+  source: string | null;
+  page: string | null;
+  endpoint: string | null;
+  method: string | null;
+  statusCode: number | null;
+  durationMs: number | null;
+  userId: string | null;
+  userEmail: string | null;
+  userRole: string | null;
+  browser: string | null;
+  os: string | null;
+  device: string | null;
+  ip: string | null;
+  requestId: string | null;
+  occurrences: number;
+  firstSeenAt: Date;
+  lastSeenAt: Date;
+  resolved: boolean;
+  note: string | null;
+  createdAt: Date;
 }
 
 function clip(value: string | null | undefined, maxLength: number): string | null {
@@ -128,12 +157,13 @@ function normalizeSeverity(value?: ErrorLogSeverity | null): ErrorLogSeverity | 
   return Object.values(ErrorLogSeverity).includes(value) ? value : null;
 }
 
-function toListOutput(log: Prisma.ErrorLogGetPayload<{}>) {
+function toListOutput(log: Prisma.ErrorLogGetPayload<{}>): ErrorLogView {
   return {
     id: log.id,
     type: log.type,
     severity: log.severity,
     message: log.message,
+    stack: log.stack,
     source: log.source,
     page: log.page,
     endpoint: log.endpoint,
@@ -224,11 +254,7 @@ export class SystemLogsService {
     });
   }
 
-  public async list(query: ListErrorLogsQuery) {
-    const page = Math.max(1, query.page ?? 1);
-    const pageSize = Math.min(100, Math.max(1, query.pageSize ?? 20));
-    const sort = query.sort ?? "newest";
-
+  private buildWhere(query: ListErrorLogsQuery): Prisma.ErrorLogWhereInput {
     const where: Prisma.ErrorLogWhereInput = {};
 
     if (query.severity) {
@@ -267,12 +293,27 @@ export class SystemLogsService {
       };
     }
 
-    const orderBy: Prisma.ErrorLogOrderByWithRelationInput[] =
-      sort === "oldest"
-        ? [{ createdAt: "asc" }]
-        : sort === "occurrences"
-          ? [{ occurrences: "desc" }, { lastSeenAt: "desc" }]
-          : [{ lastSeenAt: "desc" }];
+    return where;
+  }
+
+  private buildOrderBy(sort: "newest" | "oldest" | "occurrences"): Prisma.ErrorLogOrderByWithRelationInput[] {
+    if (sort === "oldest") {
+      return [{ createdAt: "asc" }];
+    }
+
+    if (sort === "occurrences") {
+      return [{ occurrences: "desc" }, { lastSeenAt: "desc" }];
+    }
+
+    return [{ lastSeenAt: "desc" }];
+  }
+
+  public async list(query: ListErrorLogsQuery) {
+    const page = Math.max(1, query.page ?? 1);
+    const pageSize = Math.min(100, Math.max(1, query.pageSize ?? 20));
+    const sort = query.sort ?? "newest";
+    const where = this.buildWhere(query);
+    const orderBy = this.buildOrderBy(sort);
 
     const [items, total] = await Promise.all([
       prisma.errorLog.findMany({
@@ -293,6 +334,17 @@ export class SystemLogsService {
         totalPages: Math.max(1, Math.ceil(total / pageSize)),
       },
     };
+  }
+
+  public async exportLogs(query: ListErrorLogsQuery): Promise<ErrorLogView[]> {
+    const sort = query.sort ?? "newest";
+    const items = await prisma.errorLog.findMany({
+      where: this.buildWhere(query),
+      orderBy: this.buildOrderBy(sort),
+      take: EXPORT_MAX_RECORDS,
+    });
+
+    return items.map(toListOutput);
   }
 
   public async get(id: string) {

@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Activity, Bug, CheckCircle2, Eye, RefreshCw, Search, StickyNote, Trash2 } from "lucide-react";
+import { Activity, Bug, CheckCircle2, Download, Eye, RefreshCw, Search, StickyNote, Trash2 } from "lucide-react";
 
 import {
   addSystemLogNote,
   deleteSystemLog,
+  downloadSystemLogs,
   getSystemLogsSummary,
   listSystemLogs,
   resolveSystemLog,
@@ -49,6 +50,7 @@ const TYPE_STYLES: Record<ErrorLogType, string> = {
   FRONTEND: "bg-secondary text-muted-foreground",
   API: "bg-blue-500/10 text-blue-400",
   BACKEND: "bg-purple-500/10 text-purple-400",
+  SECURITY_SCAN: "bg-red-500/10 text-red-400",
 };
 
 function formatDateTime(value: string): string {
@@ -76,6 +78,26 @@ export default function AdminSystemLogs() {
   const [noteDraft, setNoteDraft] = useState("");
   const [pendingDelete, setPendingDelete] = useState<ErrorLogRecord | null>(null);
   const [busy, setBusy] = useState(false);
+  const [exporting, setExporting] = useState(false);
+
+  const handleExport = async (format: "csv" | "txt") => {
+    setExporting(true);
+    setError("");
+    try {
+      await downloadSystemLogs({
+        format,
+        search: appliedSearch || undefined,
+        severity: severity === "ALL" ? undefined : severity,
+        type: type === "ALL" ? undefined : type,
+        resolved: resolved === "ALL" ? undefined : resolved === "RESOLVED",
+        sort,
+      });
+    } catch (exportError) {
+      setError(exportError instanceof Error ? exportError.message : "Failed to export logs.");
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -204,10 +226,20 @@ export default function AdminSystemLogs() {
             Centralized frontend, API, and backend error monitoring.
           </p>
         </div>
-        <Button variant="outline" className="rounded-full" onClick={() => void load()}>
-          <RefreshCw className="mr-1.5 h-4 w-4" />
-          Refresh
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" className="rounded-full" onClick={() => void handleExport("csv")} disabled={exporting}>
+            <Download className="mr-1.5 h-4 w-4" />
+            Export CSV
+          </Button>
+          <Button variant="outline" className="rounded-full" onClick={() => void handleExport("txt")} disabled={exporting}>
+            <Download className="mr-1.5 h-4 w-4" />
+            Export TXT
+          </Button>
+          <Button variant="outline" className="rounded-full" onClick={() => void load()}>
+            <RefreshCw className="mr-1.5 h-4 w-4" />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -265,6 +297,7 @@ export default function AdminSystemLogs() {
               <SelectItem value="FRONTEND">Frontend</SelectItem>
               <SelectItem value="API">API</SelectItem>
               <SelectItem value="BACKEND">Backend</SelectItem>
+              <SelectItem value="SECURITY_SCAN">Security Scan</SelectItem>
             </SelectContent>
           </Select>
 

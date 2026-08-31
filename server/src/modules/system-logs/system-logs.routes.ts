@@ -10,6 +10,7 @@ import {
   addNoteErrorLogSchema,
   createClientErrorSchema,
   entityIdParamsSchema,
+  exportErrorLogsQuerySchema,
   listErrorLogsQuerySchema,
 } from "./system-logs.schemas.js";
 
@@ -26,7 +27,7 @@ systemLogsRouter.post(
 
 // Admin endpoints.
 systemLogsRouter.use(
-  ["/admin/system-logs", "/admin/system-logs/summary"],
+  ["/admin/system-logs", "/admin/system-logs/summary", "/admin/system-logs/export"],
   requireAuth,
   requireRoles(RoleCode.SUPER_ADMIN, RoleCode.ADMIN),
 );
@@ -40,6 +41,12 @@ systemLogsRouter.get(
 systemLogsRouter.get(
   "/admin/system-logs/summary",
   asyncHandler(systemLogsController.summary.bind(systemLogsController)),
+);
+
+systemLogsRouter.get(
+  "/admin/system-logs/export",
+  validateQuery(exportErrorLogsQuerySchema),
+  asyncHandler(systemLogsController.exportLogs.bind(systemLogsController)),
 );
 
 systemLogsRouter.get(

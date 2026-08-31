@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 
 import { buildRequestContext } from "./system-logs.context.js";
+import { serializeLogsToCsv, serializeLogsToTxt } from "./system-logs.export.js";
 import { systemLogsService, type ListErrorLogsQuery } from "./system-logs.service.js";
 
 function getParam(request: Request, key: string): string {
@@ -50,6 +51,23 @@ export class SystemLogsController {
 
   public async summary(_request: Request, response: Response) {
     response.status(200).json(await systemLogsService.summary());
+  }
+
+  public async exportLogs(request: Request, response: Response) {
+    const query = request.query as unknown as ListErrorLogsQuery & { format?: "csv" | "txt" };
+    const items = await systemLogsService.exportLogs(query);
+    const format = query.format === "txt" ? "txt" : "csv";
+
+    if (format === "csv") {
+      response.setHeader("Content-Type", "text/csv; charset=utf-8");
+      response.setHeader("Content-Disposition", 'attachment; filename="system-logs.csv"');
+      response.status(200).send(serializeLogsToCsv(items));
+      return;
+    }
+
+    response.setHeader("Content-Type", "text/plain; charset=utf-8");
+    response.setHeader("Content-Disposition", 'attachment; filename="system-logs.txt"');
+    response.status(200).send(serializeLogsToTxt(items));
   }
 
   public async get(request: Request, response: Response) {

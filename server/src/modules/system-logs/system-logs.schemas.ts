@@ -42,3 +42,16 @@ export const listErrorLogsQuerySchema = z.object({
 export const addNoteErrorLogSchema = z.object({
   note: z.string().min(1, "note is required").max(2000),
 });
+
+export const exportErrorLogsQuerySchema = z.object({
+  format: z.enum(["csv", "txt"]).default("csv"),
+  search: z.string().max(200).optional(),
+  severity: z.nativeEnum(ErrorLogSeverity).optional(),
+  type: z.nativeEnum(ErrorLogType).optional(),
+  resolved: z.coerce.boolean().optional(),
+  userId: z.string().max(200).optional(),
+  route: z.string().max(500).optional(),
+  from: z.string().max(100).optional(),
+  to: z.string().max(100).optional(),
+  sort: z.enum(["newest", "oldest", "occurrences"]).default("newest"),
+});

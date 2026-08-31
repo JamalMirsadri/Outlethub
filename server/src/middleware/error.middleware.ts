@@ -1,6 +1,7 @@
 import type { NextFunction, Request, Response } from "express";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { ErrorLogType } from "@prisma/client";
 import { ZodError } from "zod";
 
 import { ApiError } from "../utils/api-error.js";
@@ -46,30 +47,56 @@ function reportDebugEvent(payload: Record<string, unknown>) {
 }
 // #endregion debug-point A:global-error
 
+function detectSecurityScan(path: string): string | null {
+  const normalized = path.toLowerCase();
+
+  if (/\/(wp-admin|wp-content|wp-includes)(\/|$)/.test(normalized)) {
+    return "WordPress probe";
+  }
+
+  if (/(wp-login\.php|wp-signup\.php|xmlrpc\.php|wp-cron\.php)/.test(normalized)) {
+    return "WordPress probe";
+  }
+
+  if (/\/wordpress(\/|$)/.test(normalized)) {
+    return "WordPress probe";
+  }
+
+  if (/\/cgi-bin(\/|$)/.test(normalized)) {
+    return "CGI-BIN probe";
+  }
+
+  if (/\.php(\/|\?|$)/.test(normalized)) {
+    return "PHP probe";
+  }
+
+  return null;
+}
+
 function captureErrorLog(request: Request, error: unknown): void {
   try {
     const context = buildRequestContext(request);
 
-    let type: "API" | "BACKEND" = "BACKEND";
+    let type: ErrorLogType = ErrorLogType.BACKEND;
     let message = "Unknown error";
     let stack: string | null = null;
     let source: string | null = null;
     let statusCode: number | null = null;
 
     if (error instanceof ApiError) {
-      type = "API";
+      type = ErrorLogType.API;
       message = error.message;
       statusCode = error.statusCode;
       stack = error.stack ?? null;
       source = error.name;
     } else if (error instanceof ZodError) {
-      type = "API";
+      type = ErrorLogType.API;
       message = "Validation failed.";
       statusCode = 400;
       stack = error.stack ?? null;
       source = error.name;
     } else if (error instanceof Error) {
-      type = "BACKEND";
+      type = ErrorLogType.BACKEND;
       message = error.message;
       stack = error.stack ?? null;
       source = error.name;
@@ -79,6 +106,13 @@ function captureErrorLog(request: Request, error: unknown): void {
 
     if (statusCode === 429 && request.originalUrl.includes("/auth/activity")) {
       return;
+    }
+
+    const scanCategory = statusCode === 404 ? detectSecurityScan(request.originalUrl) : null;
+    if (scanCategory) {
+      type = ErrorLogType.SECURITY_SCAN;
+      source = scanCategory;
+      message = `Suspicious security scan request: ${request.method} ${request.originalUrl}`;
     }
 
     errorLogger.capture({

@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "ErrorLogType" ADD VALUE 'SECURITY_SCAN';
