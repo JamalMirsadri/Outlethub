@@ -25,6 +25,9 @@ export interface ErrorLogRecord {
   device: string | null;
   ip: string | null;
   requestId: string | null;
+  attackType: string | null;
+  confidence: string | null;
+  userAgent: string | null;
   occurrences: number;
   firstSeenAt: string;
   lastSeenAt: string;

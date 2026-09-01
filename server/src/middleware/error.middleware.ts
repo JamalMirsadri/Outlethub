@@ -1,7 +1,7 @@
 import type { NextFunction, Request, Response } from "express";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { ErrorLogSeverity, ErrorLogType } from "@prisma/client";
+import { ErrorLogType } from "@prisma/client";
 import { ZodError } from "zod";
 
 import { ApiError } from "../utils/api-error.js";
@@ -47,46 +47,13 @@ function reportDebugEvent(payload: Record<string, unknown>) {
 }
 // #endregion debug-point A:global-error
 
-function detectSecurityScan(path: string): string | null {
-  const normalized = path.toLowerCase();
-
-  // WordPress / PHP CMS probing.
-  if (/\/(wp-admin|wp-content|wp-includes|wordpress)(\/|$)/.test(normalized)) {
-    return "WordPress probe";
-  }
-
-  if (/(wp-login\.php|wp-signup\.php|xmlrpc\.php|wp-cron\.php|wp-config\.php)/.test(normalized)) {
-    return "WordPress probe";
-  }
-
-  // Remote-code-execution / exploit probes (sensitive files and known CVE paths).
-  if (/\/\.(git|env|aws|ssh|htaccess|htpasswd|config)(\/|$)/.test(normalized) || /\.env($|\?)/.test(normalized)) {
-    return "RCE probe";
-  }
-
-  if (/\/(phpmyadmin|pma|adminer|mysql|actuator|cmd\.exe|shell|exec|passwd)(\/|$|\?)/.test(normalized)) {
-    return "RCE probe";
-  }
-
-  if (/(struts|thinkphp|phpunit|weblogic|\.aspx?|\.jsp|\.action)(\/|\?|$)/.test(normalized)) {
-    return "RCE probe";
-  }
-
-  // Generic PHP probing.
-  if (/\.php(\/|\?|$)/.test(normalized)) {
-    return "PHP probe";
-  }
-
-  // Other suspicious probes (CGI, VCS metadata, etc).
-  if (/\/cgi-bin(\/|$)/.test(normalized) || /\/\.(svn|hg|bzr)(\/|$)/.test(normalized)) {
-    return "Other probe";
-  }
-
-  return null;
-}
-
 function captureErrorLog(request: Request, error: unknown): void {
   try {
+    if (request.securityDetection) {
+      // Already captured as a security event by the inspection middleware.
+      return;
+    }
+
     const context = buildRequestContext(request);
 
     let type: ErrorLogType = ErrorLogType.BACKEND;
@@ -94,7 +61,6 @@ function captureErrorLog(request: Request, error: unknown): void {
     let stack: string | null = null;
     let source: string | null = null;
     let statusCode: number | null = null;
-    let severity: ErrorLogSeverity | undefined;
 
     if (error instanceof ApiError) {
       type = ErrorLogType.API;
@@ -121,19 +87,8 @@ function captureErrorLog(request: Request, error: unknown): void {
       return;
     }
 
-    const scanCategory = statusCode === 404 ? detectSecurityScan(request.originalUrl) : null;
-    if (scanCategory) {
-      type = ErrorLogType.SECURITY_SCAN;
-      source = scanCategory;
-      message = `Suspicious security scan request: ${request.method} ${request.originalUrl}`;
-      if (scanCategory === "RCE probe") {
-        severity = ErrorLogSeverity.HIGH;
-      }
-    }
-
     errorLogger.capture({
       type,
-      severity,
       message,
       stack,
       source,

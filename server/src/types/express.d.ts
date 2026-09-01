@@ -1,4 +1,4 @@
-import type { RoleCode } from "@prisma/client";
+import type { ErrorLogSeverity, RoleCode } from "@prisma/client";
 
 declare global {
   namespace Express {
@@ -11,6 +11,12 @@ declare global {
       };
       id?: string;
       startTime?: number;
+      securityDetection?: {
+        attackType: string;
+        confidence: string;
+        severity: ErrorLogSeverity;
+        source: string;
+      };
     }
   }
 }

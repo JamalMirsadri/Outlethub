@@ -461,6 +461,8 @@ export default function AdminSystemLogs() {
 
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <InfoRow label="Source" value={selected.source} />
+                <InfoRow label="Attack Type" value={selected.attackType} />
+                <InfoRow label="Confidence" value={selected.confidence} />
                 <InfoRow label="Method" value={selected.method} />
                 <InfoRow label="Page" value={selected.page} />
                 <InfoRow label="Endpoint" value={selected.endpoint} />

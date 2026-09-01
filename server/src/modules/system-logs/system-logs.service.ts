@@ -10,8 +10,10 @@ const STACK_MAX_LENGTH = 16000;
 const SHORT_FIELD_MAX_LENGTH = 500;
 const EXPORT_MAX_RECORDS = 5000;
 const SECURITY_ALERT_EVALUATION_COOLDOWN_MS = 30_000;
+const STATEFUL_THREAT_DETECTION_COOLDOWN_MS = 30_000;
 
 let lastSecurityAlertEvaluationAt = 0;
+let lastStatefulThreatDetectionAt = 0;
 
 const SENSITIVE_PATTERNS: RegExp[] = [
   /(authorization\s*[:=]\s*)(bearer\s+)?[^\s,;"']+/gi,
@@ -44,6 +46,9 @@ export interface CreateErrorLogInput {
   device?: string | null;
   ip?: string | null;
   requestId?: string | null;
+  attackType?: string | null;
+  confidence?: string | null;
+  userAgent?: string | null;
 }
 
 export interface ListErrorLogsQuery {
@@ -80,6 +85,9 @@ export interface ErrorLogView {
   device: string | null;
   ip: string | null;
   requestId: string | null;
+  attackType: string | null;
+  confidence: string | null;
+  userAgent: string | null;
   occurrences: number;
   firstSeenAt: Date;
   lastSeenAt: Date;
@@ -181,6 +189,9 @@ export function toListOutput(log: Prisma.ErrorLogGetPayload<{}>): ErrorLogView {
     device: log.device,
     ip: log.ip,
     requestId: log.requestId,
+    attackType: log.attackType,
+    confidence: log.confidence,
+    userAgent: log.userAgent,
     occurrences: log.occurrences,
     firstSeenAt: log.firstSeenAt,
     lastSeenAt: log.lastSeenAt,
@@ -205,6 +216,9 @@ export class SystemLogsService {
     const device = clip(input.device, SHORT_FIELD_MAX_LENGTH);
     const ip = clip(input.ip, 64);
     const requestId = clip(input.requestId, 200);
+    const attackType = clip(input.attackType, 60);
+    const confidence = clip(input.confidence, 20)?.toUpperCase() ?? null;
+    const userAgent = clip(input.userAgent, 500);
     const severity = normalizeSeverity(input.severity) ?? deriveSeverity(input.type, input.statusCode);
 
     const fingerprint = computeFingerprint({
@@ -238,6 +252,9 @@ export class SystemLogsService {
       device,
       ip,
       requestId,
+      attackType,
+      confidence,
+      userAgent,
     };
 
     return prisma.errorLog.upsert({
@@ -257,10 +274,46 @@ export class SystemLogsService {
     }).then((result) => {
       if (input.type === ErrorLogType.SECURITY_SCAN) {
         this.triggerSecurityAlertEvaluation();
+      } else if (this.isStatefulThreatCandidate(input)) {
+        this.triggerStatefulThreatDetection();
       }
 
       return result;
     });
+  }
+
+  private isStatefulThreatCandidate(input: CreateErrorLogInput): boolean {
+    if (input.type !== ErrorLogType.API) {
+      return false;
+    }
+
+    const endpoint = input.endpoint ?? "";
+
+    if (input.statusCode === 429) {
+      return true;
+    }
+
+    if (input.statusCode === 401 && endpoint.includes("/auth/login")) {
+      return true;
+    }
+
+    return (
+      endpoint.includes("/auth/forgot-password") ||
+      endpoint.includes("/auth/resend-verification") ||
+      endpoint.includes("/auth/verify-email")
+    );
+  }
+
+  private triggerStatefulThreatDetection(): void {
+    const now = Date.now();
+    if (now - lastStatefulThreatDetectionAt < STATEFUL_THREAT_DETECTION_COOLDOWN_MS) {
+      return;
+    }
+
+    lastStatefulThreatDetectionAt = now;
+    void import("./security.service.js")
+      .then(({ securityService }) => securityService.detectStatefulThreats())
+      .catch(() => undefined);
   }
 
   private triggerSecurityAlertEvaluation(): void {

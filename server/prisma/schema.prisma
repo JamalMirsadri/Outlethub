@@ -2425,6 +2425,9 @@ model ErrorLog {
   device      String?
   ip          String?
   requestId   String?
+  attackType  String?
+  confidence  String?
+  userAgent   String?
   fingerprint String           @unique
   occurrences Int              @default(1)
   firstSeenAt DateTime         @default(now())

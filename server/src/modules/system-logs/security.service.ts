@@ -1,7 +1,7 @@
 import { AlertSeverity, AlertType, ErrorLogSeverity, ErrorLogType, Prisma } from "@prisma/client";
 
 import { prisma } from "../../config/prisma.js";
-import { toListOutput, type ErrorLogView } from "./system-logs.service.js";
+import { errorLogger, toListOutput, type ErrorLogView } from "./system-logs.service.js";
 
 const SECURITY_ALERTS_CONFIG_KEY = "security_alerts_config";
 
@@ -61,15 +61,17 @@ function severitiesAtOrAbove(min: ErrorLogSeverity): ErrorLogSeverity[] {
 }
 
 function categorizeSource(source: string | null): "php" | "wordpress" | "rce" | "other" {
-  if (source === "PHP probe") {
+  const value = (source ?? "").toLowerCase();
+
+  if (value.includes("php")) {
     return "php";
   }
 
-  if (source === "WordPress probe") {
+  if (value.includes("wordpress")) {
     return "wordpress";
   }
 
-  if (source === "RCE probe") {
+  if (value.includes("rce") || value.includes("sql") || value.includes("injection") || value.includes("traversal") || value.includes("sensitive")) {
     return "rce";
   }
 
@@ -228,6 +230,156 @@ export class SecurityService {
       isRead: alert.isRead,
       createdAt: alert.createdAt,
     }));
+  }
+
+  public logThreat(input: {
+    attackType: string;
+    confidence: string;
+    severity: ErrorLogSeverity;
+    source: string;
+    ip: string | null;
+    method: string | null;
+    path: string;
+    statusCode: number | null;
+    userAgent: string | null;
+    requestId: string | null;
+    message?: string;
+  }): void {
+    errorLogger.capture({
+      type: ErrorLogType.SECURITY_SCAN,
+      severity: input.severity,
+      message: input.message ?? `Detected ${input.attackType}: ${input.method ?? "GET"} ${input.path}`,
+      source: input.source,
+      attackType: input.attackType,
+      confidence: input.confidence,
+      endpoint: input.path,
+      method: input.method,
+      statusCode: input.statusCode,
+      ip: input.ip,
+      userAgent: input.userAgent,
+      requestId: input.requestId,
+    });
+  }
+
+  public async detectStatefulThreats(): Promise<void> {
+    const config = await this.getAlertsConfig();
+    if (!config.enabled) {
+      return;
+    }
+
+    const since = new Date(Date.now() - config.windowMinutes * 60_000);
+
+    await this.detectFailedLoginAbuse(since);
+    await this.detectAuthAbuse(since);
+    await this.detectApiAbuse(since);
+  }
+
+  private async detectFailedLoginAbuse(since: Date): Promise<void> {
+    const groups = await prisma.errorLog.groupBy({
+      by: ["ip"],
+      where: {
+        type: ErrorLogType.API,
+        endpoint: { contains: "/auth/login" },
+        statusCode: 401,
+        ip: { not: null },
+        lastSeenAt: { gte: since },
+      },
+      _count: { ip: true },
+      having: { ip: { _count: { gte: 10 } } },
+    });
+
+    for (const group of groups) {
+      const ip = group.ip;
+      if (!ip) {
+        continue;
+      }
+
+      const count = group._count.ip;
+      const isStuffing = count >= 30;
+      errorLogger.capture({
+        type: ErrorLogType.SECURITY_SCAN,
+        severity: ErrorLogSeverity.HIGH,
+        message: `${isStuffing ? "Credential stuffing" : "Brute force"} from ${ip}`,
+        source: isStuffing ? "Credential stuffing" : "Brute force",
+        attackType: isStuffing ? "CREDENTIAL_STUFFING" : "BRUTE_FORCE",
+        confidence: "HIGH",
+        endpoint: "/auth/login",
+        method: "POST",
+        statusCode: 401,
+        ip,
+      });
+    }
+  }
+
+  private async detectAuthAbuse(since: Date): Promise<void> {
+    const groups = await prisma.errorLog.groupBy({
+      by: ["ip"],
+      where: {
+        type: ErrorLogType.API,
+        OR: [
+          { endpoint: { contains: "/auth/forgot-password" } },
+          { endpoint: { contains: "/auth/resend-verification" } },
+          { endpoint: { contains: "/auth/verify-email" } },
+        ],
+        ip: { not: null },
+        lastSeenAt: { gte: since },
+      },
+      _count: { ip: true },
+      having: { ip: { _count: { gte: 20 } } },
+    });
+
+    for (const group of groups) {
+      const ip = group.ip;
+      if (!ip) {
+        continue;
+      }
+
+      errorLogger.capture({
+        type: ErrorLogType.SECURITY_SCAN,
+        severity: ErrorLogSeverity.MEDIUM,
+        message: `Auth abuse from ${ip}`,
+        source: "Auth abuse",
+        attackType: "AUTH_ABUSE",
+        confidence: "MEDIUM",
+        endpoint: "/auth/*",
+        method: "POST",
+        ip,
+      });
+    }
+  }
+
+  private async detectApiAbuse(since: Date): Promise<void> {
+    const groups = await prisma.errorLog.groupBy({
+      by: ["ip"],
+      where: {
+        type: ErrorLogType.API,
+        statusCode: 429,
+        ip: { not: null },
+        lastSeenAt: { gte: since },
+      },
+      _count: { ip: true },
+      having: { ip: { _count: { gte: 30 } } },
+    });
+
+    for (const group of groups) {
+      const ip = group.ip;
+      if (!ip) {
+        continue;
+      }
+
+      errorLogger.capture({
+        type: ErrorLogType.SECURITY_SCAN,
+        severity: ErrorLogSeverity.MEDIUM,
+        message: `API abuse from ${ip}`,
+        source: "API abuse",
+        attackType: "API_ABUSE",
+        confidence: "MEDIUM",
+        endpoint: "/api/*",
+        method: null,
+        statusCode: 429,
+        ip,
+      });
+    }
   }
 }
 
