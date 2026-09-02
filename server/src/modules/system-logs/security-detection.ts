@@ -37,7 +37,7 @@ function threat(
   return { attackType, source, confidence, severity };
 }
 
-function safeDecode(value: string): string {
+export function safeDecode(value: string): string {
   try {
     return decodeURIComponent(value);
   } catch {
@@ -83,6 +83,8 @@ const TRAVERSAL_PATTERNS: RegExp[] = [
   /\.\.%2f/i,
   /\.\.%5c/i,
   /%252e%252e/i,
+  /%00/i,
+  /\u0000/,
 ];
 
 const RCE_PATTERNS: RegExp[] = [
@@ -102,17 +104,23 @@ const RCE_PATTERNS: RegExp[] = [
 ];
 
 const SENSITIVE_FILE_PATTERNS: RegExp[] = [
-  /\/\.env(\?|$|\/)/i,
-  /\/\.git(\/|$)/i,
-  /\/\.aws(\/|$)/i,
-  /\/\.ssh(\/|$)/i,
-  /\/\.config(\/|$)/i,
-  /\/\.htaccess/i,
-  /\/\.htpasswd/i,
-  /\/id_rsa/i,
-  /\/web\.config(\/|$|\?)/i,
-  /\.(sql|dump|bak|backup|old|swp|save)(\?|$|\/)/i,
-  /\/(backup|backups|database|db)(\/|$|\?)/i,
+  /(^|\/)\.env($|\.|\/|\?)/i,
+  /(^|\/)\.git(\/|$)/i,
+  /(^|\/)\.aws(\/|$)/i,
+  /(^|\/)\.ssh(\/|$)/i,
+  /(^|\/)\.config(\/|$)/i,
+  /(^|\/)\.htaccess/i,
+  /(^|\/)\.htpasswd/i,
+  /(^|\/)\.npmrc($|\/|\?)/i,
+  /(^|\/)(id_rsa|id_dsa|id_ecdsa|id_ed25519|known_hosts)($|\/|\?)/i,
+  /package-lock\.json($|\?|\/)/i,
+  /web\.config($|\/|\?)/i,
+  /\.(sql|sqlite|db|bak|backup|old|dump|swp|save)(\?|$|\/)/i,
+  /\.(pem|key|crt|cer|p12|pfx|ovpn)(\?|$|\/)/i,
+  /database\.(sqlite|db)($|\?|\/)/i,
+  /(^|\/)(credentials?|secrets?)(\.[a-z0-9]+)?(\/|$|\?)/i,
+  /(^|\/)(config|settings)\.(json|ya?ml|ini|conf|env|xml|properties|toml)(\?|$|\/)/i,
+  /\/(backup|backups)(\/|$|\?)/i,
 ];
 
 const CMS_PATTERNS: RegExp[] = [
@@ -155,6 +163,14 @@ const BOT_UA_PATTERNS: RegExp[] = [
 
 function matches(patterns: RegExp[], value: string): boolean {
   return patterns.some((pattern) => pattern.test(value));
+}
+
+export function hasTraversalAttempt(value: string): boolean {
+  return matches(TRAVERSAL_PATTERNS, value);
+}
+
+export function isSensitiveFilePath(path: string): boolean {
+  return matches(SENSITIVE_FILE_PATTERNS, path);
 }
 
 /**

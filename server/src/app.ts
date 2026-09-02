@@ -11,6 +11,7 @@ import { fileURLToPath } from "node:url";
 
 import { env } from "./config/env.js";
 import { errorMiddleware, notFoundMiddleware } from "./middleware/error.middleware.js";
+import { sensitiveFileGuardMiddleware } from "./middleware/sensitive-file.middleware.js";
 import { securityInspectionMiddleware } from "./modules/system-logs/security.middleware.js";
 import { apiRouter } from "./routes/index.js";
 
@@ -192,6 +193,7 @@ export function createApp() {
     next();
   });
   app.use(securityInspectionMiddleware);
+  app.use(sensitiveFileGuardMiddleware);
   app.use(express.json({ limit: "15mb" }));
   app.use(cookieParser());
   app.use("/uploads", express.static(resolve(process.cwd(), env.UPLOAD_DIR)));
