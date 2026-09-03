@@ -38,6 +38,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import SecurityOverview from "@/components/admin/SecurityOverview";
+import SecurityBlocks from "@/components/admin/SecurityBlocks";
 
 const SEVERITY_STYLES: Record<ErrorLogSeverity, string> = {
   CRITICAL: "bg-red-500/15 text-red-500",
@@ -244,6 +245,8 @@ export default function AdminSystemLogs() {
       </div>
 
       <SecurityOverview />
+
+      <SecurityBlocks />
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {statCards.map((stat) => (

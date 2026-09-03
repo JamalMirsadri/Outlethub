@@ -1,4 +1,4 @@
-import { ErrorLogSeverity, ErrorLogType } from "@prisma/client";
+import { ErrorLogSeverity, ErrorLogType, SecurityBlockStatus } from "@prisma/client";
 import { z } from "zod";
 
 export const entityIdParamsSchema = z.object({
@@ -66,3 +66,32 @@ export const updateSecurityAlertsConfigSchema = z
   .refine((value) => Object.keys(value).length > 0, {
     message: "At least one field must be provided.",
   });
+
+export const listSecurityBlocksQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).default(20),
+  status: z.nativeEnum(SecurityBlockStatus).optional(),
+  search: z.string().max(200).optional(),
+  attackType: z.string().max(60).optional(),
+  from: z.string().max(100).optional(),
+  to: z.string().max(100).optional(),
+});
+
+export const createManualBlockSchema = z.object({
+  ip: z.string().min(1, "ip is required").max(64),
+  durationMinutes: z.coerce.number().int().min(1).max(10080),
+  reason: z.string().min(1, "reason is required").max(1000),
+  notes: z.string().max(2000).nullish(),
+});
+
+export const releaseSecurityBlockSchema = z.object({
+  reason: z.string().max(1000).nullish(),
+});
+
+export const extendSecurityBlockSchema = z.object({
+  durationMinutes: z.coerce.number().int().min(1).max(10080),
+});
+
+export const securityBlockParamsSchema = z.object({
+  id: z.string().cuid(),
+});

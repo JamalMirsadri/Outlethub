@@ -186,6 +186,29 @@ enum ErrorLogSeverity {
   INFO
 }
 
+enum SecurityBlockStatus {
+  ACTIVE
+  EXPIRED
+  RELEASED
+  AUTO_EXTENDED
+}
+
+enum SecurityBlockSource {
+  AUTO
+  MANUAL
+}
+
+enum SecurityMitigationAction {
+  DETECTED
+  RATE_LIMITED
+  BLOCK_TRIGGERED
+  BLOCK_ENFORCED
+  BLOCK_EXPIRED
+  BLOCK_RELEASED
+  BLOCK_MANUAL
+  BLOCK_ESCALATED
+}
+
 enum IntegrationType {
   AWIN
   CJ
@@ -2425,11 +2448,13 @@ model ErrorLog {
   device      String?
   ip          String?
   requestId   String?
-  attackType  String?
-  confidence  String?
-  userAgent   String?
-  fingerprint String           @unique
-  occurrences Int              @default(1)
+  attackType     String?
+  confidence     String?
+  userAgent      String?
+  securityAction SecurityMitigationAction?
+  blockId        String?
+  fingerprint    String           @unique
+  occurrences    Int              @default(1)
   firstSeenAt DateTime         @default(now())
   lastSeenAt  DateTime         @default(now())
   resolved    Boolean          @default(false)
@@ -2444,4 +2469,40 @@ model ErrorLog {
   @@index([page])
   @@index([endpoint])
   @@index([lastSeenAt])
+  @@index([securityAction])
+  @@index([blockId])
+}
+
+model SecurityBlock {
+  id              String                @id @default(cuid())
+  ip              String
+  ipVersion       String
+  reason          String
+  attackType      String?
+  severity        String?
+  confidence      String?
+  riskScore       Int
+  triggerCount    Int                   @default(1)
+  firstSeenAt     DateTime              @default(now())
+  blockedAt       DateTime              @default(now())
+  expiresAt       DateTime
+  status          SecurityBlockStatus   @default(ACTIVE)
+  source          SecurityBlockSource   @default(AUTO)
+  matchedRule     String?
+  samplePath      String?
+  sampleMethod    String?
+  userAgent       String?
+  requestId       String?
+  createdBy       String?
+  releasedAt      DateTime?
+  releasedBy      String?
+  releaseReason   String?
+  triggerEventIds Json                  @default("[]")
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+
+  @@index([ip, status])
+  @@index([status, expiresAt])
+  @@index([expiresAt])
+  @@index([createdAt])
 }

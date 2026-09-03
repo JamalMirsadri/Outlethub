@@ -9,9 +9,14 @@ import { systemLogsController } from "./system-logs.controller.js";
 import {
   addNoteErrorLogSchema,
   createClientErrorSchema,
+  createManualBlockSchema,
   entityIdParamsSchema,
   exportErrorLogsQuerySchema,
+  extendSecurityBlockSchema,
   listErrorLogsQuerySchema,
+  listSecurityBlocksQuerySchema,
+  releaseSecurityBlockSchema,
+  securityBlockParamsSchema,
   updateSecurityAlertsConfigSchema,
 } from "./system-logs.schemas.js";
 
@@ -100,4 +105,36 @@ systemLogsRouter.patch(
   "/admin/security/alerts/config",
   validateBody(updateSecurityAlertsConfigSchema),
   asyncHandler(systemLogsController.updateSecurityAlertsConfig.bind(systemLogsController)),
+);
+
+// Security blocking endpoints.
+systemLogsRouter.get(
+  "/admin/security/blocks/overview",
+  asyncHandler(systemLogsController.securityBlockOverview.bind(systemLogsController)),
+);
+
+systemLogsRouter.get(
+  "/admin/security/blocks",
+  validateQuery(listSecurityBlocksQuerySchema),
+  asyncHandler(systemLogsController.listSecurityBlocks.bind(systemLogsController)),
+);
+
+systemLogsRouter.post(
+  "/admin/security/blocks",
+  validateBody(createManualBlockSchema),
+  asyncHandler(systemLogsController.createManualBlock.bind(systemLogsController)),
+);
+
+systemLogsRouter.post(
+  "/admin/security/blocks/:id/release",
+  validateParams(securityBlockParamsSchema),
+  validateBody(releaseSecurityBlockSchema),
+  asyncHandler(systemLogsController.releaseSecurityBlock.bind(systemLogsController)),
+);
+
+systemLogsRouter.post(
+  "/admin/security/blocks/:id/extend",
+  validateParams(securityBlockParamsSchema),
+  validateBody(extendSecurityBlockSchema),
+  asyncHandler(systemLogsController.extendSecurityBlock.bind(systemLogsController)),
 );

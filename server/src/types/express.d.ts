@@ -1,5 +1,7 @@
 import type { ErrorLogSeverity, RoleCode } from "@prisma/client";
 
+import type { ResolvedClientIp } from "../modules/system-logs/client-ip.js";
+
 declare global {
   namespace Express {
     interface Request {
@@ -11,12 +13,14 @@ declare global {
       };
       id?: string;
       startTime?: number;
+      clientIp?: ResolvedClientIp;
       securityDetection?: {
         attackType: string;
         confidence: string;
         severity: ErrorLogSeverity;
         source: string;
       };
+      securityBlockId?: string;
     }
   }
 }

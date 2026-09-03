@@ -105,6 +105,8 @@ const envSchema = z.object({
   SERVICE_MODE: z.enum(["web", "worker", "all"]).optional(),
   PORT: z.coerce.number().int().positive().default(4000),
   CLIENT_URL: z.string().url().default("http://localhost:5174"),
+  TRUSTED_PROXY_MODE: z.enum(["none", "forwarded", "cloudflare"]).default("none"),
+  TRUSTED_PROXY_IPS: z.string().default(""),
   UPLOAD_DIR: z.string().default("uploads"),
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
   JWT_ACCESS_SECRET: z.string().min(32, "JWT_ACCESS_SECRET must be at least 32 characters"),

@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 
-import { ErrorLogSeverity, ErrorLogType, Prisma } from "@prisma/client";
+import { ErrorLogSeverity, ErrorLogType, Prisma, SecurityMitigationAction } from "@prisma/client";
 
 import { prisma } from "../../config/prisma.js";
 import { ApiError } from "../../utils/api-error.js";
@@ -25,6 +25,11 @@ const SENSITIVE_PATTERNS: RegExp[] = [
   /(secret\s*[:=]\s*)[^\s,;"']+/gi,
   /(access[_-]?token\s*[:=]\s*)[^\s,;"']+/gi,
   /(refresh[_-]?token\s*[:=]\s*)[^\s,;"']+/gi,
+  /(api[_-]?key\s*[:=]\s*)[^\s,;"']+/gi,
+  /(credential[s]?\s*[:=]\s*)[^\s,;"']+/gi,
+  /(code\s*[:=]\s*)[^\s,;"']+/gi,
+  /(jwt\s*[:=]\s*)[^\s,;"']+/gi,
+  /(auth\s*[:=]\s*)[^\s,;"']+/gi,
 ];
 
 export interface CreateErrorLogInput {
@@ -49,6 +54,8 @@ export interface CreateErrorLogInput {
   attackType?: string | null;
   confidence?: string | null;
   userAgent?: string | null;
+  securityAction?: string | null;
+  blockId?: string | null;
 }
 
 export interface ListErrorLogsQuery {
@@ -88,6 +95,8 @@ export interface ErrorLogView {
   attackType: string | null;
   confidence: string | null;
   userAgent: string | null;
+  securityAction: string | null;
+  blockId: string | null;
   occurrences: number;
   firstSeenAt: Date;
   lastSeenAt: Date;
@@ -192,6 +201,8 @@ export function toListOutput(log: Prisma.ErrorLogGetPayload<{}>): ErrorLogView {
     attackType: log.attackType,
     confidence: log.confidence,
     userAgent: log.userAgent,
+    securityAction: log.securityAction,
+    blockId: log.blockId,
     occurrences: log.occurrences,
     firstSeenAt: log.firstSeenAt,
     lastSeenAt: log.lastSeenAt,
@@ -206,8 +217,8 @@ export class SystemLogsService {
     const message = clip(sanitizeSensitiveData(input.message), MESSAGE_MAX_LENGTH) ?? "Unknown error";
     const stack = clip(sanitizeSensitiveData(input.stack), STACK_MAX_LENGTH);
     const source = clip(sanitizeSensitiveData(input.source), SHORT_FIELD_MAX_LENGTH);
-    const page = clip(input.page, SHORT_FIELD_MAX_LENGTH);
-    const endpoint = clip(input.endpoint, SHORT_FIELD_MAX_LENGTH);
+    const page = clip(sanitizeSensitiveData(input.page), SHORT_FIELD_MAX_LENGTH);
+    const endpoint = clip(sanitizeSensitiveData(input.endpoint), SHORT_FIELD_MAX_LENGTH);
     const method = clip(input.method, 20)?.toUpperCase() ?? null;
     const userEmail = clip(input.userEmail, 320);
     const userRole = clip(input.userRole, 40);
@@ -255,6 +266,8 @@ export class SystemLogsService {
       attackType,
       confidence,
       userAgent,
+      securityAction: clip(input.securityAction, 40) as SecurityMitigationAction | null,
+      blockId: clip(input.blockId, 200),
     };
 
     return prisma.errorLog.upsert({

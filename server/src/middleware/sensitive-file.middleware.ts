@@ -1,6 +1,7 @@
 import type { NextFunction, Request, Response } from "express";
 
 import { hasTraversalAttempt, isSensitiveFilePath, safeDecode } from "../modules/system-logs/security-detection.js";
+import { securityResponseService } from "../modules/system-logs/security-response.service.js";
 
 /**
  * Blocks requests that attempt to read or download sensitive files (dotfiles,
@@ -9,7 +10,10 @@ import { hasTraversalAttempt, isSensitiveFilePath, safeDecode } from "../modules
  *
  * A blocked request is still recorded by the security inspection middleware,
  * which runs earlier in the pipeline and logs it as SENSITIVE_FILE_PROBE or
- * PATH_TRAVERSAL on response finish.
+ * PATH_TRAVERSAL on response finish. In addition, escalation telemetry is
+ * emitted so *repeated* malicious sensitive-file/traversal activity can
+ * eventually participate in the graduated block policy — a single probe is
+ * never auto-blocked.
  */
 export function sensitiveFileGuardMiddleware(request: Request, response: Response, next: NextFunction): void {
   try {
@@ -18,6 +22,30 @@ export function sensitiveFileGuardMiddleware(request: Request, response: Respons
     const decodedPath = decoded.split("?")[0]?.split("#")[0] ?? "/";
 
     if (hasTraversalAttempt(rawUrl) || hasTraversalAttempt(decoded) || isSensitiveFilePath(decodedPath)) {
+      const clientIp = request.clientIp;
+      const detection = request.securityDetection;
+
+      if (clientIp && detection) {
+        void securityResponseService
+          .recordProbeAndEscalate(
+            {
+              attackType: detection.attackType,
+              confidence: detection.confidence,
+              severity: detection.severity,
+              source: detection.source,
+            },
+            {
+              ip: clientIp.ip,
+              ipVersion: clientIp.version,
+              path: decodedPath,
+              method: request.method,
+              userAgent: typeof request.headers["user-agent"] === "string" ? request.headers["user-agent"] : null,
+              requestId: request.id ?? null,
+            },
+          )
+          .catch(() => undefined);
+      }
+
       response.status(404).type("text/plain").send("Not Found");
       return;
     }

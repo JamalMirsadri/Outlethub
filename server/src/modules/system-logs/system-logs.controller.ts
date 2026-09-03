@@ -1,7 +1,9 @@
 import type { Request, Response } from "express";
+import { SecurityBlockSource, SecurityBlockStatus } from "@prisma/client";
 
 import { buildRequestContext } from "./system-logs.context.js";
 import { serializeLogsToCsv, serializeLogsToTxt } from "./system-logs.export.js";
+import { securityResponseService } from "./security-response.service.js";
 import { securityService } from "./security.service.js";
 import { systemLogsService, type ListErrorLogsQuery } from "./system-logs.service.js";
 
@@ -105,6 +107,69 @@ export class SystemLogsController {
 
   public async evaluateSecurityAlerts(_request: Request, response: Response) {
     response.status(200).json({ items: await securityService.evaluateAlerts() });
+  }
+
+  public async securityBlockOverview(_request: Request, response: Response) {
+    response.status(200).json(await securityResponseService.blockOverview());
+  }
+
+  public async listSecurityBlocks(request: Request, response: Response) {
+    const query = request.query as unknown as {
+      page?: number;
+      pageSize?: number;
+      status?: SecurityBlockStatus;
+      search?: string;
+      attackType?: string;
+      from?: string;
+      to?: string;
+    };
+
+    await securityResponseService.sweepExpired();
+    response.status(200).json(await securityResponseService.listBlocks(query));
+  }
+
+  public async createManualBlock(request: Request, response: Response) {
+    const ip = String(request.body.ip ?? "");
+    const durationMinutes = Number(request.body.durationMinutes);
+
+    const block = await securityResponseService.createBlock({
+      ip,
+      ipVersion: ip.includes(":") ? "IPv6" : "IPv4",
+      reason: request.body.reason,
+      source: SecurityBlockSource.MANUAL,
+      durationSeconds: durationMinutes * 60,
+      riskScore: 100,
+      triggerCount: 0,
+      createdBy: request.auth?.userId ?? null,
+    });
+
+    response.status(201).json(block);
+  }
+
+  public async releaseSecurityBlock(request: Request, response: Response) {
+    const id = getParam(request, "id");
+    const block = await securityResponseService.releaseBlock(id, request.auth?.userId ?? null, request.body.reason ?? null);
+
+    if (!block) {
+      response.status(404).json({ message: "Security block not found." });
+      return;
+    }
+
+    response.status(200).json(block);
+  }
+
+  public async extendSecurityBlock(request: Request, response: Response) {
+    const id = getParam(request, "id");
+    const durationMinutes = Number(request.body.durationMinutes);
+
+    const block = await securityResponseService.extendBlock(id, durationMinutes * 60, request.auth?.userId ?? null);
+
+    if (!block) {
+      response.status(404).json({ message: "Security block not found." });
+      return;
+    }
+
+    response.status(200).json(block);
   }
 }
 

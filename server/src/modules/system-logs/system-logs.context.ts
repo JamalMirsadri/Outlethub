@@ -1,15 +1,9 @@
 import type { Request } from "express";
 
-export function getClientIp(request: Request): string | null {
-  const forwarded = request.headers["x-forwarded-for"];
-  if (typeof forwarded === "string" && forwarded.length > 0) {
-    const first = forwarded.split(",")[0]?.trim();
-    if (first) {
-      return first;
-    }
-  }
+import { resolveClientIp } from "./client-ip.js";
 
-  return request.ip ?? request.socket?.remoteAddress ?? null;
+export function getClientIp(request: Request): string | null {
+  return resolveClientIp(request).ip ?? null;
 }
 
 export function parseUserAgent(userAgent?: string): {

@@ -12,7 +12,9 @@ import { fileURLToPath } from "node:url";
 import { env } from "./config/env.js";
 import { errorMiddleware, notFoundMiddleware } from "./middleware/error.middleware.js";
 import { sensitiveFileGuardMiddleware } from "./middleware/sensitive-file.middleware.js";
-import { securityInspectionMiddleware } from "./modules/system-logs/security.middleware.js";
+import { trustedClientIpMiddleware } from "./modules/system-logs/client-ip.js";
+import { securityBlockEnforcementMiddleware, securityMitigationMiddleware } from "./modules/system-logs/security-block.middleware.js";
+import { securityBodyInspectionMiddleware, securityInspectionMiddleware } from "./modules/system-logs/security.middleware.js";
 import { apiRouter } from "./routes/index.js";
 
 const currentDir = dirname(fileURLToPath(import.meta.url));
@@ -106,6 +108,11 @@ function buildAllowedOrigins() {
 
 export function createApp() {
   const app = express();
+  const trustedProxyIps = (env.TRUSTED_PROXY_IPS ?? "")
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+  app.set("trust proxy", trustedProxyIps.length > 0 ? trustedProxyIps : false);
   const allowedOrigins = buildAllowedOrigins();
   const clientDistDir = resolveClientDistDir();
   const clientIndexPath = clientDistDir ? resolve(clientDistDir, "index.html") : null;
@@ -192,10 +199,14 @@ export function createApp() {
     request.startTime = Date.now();
     next();
   });
+  app.use(trustedClientIpMiddleware);
   app.use(securityInspectionMiddleware);
+  app.use(securityBlockEnforcementMiddleware);
   app.use(sensitiveFileGuardMiddleware);
   app.use(express.json({ limit: "15mb" }));
   app.use(cookieParser());
+  app.use(securityBodyInspectionMiddleware);
+  app.use(securityMitigationMiddleware);
   app.use("/uploads", express.static(resolve(process.cwd(), env.UPLOAD_DIR)));
 
   app.use("/api/v1", apiRouter);

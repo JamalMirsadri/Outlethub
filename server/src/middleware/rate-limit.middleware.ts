@@ -1,6 +1,7 @@
 import type { NextFunction, Request, Response } from "express";
 
 import { redis } from "../config/redis.js";
+import { resolveClientIp } from "../modules/system-logs/client-ip.js";
 import { ApiError } from "../utils/api-error.js";
 
 export function rateLimit(prefix: string, limit: number, windowSeconds: number) {
@@ -11,7 +12,7 @@ export function rateLimit(prefix: string, limit: number, windowSeconds: number) 
         return;
       }
 
-      const ipAddress = request.ip || "unknown";
+      const ipAddress = resolveClientIp(request).ip ?? "unknown";
       const key = `${prefix}:${ipAddress}`;
       const hits = await redis.incr(key);
 

@@ -252,3 +252,99 @@ export async function updateSecurityAlertsConfig(payload: Partial<SecurityAlerts
     body: JSON.stringify(payload),
   });
 }
+
+export type SecurityBlockStatus = "ACTIVE" | "EXPIRED" | "RELEASED" | "AUTO_EXTENDED";
+export type SecurityBlockSource = "AUTO" | "MANUAL";
+
+export interface SecurityBlock {
+  id: string;
+  ip: string;
+  ipVersion: string;
+  reason: string;
+  attackType: string | null;
+  severity: string | null;
+  confidence: string | null;
+  riskScore: number;
+  triggerCount: number;
+  firstSeenAt: string;
+  blockedAt: string;
+  expiresAt: string;
+  status: SecurityBlockStatus;
+  source: SecurityBlockSource;
+  matchedRule: string | null;
+  samplePath: string | null;
+  sampleMethod: string | null;
+  userAgent: string | null;
+  requestId: string | null;
+  createdBy: string | null;
+  releasedAt: string | null;
+  releasedBy: string | null;
+  releaseReason: string | null;
+  triggerEventIds: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SecurityBlockOverview {
+  activeBlocks: number;
+  blocks24h: number;
+  blockedRequests24h: number;
+  rateLimited24h: number;
+  totalBlocksToday: number;
+  topAttackTypes: Array<{ attackType: string; count: number }>;
+}
+
+export interface ListSecurityBlocksParams {
+  page?: number;
+  pageSize?: number;
+  status?: SecurityBlockStatus;
+  search?: string;
+  attackType?: string;
+  from?: string;
+  to?: string;
+}
+
+export async function getSecurityBlockOverview() {
+  return http<SecurityBlockOverview>("/admin/security/blocks/overview", {
+    token: getTokenOrThrow(),
+  });
+}
+
+export async function listSecurityBlocks(params?: ListSecurityBlocksParams) {
+  return http<{ items: SecurityBlock[]; pagination: { page: number; pageSize: number; total: number; totalPages: number } }>(
+    `/admin/security/blocks${buildQueryString({
+      page: params?.page,
+      pageSize: params?.pageSize,
+      status: params?.status,
+      search: params?.search,
+      attackType: params?.attackType,
+      from: params?.from,
+      to: params?.to,
+    })}`,
+    { token: getTokenOrThrow() },
+  );
+}
+
+export async function createManualBlock(payload: { ip: string; durationMinutes: number; reason: string; notes?: string }) {
+  return http<SecurityBlock>("/admin/security/blocks", {
+    method: "POST",
+    token: getTokenOrThrow(),
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function releaseSecurityBlock(id: string, reason?: string) {
+  return http<SecurityBlock>(`/admin/security/blocks/${id}/release`, {
+    method: "POST",
+    token: getTokenOrThrow(),
+    body: JSON.stringify({ reason: reason ?? null }),
+  });
+}
+
+export async function extendSecurityBlock(id: string, durationMinutes: number) {
+  return http<SecurityBlock>(`/admin/security/blocks/${id}/extend`, {
+    method: "POST",
+    token: getTokenOrThrow(),
+    body: JSON.stringify({ durationMinutes }),
+  });
+}

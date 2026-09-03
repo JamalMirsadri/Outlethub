@@ -1,6 +1,14 @@
-import { AlertSeverity, AlertType, ErrorLogSeverity, ErrorLogType, Prisma } from "@prisma/client";
+import {
+  AlertSeverity,
+  AlertType,
+  ErrorLogSeverity,
+  ErrorLogType,
+  Prisma,
+  SecurityBlockSource,
+} from "@prisma/client";
 
 import { prisma } from "../../config/prisma.js";
+import { securityResponseService } from "./security-response.service.js";
 import { errorLogger, toListOutput, type ErrorLogView } from "./system-logs.service.js";
 
 const SECURITY_ALERTS_CONFIG_KEY = "security_alerts_config";
@@ -244,6 +252,8 @@ export class SecurityService {
     userAgent: string | null;
     requestId: string | null;
     message?: string;
+    securityAction?: string | null;
+    blockId?: string | null;
   }): void {
     errorLogger.capture({
       type: ErrorLogType.SECURITY_SCAN,
@@ -258,6 +268,8 @@ export class SecurityService {
       ip: input.ip,
       userAgent: input.userAgent,
       requestId: input.requestId,
+      securityAction: input.securityAction ?? "DETECTED",
+      blockId: input.blockId ?? null,
     });
   }
 
@@ -308,6 +320,24 @@ export class SecurityService {
         statusCode: 401,
         ip,
       });
+
+      if (isStuffing) {
+        await securityResponseService.createBlock({
+          ip,
+          ipVersion: ip.includes(":") ? "IPv6" : "IPv4",
+          reason: `Credential stuffing: ${count} failed login attempts`,
+          attackType: "CREDENTIAL_STUFFING",
+          severity: ErrorLogSeverity.HIGH,
+          confidence: "HIGH",
+          riskScore: 80,
+          triggerCount: count,
+          samplePath: "/auth/login",
+          sampleMethod: "POST",
+          matchedRule: "stateful credential stuffing",
+          source: SecurityBlockSource.AUTO,
+          durationSeconds: 1800,
+        });
+      }
     }
   }
 

@@ -224,3 +224,58 @@ export function detectThreat(input: {
 
   return null;
 }
+
+const BODY_STRINGIFY_MAX_LENGTH = 8000;
+
+function stringifyBody(body: unknown): string | null {
+  if (body == null) {
+    return null;
+  }
+
+  if (typeof body === "string") {
+    return body.slice(0, BODY_STRINGIFY_MAX_LENGTH);
+  }
+
+  try {
+    const json = JSON.stringify(body);
+    if (typeof json !== "string" || json.length === 0) {
+      return null;
+    }
+
+    return json.length > BODY_STRINGIFY_MAX_LENGTH ? json.slice(0, BODY_STRINGIFY_MAX_LENGTH) : json;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Detects high-risk content signatures in a parsed request body (SQL injection,
+ * RCE, path traversal and XSS). The body is stringified with a hard length cap
+ * and is never logged. Used as a second detection pass after body parsing.
+ */
+export function detectBodyThreat(body: unknown): ThreatDetection | null {
+  const value = stringifyBody(body);
+  if (!value) {
+    return null;
+  }
+
+  const decoded = safeDecode(value);
+
+  if (matches(TRAVERSAL_PATTERNS, decoded)) {
+    return threat("PATH_TRAVERSAL", "Path traversal (body)", "HIGH", ErrorLogSeverity.HIGH);
+  }
+
+  if (matches(SQLI_PATTERNS, decoded)) {
+    return threat("SQL_INJECTION", "SQL injection (body)", "HIGH", ErrorLogSeverity.HIGH);
+  }
+
+  if (matches(RCE_PATTERNS, decoded)) {
+    return threat("RCE", "RCE (body)", "HIGH", ErrorLogSeverity.HIGH);
+  }
+
+  if (matches(XSS_PATTERNS, decoded)) {
+    return threat("XSS", "XSS (body)", "MEDIUM", ErrorLogSeverity.MEDIUM);
+  }
+
+  return null;
+}

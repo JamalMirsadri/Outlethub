@@ -1,6 +1,6 @@
 import type { NextFunction, Request, Response } from "express";
 
-import { detectThreat } from "./security-detection.js";
+import { detectBodyThreat, detectThreat } from "./security-detection.js";
 import { securityService } from "./security.service.js";
 import { buildRequestContext } from "./system-logs.context.js";
 
@@ -35,11 +35,63 @@ export function securityInspectionMiddleware(request: Request, response: Respons
           statusCode: response.statusCode,
           userAgent,
           requestId: context.requestId,
+          blockId: request.securityBlockId ?? null,
         });
       });
     }
   } catch {
     // Security inspection must never break the request lifecycle.
+  }
+
+  next();
+}
+
+/**
+ * Second detection pass for parsed request bodies. Runs after body parsing and
+ * before application routes. It never logs the body, only a generic
+ * classification. URL/query/UA detection takes precedence when present.
+ */
+export function securityBodyInspectionMiddleware(request: Request, response: Response, next: NextFunction): void {
+  if (request.securityDetection) {
+    next();
+    return;
+  }
+
+  try {
+    if (request.body == null) {
+      next();
+      return;
+    }
+
+    const detection = detectBodyThreat(request.body);
+    if (!detection) {
+      next();
+      return;
+    }
+
+    request.securityDetection = detection;
+    const context = buildRequestContext(request);
+    const url = request.originalUrl || request.url || "/";
+    const userAgent = typeof request.headers["user-agent"] === "string" ? request.headers["user-agent"] : null;
+
+    response.on("finish", () => {
+      securityService.logThreat({
+        attackType: detection.attackType,
+        confidence: detection.confidence,
+        severity: detection.severity,
+        source: detection.source,
+        ip: context.ip,
+        method: request.method,
+        path: url,
+        statusCode: response.statusCode,
+        userAgent,
+        requestId: context.requestId,
+        message: `Detected ${detection.attackType} in request body: ${request.method} ${url}`,
+        blockId: request.securityBlockId ?? null,
+      });
+    });
+  } catch {
+    // Body inspection must never break the request lifecycle.
   }
 
   next();
