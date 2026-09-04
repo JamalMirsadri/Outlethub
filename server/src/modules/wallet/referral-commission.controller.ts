@@ -38,8 +38,10 @@ export class ReferralCommissionController {
       page?: number;
       pageSize?: number;
       referrerUserId?: string;
+      purchaserUserId?: string;
       rank?: ReferralRank;
       orderId?: string;
+      level?: number;
       status?: ReferralCommissionStatus;
       from?: string;
       to?: string;
@@ -49,8 +51,10 @@ export class ReferralCommissionController {
         page: query.page ?? 1,
         pageSize: query.pageSize ?? 20,
         referrerUserId: query.referrerUserId,
+        purchaserUserId: query.purchaserUserId,
         rank: query.rank,
         orderId: query.orderId,
+        level: query.level,
         status: query.status,
         from: query.from,
         to: query.to,
@@ -59,12 +63,18 @@ export class ReferralCommissionController {
   }
 
   public async getCommissionConfig(_request: Request, response: Response) {
-    response.status(200).json({ items: await referralCommissionService.getConfigs() });
+    response.status(200).json(await referralCommissionService.getConfigs());
   }
 
   public async updateCommissionConfig(request: Request, response: Response) {
     response.status(200).json(
       await referralCommissionService.updateConfig(getAuthUserId(request), request.body),
+    );
+  }
+
+  public async updateCommissionSettings(request: Request, response: Response) {
+    response.status(200).json(
+      await referralCommissionService.updateSettings(getAuthUserId(request), request.body),
     );
   }
 }

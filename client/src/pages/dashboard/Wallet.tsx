@@ -109,13 +109,68 @@ export default function Wallet() {
                     <p className="font-medium">{referral.rank}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground">Commission</p>
-                    <p className="font-medium">{referral.percentage}%</p>
+                    <p className="text-xs text-muted-foreground">L1 / L2 Rate</p>
+                    <p className="font-medium">{referral.rates.level1Percentage}% / {referral.rates.level2Percentage}%</p>
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground">Total Earned</p>
-                    <p className="font-display text-xl font-bold">€{referral.totalEarned}</p>
+                    <p className="text-xs text-muted-foreground">Total Commission</p>
+                    <p className="font-display text-xl font-bold">€{referral.commission.totalCommission}</p>
                   </div>
+                </div>
+
+                <div className="mt-4 grid gap-4 md:grid-cols-2">
+                  <div>
+                    <p className="mb-1 text-xs uppercase tracking-wide text-muted-foreground">Purchase & Referral Points</p>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <div><span className="text-muted-foreground">Purchase:</span> {referral.points.purchaserPoints}</div>
+                      <div><span className="text-muted-foreground">Level 1:</span> {referral.points.level1Points}</div>
+                      <div><span className="text-muted-foreground">Level 2:</span> {referral.points.level2Points}</div>
+                      <div><span className="text-muted-foreground">Level 3:</span> {referral.points.level3Points}</div>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="mb-1 text-xs uppercase tracking-wide text-muted-foreground">Commission by Level</p>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <div><span className="text-muted-foreground">Level 1:</span> €{referral.commission.level1Commission}</div>
+                      <div><span className="text-muted-foreground">Level 2:</span> €{referral.commission.level2Commission}</div>
+                      <div><span className="text-muted-foreground">Direct:</span> {referral.referrals.directCount}</div>
+                      <div><span className="text-muted-foreground">L2 / L3:</span> {referral.referrals.level2Count} / {referral.referrals.level3Count}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
+            {referral && referral.recentCommissions.length > 0 ? (
+              <div className="mt-6 rounded-xl border border-border p-4">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">Referral Commissions</p>
+                <div className="mt-2 overflow-x-auto">
+                  <table className="w-full text-left text-sm">
+                    <thead className="text-xs uppercase tracking-wide text-muted-foreground">
+                      <tr>
+                        <th className="px-2 py-1">Order</th>
+                        <th className="px-2 py-1">Level</th>
+                        <th className="px-2 py-1">Rate</th>
+                        <th className="px-2 py-1">Product Amount</th>
+                        <th className="px-2 py-1">Commission</th>
+                        <th className="px-2 py-1">Transaction ID</th>
+                        <th className="px-2 py-1">Date</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {referral.recentCommissions.map((commission) => (
+                        <tr key={commission.id}>
+                          <td className="px-2 py-1 font-medium">{commission.orderNumber}</td>
+                          <td className="px-2 py-1">L{commission.referralLevel}</td>
+                          <td className="px-2 py-1">{commission.percentage}%</td>
+                          <td className="px-2 py-1">€{commission.eligibleProductAmount}</td>
+                          <td className="px-2 py-1 font-medium">€{commission.commissionAmount}</td>
+                          <td className="px-2 py-1 break-all font-mono text-xs">{commission.walletTransactionId}</td>
+                          <td className="px-2 py-1 text-muted-foreground">{formatDateTime(commission.createdAt)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             ) : null}

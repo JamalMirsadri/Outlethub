@@ -6,7 +6,7 @@ import { requireRoles } from "../../middleware/roles.middleware.js";
 import { validateBody, validateQuery } from "../../middleware/validate.middleware.js";
 import { asyncHandler } from "../../utils/async-handler.js";
 import { referralCommissionController } from "./referral-commission.controller.js";
-import { listCommissionsQuerySchema, updateCommissionConfigSchema } from "./referral-commission.schemas.js";
+import { listCommissionsQuerySchema, updateCommissionConfigSchema, updateCommissionSettingsSchema } from "./referral-commission.schemas.js";
 
 export const referralCommissionRouter = Router();
 
@@ -50,4 +50,10 @@ referralCommissionRouter.patch(
   "/admin/commission-config",
   validateBody(updateCommissionConfigSchema),
   asyncHandler(referralCommissionController.updateCommissionConfig.bind(referralCommissionController)),
+);
+
+referralCommissionRouter.patch(
+  "/admin/commission-settings",
+  validateBody(updateCommissionSettingsSchema),
+  asyncHandler(referralCommissionController.updateCommissionSettings.bind(referralCommissionController)),
 );

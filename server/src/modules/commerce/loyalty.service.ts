@@ -453,6 +453,7 @@ export async function applyPointsDelta(
     rewardId?: string | null;
     redemptionId?: string | null;
     referralRewardId?: string | null;
+    multiLevelReferralPointRewardId?: string | null;
     actorUserId?: string | null;
     metadata?: Prisma.JsonValue;
   },
@@ -482,6 +483,7 @@ export async function applyPointsDelta(
       rewardId: input.rewardId ?? null,
       redemptionId: input.redemptionId ?? null,
       referralRewardId: input.referralRewardId ?? null,
+      multiLevelReferralPointRewardId: input.multiLevelReferralPointRewardId ?? null,
       actorUserId: input.actorUserId ?? null,
       type: input.type,
       pointsDelta: input.pointsDelta,

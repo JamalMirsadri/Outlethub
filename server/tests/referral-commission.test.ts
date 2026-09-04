@@ -33,7 +33,13 @@ test("commission uses decimal arithmetic with half-up rounding", () => {
 });
 
 test("commission config validates percentage between 0 and 100", () => {
-  assert.equal(updateCommissionConfigSchema.safeParse({ rank: "SILVER", percentage: 150, isActive: true }).success, false);
-  assert.equal(updateCommissionConfigSchema.safeParse({ rank: "SILVER", percentage: -1, isActive: true }).success, false);
-  assert.equal(updateCommissionConfigSchema.safeParse({ rank: "GOLD", percentage: 2.5, isActive: true }).success, true);
+  assert.equal(updateCommissionConfigSchema.safeParse({ levelNumber: 1, rank: "SILVER", percentage: 150, isActive: true }).success, false);
+  assert.equal(updateCommissionConfigSchema.safeParse({ levelNumber: 1, rank: "SILVER", percentage: -1, isActive: true }).success, false);
+  assert.equal(updateCommissionConfigSchema.safeParse({ levelNumber: 1, rank: "GOLD", percentage: 2.5, isActive: true }).success, true);
+});
+
+test("commission config validates level number between 1 and 2", () => {
+  assert.equal(updateCommissionConfigSchema.safeParse({ levelNumber: 3, rank: "GOLD", percentage: 2.5, isActive: true }).success, false);
+  assert.equal(updateCommissionConfigSchema.safeParse({ levelNumber: 0, rank: "GOLD", percentage: 2.5, isActive: true }).success, false);
+  assert.equal(updateCommissionConfigSchema.safeParse({ levelNumber: 2, rank: "GOLD", percentage: 0.5, isActive: true }).success, true);
 });

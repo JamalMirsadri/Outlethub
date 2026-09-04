@@ -1,64 +1,102 @@
 import {
+  MultiLevelReferralPointStatus,
   Prisma,
   ReferralCommissionStatus,
   ReferralRank,
-  ReferralRelationshipStatus,
   WalletTransactionType,
 } from "@prisma/client";
 
 import { prisma } from "../../config/prisma.js";
 import { ApiError } from "../../utils/api-error.js";
 import { walletService } from "./wallet.service.js";
+import {
+  buildCommissionBeneficiaries,
+  buildCommissionEventKey,
+  computeCommission,
+  DEFAULT_LEVEL_CONFIGS,
+  DEFAULT_MAX_COMMISSION_LEVEL,
+  HARD_MAX_COMMISSION_LEVEL,
+  resolveCommissionAction,
+  resolveMaxCommissionLevel,
+} from "./referral-commission.logic.js";
 
 const EUR = "EUR";
-
-const DEFAULT_RANK_CONFIGS: Array<{ rank: ReferralRank; percentage: string }> = [
-  { rank: ReferralRank.SILVER, percentage: "2.00" },
-  { rank: ReferralRank.GOLD, percentage: "2.50" },
-  { rank: ReferralRank.PLATINUM, percentage: "3.00" },
-  { rank: ReferralRank.DIAMOND, percentage: "3.50" },
-];
+const SETTINGS_ID = "default";
 
 function money(value: Prisma.Decimal | number | string | null | undefined): string {
   return new Prisma.Decimal(value ?? 0).toFixed(2);
 }
 
-function buildCommissionEventKey(orderId: string, referrerUserId: string): string {
-  return `REFERRAL_COMMISSION:ORDER:${orderId}:USER:${referrerUserId}`;
-}
+type OrderRef = {
+  id: string;
+  userId: string;
+  orderNumber: string;
+  status: string;
+};
 
 export class ReferralCommissionService {
   public async ensureDefaultConfigs(tx: Prisma.TransactionClient): Promise<void> {
-    const existing = await tx.referralCommissionConfig.findMany({ select: { rank: true } });
-    const existingRanks = new Set(existing.map((config) => config.rank));
+    const existing = await tx.referralCommissionConfig.findMany({
+      select: { levelNumber: true, rank: true },
+    });
+    const existingKeys = new Set(existing.map((config) => `${config.levelNumber}:${config.rank}`));
 
-    for (const config of DEFAULT_RANK_CONFIGS) {
-      if (existingRanks.has(config.rank)) {
+    for (const config of DEFAULT_LEVEL_CONFIGS) {
+      if (existingKeys.has(`${config.levelNumber}:${config.rank}`)) {
         continue;
       }
 
       await tx.referralCommissionConfig.create({
-        data: { rank: config.rank, percentage: new Prisma.Decimal(config.percentage), isActive: true },
+        data: {
+          levelNumber: config.levelNumber,
+          rank: config.rank,
+          percentage: new Prisma.Decimal(config.percentage),
+          isActive: true,
+        },
       });
     }
+
+    await tx.referralCommissionSettings.upsert({
+      where: { id: SETTINGS_ID },
+      update: {},
+      create: { id: SETTINGS_ID, maxCommissionLevel: DEFAULT_MAX_COMMISSION_LEVEL },
+    });
   }
 
   public async getConfigs() {
     await prisma.$transaction(async (tx) => this.ensureDefaultConfigs(tx));
 
-    const configs = await prisma.referralCommissionConfig.findMany({
-      orderBy: { rank: "asc" },
-    });
+    const [configs, settings] = await Promise.all([
+      prisma.referralCommissionConfig.findMany({
+        orderBy: [{ levelNumber: "asc" }, { rank: "asc" }],
+      }),
+      prisma.referralCommissionSettings.findUnique({ where: { id: SETTINGS_ID } }),
+    ]);
 
-    return configs.map((config) => ({
-      rank: config.rank,
-      percentage: money(config.percentage),
-      isActive: config.isActive,
-      updatedAt: config.updatedAt,
-    }));
+    return {
+      maxCommissionLevel: settings?.maxCommissionLevel ?? DEFAULT_MAX_COMMISSION_LEVEL,
+      items: configs.map((config) => ({
+        levelNumber: config.levelNumber,
+        rank: config.rank,
+        percentage: money(config.percentage),
+        isActive: config.isActive,
+        updatedAt: config.updatedAt,
+      })),
+    };
   }
 
-  public async updateConfig(actorUserId: string, input: { rank: ReferralRank; percentage: number; isActive: boolean }) {
+  public async updateConfig(
+    actorUserId: string,
+    input: { levelNumber: number; rank: ReferralRank; percentage: number; isActive: boolean },
+  ) {
+    if (
+      !Number.isInteger(input.levelNumber) ||
+      input.levelNumber < 1 ||
+      input.levelNumber > HARD_MAX_COMMISSION_LEVEL
+    ) {
+      throw new ApiError(400, "Commission level must be 1 or 2.");
+    }
+
     if (!Number.isFinite(input.percentage) || input.percentage < 0 || input.percentage > 100) {
       throw new ApiError(400, "Percentage must be between 0 and 100.");
     }
@@ -67,12 +105,18 @@ export class ReferralCommissionService {
       await this.ensureDefaultConfigs(tx);
 
       const result = await tx.referralCommissionConfig.upsert({
-        where: { rank: input.rank },
+        where: {
+          levelNumber_rank: {
+            levelNumber: input.levelNumber,
+            rank: input.rank,
+          },
+        },
         update: {
           percentage: new Prisma.Decimal(input.percentage).toDecimalPlaces(2),
           isActive: input.isActive,
         },
         create: {
+          levelNumber: input.levelNumber,
           rank: input.rank,
           percentage: new Prisma.Decimal(input.percentage).toDecimalPlaces(2),
           isActive: input.isActive,
@@ -86,20 +130,65 @@ export class ReferralCommissionService {
           action: "REFERRAL_COMMISSION_CONFIG_UPDATED",
           entityType: "referral_commission_config",
           entityId: result.id,
-          metadata: { rank: input.rank, percentage: money(result.percentage), isActive: input.isActive },
+          metadata: {
+            levelNumber: input.levelNumber,
+            rank: input.rank,
+            percentage: money(result.percentage),
+            isActive: input.isActive,
+          },
         },
       });
 
       return result;
     });
 
-    return { rank: updated.rank, percentage: money(updated.percentage), isActive: updated.isActive };
+    return {
+      levelNumber: updated.levelNumber,
+      rank: updated.rank,
+      percentage: money(updated.percentage),
+      isActive: updated.isActive,
+    };
+  }
+
+  public async updateSettings(actorUserId: string, input: { maxCommissionLevel: number }) {
+    if (
+      !Number.isInteger(input.maxCommissionLevel) ||
+      input.maxCommissionLevel < 0 ||
+      input.maxCommissionLevel > HARD_MAX_COMMISSION_LEVEL
+    ) {
+      throw new ApiError(400, "Maximum commission level must be between 0 and 2.");
+    }
+
+    const updated = await prisma.$transaction(async (tx) => {
+      await this.ensureDefaultConfigs(tx);
+
+      const result = await tx.referralCommissionSettings.upsert({
+        where: { id: SETTINGS_ID },
+        update: { maxCommissionLevel: input.maxCommissionLevel },
+        create: { id: SETTINGS_ID, maxCommissionLevel: input.maxCommissionLevel },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          actorUserId,
+          actorType: "USER",
+          action: "REFERRAL_COMMISSION_SETTINGS_UPDATED",
+          entityType: "referral_commission_settings",
+          entityId: SETTINGS_ID,
+          metadata: { maxCommissionLevel: input.maxCommissionLevel },
+        },
+      });
+
+      return result;
+    });
+
+    return { maxCommissionLevel: updated.maxCommissionLevel };
   }
 
   /**
    * Idempotently awards (on DELIVERED) or reverses (on CANCELLED/REFUNDED) the
-   * direct-referrer commission for an order. Commission is derived from product
-   * line amounts only (sum of OrderItem.totalPrice), never shipping/tax/fees.
+   * multi-level referral commission for an order. Commission is derived from
+   * product line amounts only (sum of OrderItem.totalPrice).
    */
   public async syncOrderCommission(orderId: string) {
     return prisma.$transaction(async (tx) => {
@@ -112,24 +201,34 @@ export class ReferralCommissionService {
         throw new ApiError(404, "Order not found.");
       }
 
-      if (order.status === "DELIVERED") {
-        return this.awardCommission(tx, order);
+      const action = resolveCommissionAction(order.status);
+      if (action === "NONE") {
+        return null;
       }
 
-      if (order.status === "CANCELLED" || order.status === "REFUNDED") {
+      if (action === "REVERSE") {
         return this.reverseCommission(tx, order);
       }
 
-      return null;
+      return this.awardCommission(tx, order);
     });
   }
 
   public async getUserReferralSummary(userId: string) {
-    const [user, commissionAggregate, recentCommissions, configs] = await Promise.all([
-      prisma.user.findUniqueOrThrow({
-        where: { id: userId },
-        select: { id: true, referralCode: true, referralRank: true },
-      }),
+    const user = await prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+      select: { id: true, referralCode: true, referralRank: true },
+    });
+
+    const [
+      commissionAggregate,
+      recentCommissions,
+      levelOneConfig,
+      levelTwoConfig,
+      commissionByLevel,
+      pointByLevel,
+      levelCounts,
+    ] = await Promise.all([
       prisma.referralCommission.aggregate({
         where: { referrerUserId: userId, status: ReferralCommissionStatus.AWARDED },
         _sum: { commissionAmount: true },
@@ -140,25 +239,76 @@ export class ReferralCommissionService {
         take: 20,
         include: { order: { select: { id: true, orderNumber: true } } },
       }),
-      prisma.referralCommissionConfig.findMany({ select: { rank: true, percentage: true, isActive: true } }),
+      prisma.referralCommissionConfig.findUnique({
+        where: { levelNumber_rank: { levelNumber: 1, rank: user.referralRank } },
+      }),
+      prisma.referralCommissionConfig.findUnique({
+        where: { levelNumber_rank: { levelNumber: 2, rank: user.referralRank } },
+      }),
+      prisma.referralCommission.groupBy({
+        by: ["referralLevel"],
+        where: { referrerUserId: userId, status: ReferralCommissionStatus.AWARDED },
+        _sum: { commissionAmount: true },
+      }),
+      prisma.multiLevelReferralPointReward.groupBy({
+        by: ["referralLevel"],
+        where: { beneficiaryUserId: userId, status: MultiLevelReferralPointStatus.AWARDED },
+        _sum: { pointsAwarded: true },
+      }),
+      prisma.referralClosure.groupBy({
+        by: ["depth"],
+        where: { ancestorUserId: userId, depth: { in: [1, 2, 3] } },
+        _count: { _all: true },
+      }),
     ]);
 
-    const configByRank = new Map(configs.map((config) => [config.rank, config]));
-    const activeConfig = configByRank.get(user.referralRank);
+    const commissionByLevelMap = new Map(
+      commissionByLevel.map((row) => [row.referralLevel, row._sum.commissionAmount ?? 0]),
+    );
+    const pointByLevelMap = new Map(
+      pointByLevel.map((row) => [row.referralLevel, row._sum.pointsAwarded ?? 0]),
+    );
+    const levelCountMap = new Map(levelCounts.map((row) => [row.depth, row._count._all]));
+
+    const level1Commission = new Prisma.Decimal(commissionByLevelMap.get(1) ?? 0);
+    const level2Commission = new Prisma.Decimal(commissionByLevelMap.get(2) ?? 0);
 
     return {
       referralCode: user.referralCode,
       rank: user.referralRank,
-      percentage: activeConfig?.isActive ? money(activeConfig.percentage) : "0.00",
+      percentage: levelOneConfig?.isActive ? money(levelOneConfig.percentage) : "0.00",
       totalEarned: money(commissionAggregate._sum.commissionAmount),
+      rates: {
+        level1Percentage: levelOneConfig?.isActive ? money(levelOneConfig.percentage) : "0.00",
+        level2Percentage: levelTwoConfig?.isActive ? money(levelTwoConfig.percentage) : "0.00",
+      },
+      commission: {
+        level1Commission: money(level1Commission),
+        level2Commission: money(level2Commission),
+        totalCommission: money(level1Commission.add(level2Commission)),
+      },
+      points: {
+        purchaserPoints: pointByLevelMap.get(0) ?? 0,
+        level1Points: pointByLevelMap.get(1) ?? 0,
+        level2Points: pointByLevelMap.get(2) ?? 0,
+        level3Points: pointByLevelMap.get(3) ?? 0,
+        totalPoints: (pointByLevelMap.get(1) ?? 0) + (pointByLevelMap.get(2) ?? 0) + (pointByLevelMap.get(3) ?? 0),
+      },
+      referrals: {
+        directCount: levelCountMap.get(1) ?? 0,
+        level2Count: levelCountMap.get(2) ?? 0,
+        level3Count: levelCountMap.get(3) ?? 0,
+      },
       recentCommissions: recentCommissions.map((commission) => ({
         id: commission.id,
         orderId: commission.orderId,
         orderNumber: commission.order.orderNumber,
+        referralLevel: commission.referralLevel,
         rank: commission.rank,
         percentage: money(commission.percentage),
         eligibleProductAmount: money(commission.eligibleProductAmount),
         commissionAmount: money(commission.commissionAmount),
+        walletTransactionId: commission.walletTransactionId,
         status: commission.status,
         createdAt: commission.createdAt,
       })),
@@ -169,8 +319,10 @@ export class ReferralCommissionService {
     page: number;
     pageSize: number;
     referrerUserId?: string;
+    purchaserUserId?: string;
     rank?: ReferralRank;
     orderId?: string;
+    level?: number;
     status?: ReferralCommissionStatus;
     from?: string;
     to?: string;
@@ -181,12 +333,20 @@ export class ReferralCommissionService {
       where.referrerUserId = query.referrerUserId;
     }
 
+    if (query.purchaserUserId) {
+      where.purchaserUserId = query.purchaserUserId;
+    }
+
     if (query.rank) {
       where.rank = query.rank;
     }
 
     if (query.orderId) {
       where.orderId = query.orderId;
+    }
+
+    if (query.level !== undefined) {
+      where.referralLevel = query.level;
     }
 
     if (query.status) {
@@ -225,6 +385,7 @@ export class ReferralCommissionService {
         referrerCode: commission.referrerUser.referralCode,
         purchaserUserId: commission.purchaserUserId,
         purchaserEmail: commission.purchaserUser.email,
+        referralLevel: commission.referralLevel,
         rank: commission.rank,
         percentage: money(commission.percentage),
         eligibleProductAmount: money(commission.eligibleProductAmount),
@@ -243,7 +404,7 @@ export class ReferralCommissionService {
   }
 
   public async getAdminOverview() {
-    const [totalCommissions, totalAmount, byRank, byReferrer, reversed] = await Promise.all([
+    const [totalCommissions, totalAmount, byRank, byLevel, byReferrer, reversed] = await Promise.all([
       prisma.referralCommission.count({ where: { status: ReferralCommissionStatus.AWARDED } }),
       prisma.referralCommission.aggregate({
         where: { status: ReferralCommissionStatus.AWARDED },
@@ -251,6 +412,11 @@ export class ReferralCommissionService {
       }),
       prisma.referralCommission.groupBy({
         by: ["rank"],
+        where: { status: ReferralCommissionStatus.AWARDED },
+        _sum: { commissionAmount: true },
+      }),
+      prisma.referralCommission.groupBy({
+        by: ["referralLevel"],
         where: { status: ReferralCommissionStatus.AWARDED },
         _sum: { commissionAmount: true },
       }),
@@ -273,6 +439,11 @@ export class ReferralCommissionService {
         count: 0,
         amount: money(row._sum.commissionAmount),
       })),
+      byLevel: byLevel.map((row) => ({
+        level: row.referralLevel,
+        count: 0,
+        amount: money(row._sum.commissionAmount),
+      })),
       topReferrers: byReferrer.map((row) => ({
         referrerUserId: row.referrerUserId,
         amount: money(row._sum.commissionAmount),
@@ -280,44 +451,13 @@ export class ReferralCommissionService {
     };
   }
 
-  private async awardCommission(
-    tx: Prisma.TransactionClient,
-    order: { id: string; userId: string; orderNumber: string },
-  ) {
-    const relationship = await tx.referralRelationship.findUnique({
-      where: { referredUserId: order.userId },
-    });
+  private async awardCommission(tx: Prisma.TransactionClient, order: OrderRef) {
+    const settings = await tx.referralCommissionSettings.findUnique({ where: { id: SETTINGS_ID } });
+    const maxLevel = resolveMaxCommissionLevel(
+      settings?.maxCommissionLevel ?? DEFAULT_MAX_COMMISSION_LEVEL,
+    );
 
-    if (!relationship || relationship.status !== ReferralRelationshipStatus.ACTIVE) {
-      return null;
-    }
-
-    const referrerUserId = relationship.referrerUserId;
-    const eventKey = buildCommissionEventKey(order.id, referrerUserId);
-
-    const existing = await tx.referralCommission.findUnique({ where: { eventKey } });
-    if (existing) {
-      return null;
-    }
-
-    const referrer = await tx.user.findUnique({
-      where: { id: referrerUserId },
-      select: { id: true, referralRank: true },
-    });
-    if (!referrer) {
-      return null;
-    }
-
-    const config = await tx.referralCommissionConfig.findUnique({ where: { rank: referrer.referralRank } });
-    if (!config || !config.isActive) {
-      return null;
-    }
-
-    const wallet = await tx.wallet.findUnique({
-      where: { userId: referrerUserId },
-      select: { id: true, walletId: true },
-    });
-    if (!wallet) {
+    if (maxLevel < 1) {
       return null;
     }
 
@@ -330,123 +470,179 @@ export class ReferralCommissionService {
       return null;
     }
 
-    // Decimal-only arithmetic; round half-up to 2 decimal EUR.
-    const commissionAmount = eligibleProductAmount
-      .mul(config.percentage)
-      .div(100)
-      .toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
-    if (commissionAmount.lessThanOrEqualTo(0)) {
-      return null;
-    }
-
-    const walletTransaction = await walletService.applyWalletTransactionWithinTransaction(tx, {
-      walletId: wallet.id,
-      amount: commissionAmount,
-      type: WalletTransactionType.REFERRAL_COMMISSION,
-      direction: "credit",
-      referenceType: "ORDER",
-      referenceId: order.id,
-      description: "Referral commission",
-      metadata: {
-        orderId: order.id,
-        orderNumber: order.orderNumber,
-        purchaserUserId: order.userId,
-        referrerUserId,
-        rank: referrer.referralRank,
-        percentage: config.percentage.toFixed(2),
-        eligibleProductAmount: eligibleProductAmount.toFixed(2),
+    const ancestors = await tx.referralClosure.findMany({
+      where: {
+        descendantUserId: order.userId,
+        depth: { gte: 1, lte: maxLevel },
       },
+      orderBy: { depth: "asc" },
+      select: { ancestorUserId: true, depth: true },
     });
 
-    const commission = await tx.referralCommission.create({
-      data: {
-        eventKey,
-        orderId: order.id,
-        referrerUserId,
-        purchaserUserId: order.userId,
-        rank: referrer.referralRank,
-        percentage: config.percentage,
-        eligibleProductAmount,
-        commissionAmount,
-        walletTransactionId: walletTransaction.id,
-        status: ReferralCommissionStatus.AWARDED,
-      },
-    });
+    const beneficiaries = buildCommissionBeneficiaries(ancestors, maxLevel);
+    const results = [];
 
-    await tx.auditLog.create({
-      data: {
-        actorType: "SYSTEM",
-        action: "REFERRAL_COMMISSION_AWARDED",
-        entityType: "order",
-        entityId: order.id,
+    for (const entry of beneficiaries) {
+      const referralLevel = entry.referralLevel;
+      const beneficiaryUserId = entry.beneficiaryUserId;
+
+      const beneficiary = await tx.user.findUnique({
+        where: { id: beneficiaryUserId },
+        select: { id: true, referralRank: true },
+      });
+      if (!beneficiary) {
+        continue;
+      }
+
+      const config = await tx.referralCommissionConfig.findUnique({
+        where: {
+          levelNumber_rank: {
+            levelNumber: referralLevel,
+            rank: beneficiary.referralRank,
+          },
+        },
+      });
+      if (!config || !config.isActive) {
+        continue;
+      }
+
+      const eventKey = buildCommissionEventKey(order.id, beneficiaryUserId, referralLevel);
+      const existing = await tx.referralCommission.findUnique({ where: { eventKey } });
+      if (existing) {
+        continue;
+      }
+
+      const commissionAmount = computeCommission(eligibleProductAmount, config.percentage);
+      if (commissionAmount.lessThanOrEqualTo(0)) {
+        continue;
+      }
+
+      const wallet = await tx.wallet.findUnique({
+        where: { userId: beneficiaryUserId },
+        select: { id: true },
+      });
+      if (!wallet) {
+        continue;
+      }
+
+      const walletTransaction = await walletService.applyWalletTransactionWithinTransaction(tx, {
+        walletId: wallet.id,
+        amount: commissionAmount,
+        type: WalletTransactionType.REFERRAL_COMMISSION,
+        direction: "credit",
+        referenceType: "ORDER",
+        referenceId: order.id,
+        description: `Referral commission (L${referralLevel})`,
         metadata: {
-          walletTransactionId: walletTransaction.id,
-          referrerUserId,
+          orderId: order.id,
+          orderNumber: order.orderNumber,
           purchaserUserId: order.userId,
-          rank: referrer.referralRank,
+          beneficiaryUserId,
+          referralLevel,
+          rank: beneficiary.referralRank,
           percentage: config.percentage.toFixed(2),
           eligibleProductAmount: eligibleProductAmount.toFixed(2),
-          commissionAmount: commissionAmount.toFixed(2),
         },
-      },
-    });
+      });
 
-    return commission;
+      const commission = await tx.referralCommission.create({
+        data: {
+          eventKey,
+          orderId: order.id,
+          referrerUserId: beneficiaryUserId,
+          purchaserUserId: order.userId,
+          referralLevel,
+          rank: beneficiary.referralRank,
+          percentage: config.percentage,
+          eligibleProductAmount,
+          commissionAmount,
+          walletTransactionId: walletTransaction.id,
+          status: ReferralCommissionStatus.AWARDED,
+          metadata: {
+            orderNumber: order.orderNumber,
+          },
+        },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          actorType: "SYSTEM",
+          action: "REFERRAL_COMMISSION_AWARDED",
+          entityType: "order",
+          entityId: order.id,
+          metadata: {
+            walletTransactionId: walletTransaction.id,
+            beneficiaryUserId,
+            purchaserUserId: order.userId,
+            referralLevel,
+            rank: beneficiary.referralRank,
+            percentage: config.percentage.toFixed(2),
+            eligibleProductAmount: eligibleProductAmount.toFixed(2),
+            commissionAmount: commissionAmount.toFixed(2),
+          },
+        },
+      });
+
+      results.push(commission);
+    }
+
+    return results;
   }
 
-  private async reverseCommission(tx: Prisma.TransactionClient, order: { id: string; orderNumber: string }) {
-    const commission = await tx.referralCommission.findFirst({
+  private async reverseCommission(tx: Prisma.TransactionClient, order: OrderRef) {
+    const commissions = await tx.referralCommission.findMany({
       where: { orderId: order.id, status: ReferralCommissionStatus.AWARDED },
     });
 
-    if (!commission) {
-      return null;
-    }
+    for (const commission of commissions) {
+      const wallet = await tx.wallet.findUnique({
+        where: { userId: commission.referrerUserId },
+        select: { id: true },
+      });
+      if (!wallet) {
+        continue;
+      }
 
-    const wallet = await tx.wallet.findUnique({
-      where: { userId: commission.referrerUserId },
-      select: { id: true },
-    });
-    if (!wallet) {
-      return null;
-    }
-
-    await walletService.applyWalletTransactionWithinTransaction(tx, {
-      walletId: wallet.id,
-      amount: commission.commissionAmount,
-      type: WalletTransactionType.REFERRAL_COMMISSION_REVERSAL,
-      direction: "debit",
-      referenceType: "ORDER",
-      referenceId: order.id,
-      description: "Referral commission reversal",
-      metadata: {
-        originalCommissionId: commission.id,
-        originalWalletTransactionId: commission.walletTransactionId,
-        orderId: order.id,
-        orderNumber: order.orderNumber,
-      },
-    });
-
-    await tx.referralCommission.update({
-      where: { id: commission.id },
-      data: { status: ReferralCommissionStatus.REVERSED, reversedAt: new Date() },
-    });
-
-    await tx.auditLog.create({
-      data: {
-        actorType: "SYSTEM",
-        action: "REFERRAL_COMMISSION_REVERSED",
-        entityType: "order",
-        entityId: order.id,
+      await walletService.applyWalletTransactionWithinTransaction(tx, {
+        walletId: wallet.id,
+        amount: commission.commissionAmount,
+        type: WalletTransactionType.REFERRAL_COMMISSION_REVERSAL,
+        direction: "debit",
+        referenceType: "ORDER",
+        referenceId: order.id,
+        description: `Referral commission reversal (L${commission.referralLevel})`,
         metadata: {
-          commissionId: commission.id,
-          referrerUserId: commission.referrerUserId,
-          commissionAmount: commission.commissionAmount.toFixed(2),
+          originalCommissionId: commission.id,
+          originalWalletTransactionId: commission.walletTransactionId,
+          orderId: order.id,
+          orderNumber: order.orderNumber,
+          beneficiaryUserId: commission.referrerUserId,
+          referralLevel: commission.referralLevel,
         },
-      },
-    });
+      });
 
-    return commission;
+      await tx.referralCommission.update({
+        where: { id: commission.id },
+        data: { status: ReferralCommissionStatus.REVERSED, reversedAt: new Date() },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          actorType: "SYSTEM",
+          action: "REFERRAL_COMMISSION_REVERSED",
+          entityType: "order",
+          entityId: order.id,
+          metadata: {
+            commissionId: commission.id,
+            beneficiaryUserId: commission.referrerUserId,
+            referralLevel: commission.referralLevel,
+            commissionAmount: commission.commissionAmount.toFixed(2),
+          },
+        },
+      });
+    }
+
+    return commissions;
   }
 }
 

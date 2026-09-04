@@ -12,7 +12,7 @@ const NAV_ITEMS = [
   { icon: ShoppingCart, label: "Orders", path: "/admin/orders" },
   { icon: Users, label: "Users", path: "/admin/users" },
   { icon: Wallet, label: "Wallets", path: "/admin/wallets" },
-  { icon: Wallet, label: "Commissions", path: "/admin/referral-commissions" },
+  { icon: Wallet, label: "Referral Rewards", path: "/admin/referral-commissions" },
   { icon: CreditCard, label: "Payments", path: "/admin/payments" },
   { icon: CreditCard, label: "Pay Review", path: "/admin/payments/review" },
   { icon: Landmark, label: "Bank Accts", path: "/admin/bank-accounts" },

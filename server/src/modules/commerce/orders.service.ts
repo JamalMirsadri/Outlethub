@@ -13,6 +13,7 @@ import { procurementService } from "./procurement.service.js";
 import { couponService } from "./coupon.service.js";
 import { loyaltyService } from "./loyalty.service.js";
 import { referralService } from "./referral.service.js";
+import { multiLevelReferralPointsService } from "./multi-level-referral-points.service.js";
 import { referralCommissionService } from "../wallet/referral-commission.service.js";
 import { notificationsService } from "../notifications/notifications.service.js";
 
@@ -843,6 +844,7 @@ export class OrdersService {
     void notificationsService.sendAdminOrderCreatedEmailNotification(mapOrder(persistedOrder)).catch(() => undefined);
     await referralService.syncOrderReferralRewards(persistedOrder.id);
     await referralCommissionService.syncOrderCommission(persistedOrder.id);
+    await multiLevelReferralPointsService.syncMultiLevelReferralPoints(persistedOrder.id);
     return mapOrder(persistedOrder);
   }
 
@@ -954,6 +956,7 @@ export class OrdersService {
 
     await referralService.syncOrderReferralRewards(order.id);
     await referralCommissionService.syncOrderCommission(order.id);
+    await multiLevelReferralPointsService.syncMultiLevelReferralPoints(order.id);
 
     return mapOrder(order);
   }
@@ -1133,6 +1136,7 @@ export class OrdersService {
 
     await referralService.syncOrderReferralRewards(order.id);
     await referralCommissionService.syncOrderCommission(order.id);
+    await multiLevelReferralPointsService.syncMultiLevelReferralPoints(order.id);
 
     return mapOrder(order);
   }
@@ -1206,6 +1210,7 @@ export class OrdersService {
     await loyaltyService.reconcileOrderPoints(refunded.id);
     await referralService.syncOrderReferralRewards(refunded.id);
     await referralCommissionService.syncOrderCommission(refunded.id);
+    await multiLevelReferralPointsService.syncMultiLevelReferralPoints(refunded.id);
 
     return mapOrder(refunded);
   }

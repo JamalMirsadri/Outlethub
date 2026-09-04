@@ -383,6 +383,8 @@ enum LoyaltyTransactionType {
   REFERRAL_REWARD
   REFERRAL_REVERSAL
   REFERRAL_MANUAL_ADJUSTMENT
+  MULTI_LEVEL_REFERRAL_REWARD
+  MULTI_LEVEL_REFERRAL_REVERSAL
 }
 
 enum LoyaltyRedemptionStatus {
@@ -449,6 +451,11 @@ enum ReferralRewardStatus {
   REVERSED
   CANCELLED
   EXPIRED
+}
+
+enum MultiLevelReferralPointStatus {
+  AWARDED
+  REVERSED
 }
 
 model Role {
@@ -521,6 +528,8 @@ model User {
   referralDescendants ReferralClosure[]        @relation("ReferralClosureAncestor")
   referralRewardsEarned ReferralReward[]       @relation("ReferralRewardBeneficiary")
   referralRewardsGenerated ReferralReward[]    @relation("ReferralRewardSource")
+  multiLevelReferralPointsEarned MultiLevelReferralPointReward[] @relation("MultiLevelReferralPointBeneficiary")
+  multiLevelReferralPointsGenerated MultiLevelReferralPointReward[] @relation("MultiLevelReferralPointPurchaser")
   createdAt           DateTime                @default(now())
   updatedAt           DateTime                @updatedAt
 
@@ -938,6 +947,7 @@ model Order {
   loyaltyTransactions     LoyaltyPointTransaction[]
   referralRewards         ReferralReward[]
   referralCommissions     ReferralCommission[]
+  multiLevelReferralPointRewards MultiLevelReferralPointReward[]
   couponApplication       CouponOrderApplication?
   notifications           Notification[]
   notificationEvents      NotificationEvent[]
@@ -2175,6 +2185,7 @@ model LoyaltyPointTransaction {
   rewardId      String?
   redemptionId  String?
   referralRewardId String?              @unique
+  multiLevelReferralPointRewardId String? @unique
   actorUserId   String?
   type          LoyaltyTransactionType
   pointsDelta   Int
@@ -2187,6 +2198,7 @@ model LoyaltyPointTransaction {
   reward        LoyaltyReward?         @relation(fields: [rewardId], references: [id], onDelete: SetNull)
   redemption    LoyaltyRewardRedemption? @relation(fields: [redemptionId], references: [id], onDelete: SetNull)
   referralReward ReferralReward?       @relation(fields: [referralRewardId], references: [id], onDelete: SetNull)
+  multiLevelReferralPointReward MultiLevelReferralPointReward? @relation(fields: [multiLevelReferralPointRewardId], references: [id], onDelete: SetNull)
   actorUser     User?                  @relation("LoyaltyTransactionActor", fields: [actorUserId], references: [id], onDelete: SetNull)
   createdAt     DateTime               @default(now())
 
@@ -2196,6 +2208,7 @@ model LoyaltyPointTransaction {
   @@index([rewardId])
   @@index([redemptionId])
   @@index([referralRewardId])
+  @@index([multiLevelReferralPointRewardId])
   @@index([actorUserId])
   @@index([type, createdAt])
 }
@@ -2385,6 +2398,35 @@ model ReferralReward {
   @@index([ruleId])
   @@index([relationshipId])
   @@index([trigger, levelNumber])
+}
+
+model MultiLevelReferralPointReward {
+  id                    String                         @id @default(cuid())
+  eventKey              String                         @unique
+  orderId               String
+  purchaserUserId       String
+  beneficiaryUserId     String
+  referralLevel         Int
+  rewardType            String                         @default("MULTI_LEVEL_REFERRAL_POINTS")
+  eligibleProductAmount Decimal                        @db.Decimal(18, 2)
+  pointsPer10EUR        Int
+  pointsAwarded         Int
+  status                MultiLevelReferralPointStatus  @default(AWARDED)
+  metadata              Json?
+  awardedAt             DateTime                       @default(now())
+  reversedAt            DateTime?
+  order                 Order                          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  purchaserUser         User                           @relation("MultiLevelReferralPointPurchaser", fields: [purchaserUserId], references: [id], onDelete: Cascade)
+  beneficiaryUser       User                           @relation("MultiLevelReferralPointBeneficiary", fields: [beneficiaryUserId], references: [id], onDelete: Cascade)
+  loyaltyTransaction    LoyaltyPointTransaction?
+  createdAt             DateTime                       @default(now())
+  updatedAt             DateTime                       @updatedAt
+
+  @@index([orderId])
+  @@index([purchaserUserId])
+  @@index([beneficiaryUserId, status])
+  @@index([referralLevel])
+  @@index([status, createdAt])
 }
 
 model CouponCartApplication {
@@ -2623,12 +2665,32 @@ enum ReferralCommissionStatus {
 }
 
 model ReferralCommissionConfig {
-  id         String        @id @default(cuid())
-  rank       ReferralRank  @unique
-  percentage Decimal       @db.Decimal(5, 2)
-  isActive   Boolean       @default(true)
-  createdAt  DateTime      @default(now())
-  updatedAt  DateTime      @updatedAt
+  id          String        @id @default(cuid())
+  levelNumber Int
+  rank        ReferralRank
+  percentage  Decimal       @db.Decimal(5, 2)
+  isActive    Boolean       @default(true)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@unique([levelNumber, rank])
+  @@index([levelNumber])
+}
+
+model ReferralCommissionSettings {
+  id                 String   @id @default(cuid())
+  maxCommissionLevel Int      @default(2)
+  updatedAt          DateTime @updatedAt
+}
+
+model ReferralPointSettings {
+  id                      String   @id @default(cuid())
+  purchaserPointsPer10EUR Int      @default(5)
+  level1PointsPer10EUR    Int      @default(5)
+  level2PointsPer10EUR    Int      @default(4)
+  level3PointsPer10EUR    Int      @default(3)
+  maxReferralLevel        Int      @default(3)
+  updatedAt               DateTime @updatedAt
 }
 
 model ReferralCommission {
@@ -2637,6 +2699,7 @@ model ReferralCommission {
   orderId               String
   referrerUserId        String
   purchaserUserId       String
+  referralLevel         Int                      @default(1)
   rank                  ReferralRank
   percentage            Decimal                  @db.Decimal(5, 2)
   eligibleProductAmount Decimal                  @db.Decimal(18, 2)
@@ -2655,6 +2718,7 @@ model ReferralCommission {
   @@index([orderId])
   @@index([referrerUserId])
   @@index([purchaserUserId])
+  @@index([referralLevel])
   @@index([status])
   @@index([createdAt])
 }
