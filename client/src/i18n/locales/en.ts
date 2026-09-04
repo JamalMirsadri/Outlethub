@@ -316,6 +316,7 @@ export const en = {
     notifications: "Notifications",
     rewards: "My Rewards",
     referrals: "My Referrals",
+    wallet: "My Wallet",
     alerts: "Alerts",
     settings: "Settings",
     myRewardsTitle: "My Rewards",

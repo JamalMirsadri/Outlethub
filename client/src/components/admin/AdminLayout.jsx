@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, Outlet } from "react-router-dom";
-import { LayoutDashboard, Package, ShoppingCart, Tag, Layers3, Link2, DollarSign, BarChart3, Activity, Bell, ChevronLeft, Menu, Sun, Moon, Globe, Truck, ClipboardList, CreditCard, Landmark, Users, FilePenLine, Award, TicketPercent, GitBranch, Megaphone, LogOut, Mail, Bug } from "lucide-react";
+import { LayoutDashboard, Package, ShoppingCart, Tag, Layers3, Link2, DollarSign, BarChart3, Activity, Bell, ChevronLeft, Menu, Sun, Moon, Globe, Truck, ClipboardList, CreditCard, Landmark, Users, FilePenLine, Award, TicketPercent, GitBranch, Megaphone, LogOut, Mail, Bug, Wallet } from "lucide-react";
 import { useTheme } from "@/components/ThemeProvider";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { useAuth } from "@/contexts/AuthContext";
@@ -11,6 +11,8 @@ const NAV_ITEMS = [
   { icon: Package, label: "Products", path: "/admin/products" },
   { icon: ShoppingCart, label: "Orders", path: "/admin/orders" },
   { icon: Users, label: "Users", path: "/admin/users" },
+  { icon: Wallet, label: "Wallets", path: "/admin/wallets" },
+  { icon: Wallet, label: "Commissions", path: "/admin/referral-commissions" },
   { icon: CreditCard, label: "Payments", path: "/admin/payments" },
   { icon: CreditCard, label: "Pay Review", path: "/admin/payments/review" },
   { icon: Landmark, label: "Bank Accts", path: "/admin/bank-accounts" },
@@ -53,13 +55,13 @@ const NAV_SECTIONS = [
     id: "orders-sales",
     title: "Orders & Sales",
     icon: ShoppingCart,
-    items: ["/admin/orders", "/admin/coupons", "/admin/loyalty", "/admin/referrals"],
+    items: ["/admin/orders", "/admin/coupons", "/admin/loyalty", "/admin/referrals", "/admin/referral-commissions"],
   },
   {
     id: "customers",
     title: "Customers",
     icon: Users,
-    items: ["/admin/users"],
+    items: ["/admin/users", "/admin/wallets"],
   },
   {
     id: "procurement",

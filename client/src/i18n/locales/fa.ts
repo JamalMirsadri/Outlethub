@@ -318,6 +318,7 @@ export const fa: TranslationResource = {
     notifications: "اعلان‌ها",
     rewards: "پاداش‌های من",
     referrals: "معرفی‌ها",
+    wallet: "کیف پول من",
     alerts: "هشدارها",
     settings: "تنظیمات",
     myRewardsTitle: "پاداش‌های من",

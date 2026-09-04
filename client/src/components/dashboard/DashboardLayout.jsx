@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link, useLocation, Outlet } from "react-router-dom";
-import { Package, Heart, Bell, User, MapPin, CreditCard, ChevronLeft, Menu, X, Gift, Users, LogOut } from "lucide-react";
+import { Package, Heart, Bell, User, MapPin, CreditCard, ChevronLeft, Menu, X, Gift, Users, LogOut, Wallet } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import Navbar from "@/components/landing/Navbar";
 import { useAuth } from "@/contexts/AuthContext";
@@ -18,6 +18,7 @@ export default function DashboardLayout() {
     { icon: Bell, label: t("dashboard.alerts"), path: "/dashboard/alerts" },
     { icon: Gift, label: t("dashboard.rewards"), path: "/dashboard/rewards" },
     { icon: Users, label: t("dashboard.referrals"), path: "/dashboard/referrals" },
+    { icon: Wallet, label: t("dashboard.wallet"), path: "/dashboard/wallet" },
     { icon: User, label: t("dashboard.profile"), path: "/dashboard/profile" },
     { icon: MapPin, label: t("dashboard.addresses"), path: "/dashboard/addresses" },
     { icon: CreditCard, label: t("dashboard.payments"), path: "/dashboard/payments" },

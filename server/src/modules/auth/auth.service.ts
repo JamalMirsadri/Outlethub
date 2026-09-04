@@ -16,6 +16,7 @@ import {
 } from "../../services/jwt.service.js";
 import { notificationsService } from "../notifications/notifications.service.js";
 import { referralService } from "../commerce/referral.service.js";
+import { walletService } from "../wallet/wallet.service.js";
 import { isSessionInactive, SESSION_INACTIVITY_TIMEOUT_MS } from "./session.utils.js";
 import type {
   AdminResetUserPasswordInput,
@@ -368,6 +369,8 @@ export class AuthService {
           userId: createdUser.id,
           referralCode: input.referralCode ?? null,
         });
+
+        await walletService.createForUser(transaction, createdUser.id);
 
         return createdUser;
       });

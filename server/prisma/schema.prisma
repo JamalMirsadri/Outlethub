@@ -474,6 +474,7 @@ model User {
   avatarUrl           String?
   avatarPublicId      String?
   preferredCurrency   String                  @default("EUR")
+  referralRank        ReferralRank            @default(SILVER)
   status              UserStatus              @default(PENDING)
   emailVerified       Boolean                 @default(false)
   emailVerifiedAt     DateTime?
@@ -502,6 +503,10 @@ model User {
   reviews             Review[]
   auditLogs           AuditLog[]
   loyaltyAccount      LoyaltyAccount?
+  wallet              Wallet?
+  walletWithdrawals   WalletWithdrawal[]
+  referralCommissionsEarned ReferralCommission[] @relation("ReferralCommissionReferrer")
+  referralCommissionsGenerated ReferralCommission[] @relation("ReferralCommissionPurchaser")
   loyaltyTransactions LoyaltyPointTransaction[] @relation("LoyaltyTransactionUser")
   loyaltyAdjustments  LoyaltyPointTransaction[] @relation("LoyaltyTransactionActor")
   rewardRedemptions   LoyaltyRewardRedemption[]
@@ -932,6 +937,7 @@ model Order {
   loyaltyAward            LoyaltyOrderPointAward?
   loyaltyTransactions     LoyaltyPointTransaction[]
   referralRewards         ReferralReward[]
+  referralCommissions     ReferralCommission[]
   couponApplication       CouponOrderApplication?
   notifications           Notification[]
   notificationEvents      NotificationEvent[]
@@ -2504,5 +2510,151 @@ model SecurityBlock {
   @@index([ip, status])
   @@index([status, expiresAt])
   @@index([expiresAt])
+  @@index([createdAt])
+}
+
+enum WalletStatus {
+  ACTIVE
+  SUSPENDED
+  CLOSED
+}
+
+enum WalletTransactionType {
+  ADMIN_CREDIT
+  ADMIN_DEBIT
+  WITHDRAWAL_REQUEST
+  WITHDRAWAL_REJECTED
+  WITHDRAWAL_APPROVED
+  WITHDRAWAL_COMPLETED
+  WITHDRAWAL_CANCELLED
+  REFUND
+  ADJUSTMENT
+  REFERRAL_COMMISSION
+  REFERRAL_COMMISSION_REVERSAL
+}
+
+enum WalletTransactionStatus {
+  COMPLETED
+  PENDING
+  FAILED
+  CANCELLED
+}
+
+enum WithdrawalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+  COMPLETED
+}
+
+model Wallet {
+  id           String              @id @default(cuid())
+  walletId     String              @unique
+  userId       String              @unique
+  currency     String              @default("EUR")
+  balance      Decimal             @default(0) @db.Decimal(18, 2)
+  status       WalletStatus        @default(ACTIVE)
+  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions WalletTransaction[]
+  withdrawals  WalletWithdrawal[]
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model WalletTransaction {
+  id            String                  @id @default(cuid())
+  walletId      String
+  type          WalletTransactionType
+  amount        Decimal                 @db.Decimal(18, 2)
+  balanceBefore Decimal                 @db.Decimal(18, 2)
+  balanceAfter  Decimal                 @db.Decimal(18, 2)
+  currency      String                  @default("EUR")
+  status        WalletTransactionStatus @default(COMPLETED)
+  referenceType String?
+  referenceId   String?
+  description   String?
+  metadata      Json?
+  createdBy     String?
+  createdAt     DateTime                @default(now())
+  wallet        Wallet                  @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  referralCommission ReferralCommission?
+
+  @@index([walletId, createdAt])
+  @@index([type])
+  @@index([status])
+  @@index([referenceId])
+}
+
+model WalletWithdrawal {
+  id          String           @id @default(cuid())
+  walletId    String
+  userId      String
+  amount      Decimal          @db.Decimal(18, 2)
+  currency    String           @default("EUR")
+  status      WithdrawalStatus @default(PENDING)
+  requestedAt DateTime         @default(now())
+  processedAt DateTime?
+  processedBy String?
+  adminNote   String?
+  wallet      Wallet           @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([walletId])
+  @@index([userId])
+  @@index([status])
+  @@index([requestedAt])
+}
+
+enum ReferralRank {
+  SILVER
+  GOLD
+  PLATINUM
+  DIAMOND
+}
+
+enum ReferralCommissionStatus {
+  AWARDED
+  REVERSED
+}
+
+model ReferralCommissionConfig {
+  id         String        @id @default(cuid())
+  rank       ReferralRank  @unique
+  percentage Decimal       @db.Decimal(5, 2)
+  isActive   Boolean       @default(true)
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+}
+
+model ReferralCommission {
+  id                    String                   @id @default(cuid())
+  eventKey              String                   @unique
+  orderId               String
+  referrerUserId        String
+  purchaserUserId       String
+  rank                  ReferralRank
+  percentage            Decimal                  @db.Decimal(5, 2)
+  eligibleProductAmount Decimal                  @db.Decimal(18, 2)
+  commissionAmount      Decimal                  @db.Decimal(18, 2)
+  walletTransactionId   String                   @unique
+  status                ReferralCommissionStatus @default(AWARDED)
+  reversedAt            DateTime?
+  metadata              Json?
+  order                 Order                    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  referrerUser          User                     @relation("ReferralCommissionReferrer", fields: [referrerUserId], references: [id], onDelete: Cascade)
+  purchaserUser         User                     @relation("ReferralCommissionPurchaser", fields: [purchaserUserId], references: [id], onDelete: Cascade)
+  walletTransaction     WalletTransaction         @relation(fields: [walletTransactionId], references: [id], onDelete: Cascade)
+  createdAt             DateTime                 @default(now())
+  updatedAt             DateTime                 @updatedAt
+
+  @@index([orderId])
+  @@index([referrerUserId])
+  @@index([purchaserUserId])
+  @@index([status])
   @@index([createdAt])
 }
