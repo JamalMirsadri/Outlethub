@@ -379,6 +379,8 @@ export const fa: TranslationResource = {
     copyCode: "کپی کد",
     copyLink: "کپی لینک",
     shareInvite: "اشتراک‌گذاری دعوت",
+    instagramPasteTitle: "لینک کپی شد",
+    instagramPasteHint: "برای اشتراک‌گذاری، آن را در اینستاگرام جای‌گذاری کنید.",
     totalReferrals: "کل معرفی‌ها",
     activeReferrals: "معرفی‌های فعال",
     successfulPurchases: "خریدهای موفق",

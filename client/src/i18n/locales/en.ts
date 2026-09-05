@@ -377,6 +377,8 @@ export const en = {
     copyCode: "Copy code",
     copyLink: "Copy link",
     shareInvite: "Share invite",
+    instagramPasteTitle: "Link copied",
+    instagramPasteHint: "Paste it into Instagram to share.",
     totalReferrals: "Total Referrals",
     activeReferrals: "Active Referrals",
     successfulPurchases: "Successful Purchases",

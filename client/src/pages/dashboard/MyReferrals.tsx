@@ -11,9 +11,13 @@ import {
   ChevronRight,
   Copy,
   GitBranch,
+  Instagram,
   Link2,
   Loader2,
+  MessageCircle,
   Network,
+  Send,
+  Share2,
   Sparkles,
   Users,
 } from "lucide-react";
@@ -125,6 +129,7 @@ export default function MyReferrals() {
   const [data, setData] = useState(EMPTY_OVERVIEW);
   const [loading, setLoading] = useState(true);
   const [copyingKey, setCopyingKey] = useState("");
+  const [showShare, setShowShare] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -192,6 +197,46 @@ export default function MyReferrals() {
     }
   };
 
+  const shareUrls = useMemo(() => {
+    if (!referralLink) {
+      return { whatsapp: "", telegram: "" };
+    }
+
+    return {
+      whatsapp: `https://wa.me/?text=${encodeURIComponent(referralLink)}`,
+      telegram: `https://t.me/share/url?url=${encodeURIComponent(referralLink)}&text=${encodeURIComponent(referralLink)}`,
+    };
+  }, [referralLink]);
+
+  const handleInstagramShare = async () => {
+    if (!referralLink) {
+      return;
+    }
+
+    if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
+      try {
+        await navigator.share({ title: document.title, url: referralLink });
+        return;
+      } catch {
+        // Cancelled or unsupported; fall through to clipboard fallback.
+      }
+    }
+
+    try {
+      await navigator.clipboard.writeText(referralLink);
+      toast({
+        title: t("dashboard.instagramPasteTitle"),
+        description: t("dashboard.instagramPasteHint"),
+      });
+    } catch (error) {
+      toast({
+        title: t("common.errorOccurred"),
+        description: error instanceof Error ? error.message : t("common.tryAgain"),
+        variant: "destructive",
+      });
+    }
+  };
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -228,9 +273,9 @@ export default function MyReferrals() {
             <h3 className="text-xl font-semibold">{t("dashboard.profile")}</h3>
           </div>
           <div className="mt-5 grid gap-4 md:grid-cols-2">
-            <div className="rounded-2xl border border-border bg-card p-4">
+            <div className="min-w-0 rounded-2xl border border-border bg-card p-4">
               <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">{t("dashboard.referralCode")}</p>
-              <p className="mt-3 text-2xl font-semibold">{data.profile.referralCode}</p>
+              <p className="mt-3 break-all text-2xl font-semibold">{data.profile.referralCode}</p>
               <Button
                 variant="outline"
                 className="mt-4 w-full"
@@ -253,6 +298,45 @@ export default function MyReferrals() {
                 {copyingKey === "link" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Link2 className="mr-2 h-4 w-4" />}
                 {t("dashboard.copyLink")}
               </Button>
+              <Button
+                variant="outline"
+                className="mt-2 w-full"
+                onClick={() => setShowShare((current) => !current)}
+                disabled={!referralLink}
+              >
+                <Share2 className="mr-2 h-4 w-4" />
+                {t("dashboard.shareInvite")}
+              </Button>
+              {showShare && referralLink ? (
+                <div className="mt-2 grid grid-cols-3 gap-2">
+                  <a
+                    href={shareUrls.whatsapp}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center justify-center gap-1.5 rounded-md border border-input px-2 py-2 text-xs font-medium text-foreground transition-colors hover:bg-secondary"
+                  >
+                    <MessageCircle className="h-4 w-4" />
+                    WhatsApp
+                  </a>
+                  <a
+                    href={shareUrls.telegram}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center justify-center gap-1.5 rounded-md border border-input px-2 py-2 text-xs font-medium text-foreground transition-colors hover:bg-secondary"
+                  >
+                    <Send className="h-4 w-4" />
+                    Telegram
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => void handleInstagramShare()}
+                    className="inline-flex items-center justify-center gap-1.5 rounded-md border border-input px-2 py-2 text-xs font-medium text-foreground transition-colors hover:bg-secondary"
+                  >
+                    <Instagram className="h-4 w-4" />
+                    Instagram
+                  </button>
+                </div>
+              ) : null}
             </div>
           </div>
         </div>
