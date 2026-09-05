@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 
 import { prisma } from "../../config/prisma.js";
 import { ApiError } from "../../utils/api-error.js";
+import { shippingService } from "../shipping/shipping.service.js";
 
 function decimal(value: number | string | Prisma.Decimal | null | undefined): Prisma.Decimal {
   if (value === null || value === undefined) {
@@ -151,46 +152,22 @@ export class PricingService {
     shippingMethodId?: string | null;
   }): Promise<CartPricingResult> {
     const settings = await this.getBusinessSettings();
-    const countryCode = input.countryCode || settings.defaultCountryCode;
     const totalWeightKg = input.items.reduce(
       (sum, item) => sum.plus(decimal(item.unitWeightKg ?? 1).mul(item.quantity)),
       new Prisma.Decimal(0),
     );
-    const shippingMethod =
-      (input.shippingMethodId
-        ? await prisma.shippingMethod.findUnique({
-            where: { id: input.shippingMethodId },
-          })
-        : await prisma.shippingMethod.findFirst({
-            where: {
-              countryCode,
-              isActive: true,
-              AND: [
-                {
-                  OR: [{ minWeightKg: null }, { minWeightKg: { lte: totalWeightKg } }],
-                },
-                {
-                  OR: [{ maxWeightKg: null }, { maxWeightKg: { gte: totalWeightKg } }],
-                },
-              ],
-            },
-            orderBy: [{ originCountryCode: "asc" }, { createdAt: "asc" }],
-          })) ?? null;
+    const totalQuantity = input.items.reduce((sum, item) => sum + item.quantity, 0);
 
     const subtotalAmount = input.items.reduce(
       (sum, item) => sum.plus(decimal(item.customerPaid).mul(item.quantity)),
       new Prisma.Decimal(0),
     );
     const freeShippingThreshold = decimal(settings.freeShippingThreshold);
-    const countryShippingFee = this.getCountryShippingDefault(settings, countryCode);
-    const selectedShippingFee =
-      shippingMethod?.baseFee !== null && shippingMethod?.baseFee !== undefined
-        ? decimal(shippingMethod.baseFee)
-        : countryShippingFee;
+    const baseShippingAmount = await shippingService.calculateShipping(totalQuantity);
     const shippingAmount =
       subtotalAmount.greaterThanOrEqualTo(freeShippingThreshold) && !freeShippingThreshold.isZero()
         ? new Prisma.Decimal(0)
-        : selectedShippingFee;
+        : baseShippingAmount;
     const handlingAmount = decimal(settings.handlingFee);
     const paymentFeeAmount = decimal(settings.paymentFee);
     const taxPercent = decimal(settings.vatPercent);

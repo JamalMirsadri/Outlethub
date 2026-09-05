@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 
-import { deleteShippingMethod, getCommerceSettings, upsertShippingMethod } from "@/api/commerce";
+import { deleteShippingMethod, getCommerceSettings, getShippingSettings, updateShippingSettings, upsertShippingMethod } from "@/api/commerce";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -29,15 +29,63 @@ export default function AdminShipping() {
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
+  const [shippingConfig, setShippingConfig] = useState(null);
+  const [shippingForm, setShippingForm] = useState({
+    first: "",
+    second: "",
+    third: "",
+    fourth: "",
+    fifth: "",
+    additional: "",
+    threshold: "",
+  });
 
   const loadSettings = async () => {
     const nextSettings = await getCommerceSettings();
     setSettings(nextSettings);
   };
 
+  const loadShippingConfig = async () => {
+    const config = await getShippingSettings();
+    setShippingConfig(config);
+    setShippingForm({
+      first: config.firstProductFee,
+      second: config.secondProductFee,
+      third: config.thirdProductFee,
+      fourth: config.fourthProductFee,
+      fifth: config.fifthProductFee,
+      additional: config.additionalProductFee,
+      threshold: String(config.threshold),
+    });
+  };
+
   useEffect(() => {
     loadSettings().catch(() => {}).finally(() => setLoading(false));
+    loadShippingConfig().catch(() => {});
   }, []);
+
+  const saveShippingConfig = async () => {
+    if (!window.confirm("Save quantity shipping rules? This affects future orders only.")) return;
+    try {
+      await updateShippingSettings({
+        firstProductFee: shippingForm.first,
+        secondProductFee: shippingForm.second,
+        thirdProductFee: shippingForm.third,
+        fourthProductFee: shippingForm.fourth,
+        fifthProductFee: shippingForm.fifth,
+        additionalProductFee: shippingForm.additional,
+        threshold: Number(shippingForm.threshold),
+      });
+      await loadShippingConfig();
+      toast({ title: "Shipping rules saved" });
+    } catch (error) {
+      toast({
+        title: "Shipping rules save failed",
+        description: error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const shippingRows = useMemo(() => settings?.shippingMethods ?? [], [settings]);
 
@@ -120,6 +168,48 @@ export default function AdminShipping() {
         </Button>
       </div>
 
+      <div className="rounded-xl border border-border bg-card p-5">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="font-display text-lg font-bold">Quantity Shipping Rules</h2>
+            {shippingConfig ? (
+              <p className="text-xs text-muted-foreground mt-1">
+                Last updated {new Date(shippingConfig.updatedAt).toLocaleString()}
+                {shippingConfig.updatedByEmail ? ` · by ${shippingConfig.updatedByEmail}` : ""}
+              </p>
+            ) : null}
+          </div>
+          <Button onClick={() => void saveShippingConfig()}>Save Rules</Button>
+        </div>
+
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <FeeField label="Product 1" value={shippingForm.first} onChange={(value) => setShippingForm((current) => ({ ...current, first: value }))} />
+          <FeeField label="Product 2" value={shippingForm.second} onChange={(value) => setShippingForm((current) => ({ ...current, second: value }))} />
+          <FeeField label="Product 3" value={shippingForm.third} onChange={(value) => setShippingForm((current) => ({ ...current, third: value }))} />
+          <FeeField label="Product 4" value={shippingForm.fourth} onChange={(value) => setShippingForm((current) => ({ ...current, fourth: value }))} />
+          <FeeField label="Product 5" value={shippingForm.fifth} onChange={(value) => setShippingForm((current) => ({ ...current, fifth: value }))} />
+          <FeeField label="Additional Product Fee" value={shippingForm.additional} onChange={(value) => setShippingForm((current) => ({ ...current, additional: value }))} />
+          <div>
+            <Label className="text-xs">Threshold</Label>
+            <Input type="number" min={1} max={5} value={shippingForm.threshold} onChange={(event) => setShippingForm((current) => ({ ...current, threshold: event.target.value }))} className="mt-1" />
+          </div>
+        </div>
+
+        {shippingConfig?.preview?.length ? (
+          <div className="mt-4 rounded-lg border border-border bg-secondary/30 p-4">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Preview</p>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-8">
+              {shippingConfig.preview.map((item) => (
+                <div key={item.quantity} className="rounded-lg bg-card px-3 py-2 text-sm">
+                  <span className="text-muted-foreground">{item.quantity} product{item.quantity === 1 ? "" : "s"}</span>
+                  <p className="font-medium">€{item.amount}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
+      </div>
+
       <div className="grid gap-4">
         {shippingRows.map((row) => (
           <div key={row.id} className="rounded-xl border border-border bg-card p-5">
@@ -194,6 +284,15 @@ export default function AdminShipping() {
           </div>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+function FeeField({ label, value, onChange }) {
+  return (
+    <div>
+      <Label className="text-xs">{label}</Label>
+      <Input type="number" min={0} step={0.01} value={value} onChange={(event) => onChange(event.target.value)} className="mt-1" />
     </div>
   );
 }

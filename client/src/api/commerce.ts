@@ -769,6 +769,43 @@ export async function deleteShippingMethod(id: string) {
   });
 }
 
+export interface ShippingSettingsResponse {
+  id: string;
+  firstProductFee: string;
+  secondProductFee: string;
+  thirdProductFee: string;
+  fourthProductFee: string;
+  fifthProductFee: string;
+  additionalProductFee: string;
+  threshold: number;
+  updatedByUserId: string | null;
+  updatedByEmail: string | null;
+  updatedAt: string;
+  preview: Array<{ quantity: number; amount: string }>;
+}
+
+export async function getShippingSettings() {
+  return http<ShippingSettingsResponse>("/admin/shipping-settings", {
+    token: getRequiredToken(),
+  });
+}
+
+export async function updateShippingSettings(payload: {
+  firstProductFee: string;
+  secondProductFee: string;
+  thirdProductFee: string;
+  fourthProductFee: string;
+  fifthProductFee: string;
+  additionalProductFee: string;
+  threshold: number;
+}) {
+  return http<ShippingSettingsResponse>("/admin/shipping-settings", {
+    method: "PATCH",
+    token: getRequiredToken(),
+    body: JSON.stringify(payload),
+  });
+}
+
 export async function previewProfit(payload: {
   supplierPrice: number;
   marginPercent: number;

@@ -1383,6 +1383,20 @@ model ShippingMethod {
   @@index([isActive])
 }
 
+model ShippingConfig {
+  id                   String   @id @default(cuid())
+  firstProductFee      Decimal  @db.Decimal(10, 2) @default(10)
+  secondProductFee     Decimal  @db.Decimal(10, 2) @default(8)
+  thirdProductFee      Decimal  @db.Decimal(10, 2) @default(6)
+  fourthProductFee     Decimal  @db.Decimal(10, 2) @default(4)
+  fifthProductFee      Decimal  @db.Decimal(10, 2) @default(4)
+  additionalProductFee Decimal  @db.Decimal(10, 2) @default(4)
+  threshold            Int      @default(5)
+  updatedByUserId      String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}
+
 model BrandSource {
   id               String            @id @default(cuid())
   brandName        String
