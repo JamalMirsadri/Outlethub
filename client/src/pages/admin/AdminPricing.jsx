@@ -182,7 +182,7 @@ export default function AdminPricing() {
       <div>
         <h1 className="font-display text-2xl font-bold">Pricing Engine</h1>
         <p className="text-sm text-muted-foreground">
-          Global Business Settings drives product pricing, VAT, handling, payment fees, and minimum profit. Customer shipping is now quantity-based and configured separately in the Shipping Engine (Quantity Shipping Rules).
+          Global Business Settings drives product pricing, VAT, handling, payment fees, and minimum profit. Customer shipping and Agent Cost are now quantity-based and configured separately in the Shipping &amp; Agent Cost Rules.
         </p>
       </div>
 
@@ -236,8 +236,8 @@ export default function AdminPricing() {
               </Select>
             </div>
             {[
-              ["defaultMarginPercent", "Agent Cost %"],
-              ["fixedProfitAmount", "Fixed Agent Cost"],
+              ["defaultMarginPercent", "Profit Margin %"],
+              ["fixedProfitAmount", "Fixed Profit (internal)"],
               ["minimumProfitAmount", "Minimum Profit"],
               ["portugalShippingFee", "Legacy PT supplier shipping"],
               ["spainShippingFee", "Legacy ES supplier shipping"],

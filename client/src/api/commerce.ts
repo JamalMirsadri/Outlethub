@@ -93,6 +93,7 @@ export interface CartRecord {
   countryCode: string;
   subtotalAmount: number;
   shippingAmount: number;
+  agentCostAmount: number;
   handlingAmount: number;
   paymentFeeAmount: number;
   taxAmount: number;
@@ -800,6 +801,45 @@ export async function updateShippingSettings(payload: {
   threshold: number;
 }) {
   return http<ShippingSettingsResponse>("/admin/shipping-settings", {
+    method: "PATCH",
+    token: getRequiredToken(),
+    body: JSON.stringify(payload),
+  });
+}
+
+export interface AgentCostSettingsResponse {
+  id: string;
+  firstProductFee: string;
+  secondProductFee: string;
+  thirdProductFee: string;
+  fourthProductFee: string;
+  fifthProductFee: string;
+  sixthProductFee: string;
+  additionalProductFee: string;
+  threshold: number;
+  updatedByUserId: string | null;
+  updatedByEmail: string | null;
+  updatedAt: string;
+  preview: Array<{ quantity: number; amount: string }>;
+}
+
+export async function getAgentCostSettings() {
+  return http<AgentCostSettingsResponse>("/admin/agent-cost-settings", {
+    token: getRequiredToken(),
+  });
+}
+
+export async function updateAgentCostSettings(payload: {
+  firstProductFee: string;
+  secondProductFee: string;
+  thirdProductFee: string;
+  fourthProductFee: string;
+  fifthProductFee: string;
+  sixthProductFee: string;
+  additionalProductFee: string;
+  threshold: number;
+}) {
+  return http<AgentCostSettingsResponse>("/admin/agent-cost-settings", {
     method: "PATCH",
     token: getRequiredToken(),
     body: JSON.stringify(payload),

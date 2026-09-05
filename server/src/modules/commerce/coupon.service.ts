@@ -3,6 +3,7 @@ import { CouponDiscountType, CouponStatus, LoyaltyRewardType, OrderStatus, Prism
 import { prisma } from "../../config/prisma.js";
 import { ApiError } from "../../utils/api-error.js";
 import { pricingService } from "./pricing.service.js";
+import { calculateCustomerTotal } from "./pricing.logic.js";
 
 type PrismaExecutor = typeof prisma | Prisma.TransactionClient;
 
@@ -84,6 +85,7 @@ interface PromotionTotals {
   currency: string;
   subtotalAmount: Prisma.Decimal;
   shippingAmount: Prisma.Decimal;
+  agentCostAmount: Prisma.Decimal;
   handlingAmount: Prisma.Decimal;
   paymentFeeAmount: Prisma.Decimal;
   taxAmount: Prisma.Decimal;
@@ -111,6 +113,7 @@ interface EvaluatedPromotionSummary {
   totalAfterDiscount: number;
   subtotalAfterDiscount: number;
   shippingAfterDiscount: number;
+  agentCostAmount: number;
   handlingAmount: number;
   paymentFeeAmount: number;
   taxAmount: number;
@@ -491,6 +494,7 @@ export class CouponService {
       totalAfterDiscount: toNumber(baseTotal),
       subtotalAfterDiscount: toNumber(input.totals.subtotalAmount),
       shippingAfterDiscount: toNumber(input.totals.shippingAmount),
+      agentCostAmount: toNumber(input.totals.agentCostAmount),
       handlingAmount: toNumber(input.totals.handlingAmount),
       paymentFeeAmount: toNumber(input.totals.paymentFeeAmount),
       taxAmount: toNumber(input.totals.taxAmount),
@@ -632,12 +636,14 @@ export class CouponService {
       new Prisma.Decimal(0),
       decimal(input.totals.shippingAmount).minus(shippingDiscountAmount),
     ).toDecimalPlaces(2);
-    const taxableAmount = subtotalAfterDiscount
-      .plus(decimal(input.totals.handlingAmount))
-      .plus(decimal(input.totals.paymentFeeAmount))
-      .plus(shippingAfterDiscount);
-    const adjustedTaxAmount = taxableAmount.mul(decimal(input.totals.taxPercent)).div(100).toDecimalPlaces(2);
-    const totalAfterDiscount = taxableAmount.plus(adjustedTaxAmount).toDecimalPlaces(2);
+    const { taxAmount: adjustedTaxAmount, totalAmount: totalAfterDiscount } = calculateCustomerTotal({
+      subtotalAmount: subtotalAfterDiscount,
+      shippingAmount: shippingAfterDiscount,
+      agentCostAmount: input.totals.agentCostAmount,
+      handlingAmount: input.totals.handlingAmount,
+      paymentFeeAmount: input.totals.paymentFeeAmount,
+      taxPercent: input.totals.taxPercent,
+    });
     const savingsAmount = Prisma.Decimal.max(new Prisma.Decimal(0), baseTotal.minus(totalAfterDiscount)).toDecimalPlaces(2);
 
     return {
@@ -659,6 +665,7 @@ export class CouponService {
       totalAfterDiscount: toNumber(totalAfterDiscount),
       subtotalAfterDiscount: toNumber(subtotalAfterDiscount),
       shippingAfterDiscount: toNumber(shippingAfterDiscount),
+      agentCostAmount: toNumber(input.totals.agentCostAmount),
       handlingAmount: toNumber(input.totals.handlingAmount),
       paymentFeeAmount: toNumber(input.totals.paymentFeeAmount),
       taxAmount: toNumber(adjustedTaxAmount),
@@ -702,6 +709,7 @@ export class CouponService {
         totalAfterDiscount: toNumber(totals.totalAmount),
         subtotalAfterDiscount: toNumber(totals.subtotalAmount),
         shippingAfterDiscount: toNumber(totals.shippingAmount),
+        agentCostAmount: toNumber(totals.agentCostAmount),
         handlingAmount: toNumber(totals.handlingAmount),
         paymentFeeAmount: toNumber(totals.paymentFeeAmount),
         taxAmount: toNumber(totals.taxAmount),

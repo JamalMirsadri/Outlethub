@@ -4,6 +4,8 @@ import { prisma } from "../../config/prisma.js";
 import { ApiError } from "../../utils/api-error.js";
 import { shippingService } from "../shipping/shipping.service.js";
 import { resolveCustomerShipping } from "../shipping/shipping.logic.js";
+import { agentCostService } from "../agent-cost/agent-cost.service.js";
+import { calculateCustomerTotal } from "./pricing.logic.js";
 
 function decimal(value: number | string | Prisma.Decimal | null | undefined): Prisma.Decimal {
   if (value === null || value === undefined) {
@@ -55,6 +57,7 @@ export interface CartPricingResult {
   currency: string;
   subtotalAmount: Prisma.Decimal;
   shippingAmount: Prisma.Decimal;
+  agentCostAmount: Prisma.Decimal;
   handlingAmount: Prisma.Decimal;
   paymentFeeAmount: Prisma.Decimal;
   taxAmount: Prisma.Decimal;
@@ -176,17 +179,24 @@ export class PricingService {
       freeShippingThreshold,
       baseShippingAmount,
     });
+    const agentCostAmount = await agentCostService.calculateAgentCost(totalQuantity);
     const handlingAmount = decimal(settings.handlingFee);
     const paymentFeeAmount = decimal(settings.paymentFee);
     const taxPercent = decimal(settings.vatPercent);
-    const taxableAmount = subtotalAmount.plus(shippingAmount).plus(handlingAmount).plus(paymentFeeAmount);
-    const taxAmount = taxableAmount.mul(taxPercent).div(100).toDecimalPlaces(2);
-    const totalAmount = taxableAmount.plus(taxAmount).toDecimalPlaces(2);
+    const { taxAmount, totalAmount } = calculateCustomerTotal({
+      subtotalAmount,
+      shippingAmount,
+      agentCostAmount,
+      handlingAmount,
+      paymentFeeAmount,
+      taxPercent,
+    });
 
     return {
       currency: settings.defaultCurrency,
       subtotalAmount: subtotalAmount.toDecimalPlaces(2),
       shippingAmount,
+      agentCostAmount,
       handlingAmount,
       paymentFeeAmount,
       taxAmount,

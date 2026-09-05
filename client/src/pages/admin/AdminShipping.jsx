@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 
-import { deleteShippingMethod, getCommerceSettings, getShippingSettings, updateShippingSettings, upsertShippingMethod } from "@/api/commerce";
+import { deleteShippingMethod, getAgentCostSettings, getCommerceSettings, getShippingSettings, updateAgentCostSettings, updateShippingSettings, upsertShippingMethod } from "@/api/commerce";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -39,6 +39,17 @@ export default function AdminShipping() {
     additional: "",
     threshold: "",
   });
+  const [agentCostConfig, setAgentCostConfig] = useState(null);
+  const [agentCostForm, setAgentCostForm] = useState({
+    first: "",
+    second: "",
+    third: "",
+    fourth: "",
+    fifth: "",
+    sixth: "",
+    additional: "",
+    threshold: "",
+  });
 
   const loadSettings = async () => {
     const nextSettings = await getCommerceSettings();
@@ -59,9 +70,25 @@ export default function AdminShipping() {
     });
   };
 
+  const loadAgentCostConfig = async () => {
+    const config = await getAgentCostSettings();
+    setAgentCostConfig(config);
+    setAgentCostForm({
+      first: config.firstProductFee,
+      second: config.secondProductFee,
+      third: config.thirdProductFee,
+      fourth: config.fourthProductFee,
+      fifth: config.fifthProductFee,
+      sixth: config.sixthProductFee,
+      additional: config.additionalProductFee,
+      threshold: String(config.threshold),
+    });
+  };
+
   useEffect(() => {
     loadSettings().catch(() => {}).finally(() => setLoading(false));
     loadShippingConfig().catch(() => {});
+    loadAgentCostConfig().catch(() => {});
   }, []);
 
   const saveShippingConfig = async () => {
@@ -81,6 +108,30 @@ export default function AdminShipping() {
     } catch (error) {
       toast({
         title: "Shipping rules save failed",
+        description: error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const saveAgentCostConfig = async () => {
+    if (!window.confirm("Save agent cost rules? This affects future orders only.")) return;
+    try {
+      await updateAgentCostSettings({
+        firstProductFee: agentCostForm.first,
+        secondProductFee: agentCostForm.second,
+        thirdProductFee: agentCostForm.third,
+        fourthProductFee: agentCostForm.fourth,
+        fifthProductFee: agentCostForm.fifth,
+        sixthProductFee: agentCostForm.sixth,
+        additionalProductFee: agentCostForm.additional,
+        threshold: Number(agentCostForm.threshold),
+      });
+      await loadAgentCostConfig();
+      toast({ title: "Agent cost rules saved" });
+    } catch (error) {
+      toast({
+        title: "Agent cost rules save failed",
         description: error instanceof Error ? error.message : "Please try again.",
         variant: "destructive",
       });
@@ -200,6 +251,49 @@ export default function AdminShipping() {
             <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Preview</p>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-8">
               {shippingConfig.preview.map((item) => (
+                <div key={item.quantity} className="rounded-lg bg-card px-3 py-2 text-sm">
+                  <span className="text-muted-foreground">{item.quantity} product{item.quantity === 1 ? "" : "s"}</span>
+                  <p className="font-medium">€{item.amount}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
+      </div>
+
+      <div className="rounded-xl border border-border bg-card p-5">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="font-display text-lg font-bold">Agent Cost Rules</h2>
+            {agentCostConfig ? (
+              <p className="text-xs text-muted-foreground mt-1">
+                Last updated {new Date(agentCostConfig.updatedAt).toLocaleString()}
+                {agentCostConfig.updatedByEmail ? ` · by ${agentCostConfig.updatedByEmail}` : ""}
+              </p>
+            ) : null}
+          </div>
+          <Button onClick={() => void saveAgentCostConfig()}>Save Rules</Button>
+        </div>
+
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <FeeField label="Product 1" value={agentCostForm.first} onChange={(value) => setAgentCostForm((current) => ({ ...current, first: value }))} />
+          <FeeField label="Product 2" value={agentCostForm.second} onChange={(value) => setAgentCostForm((current) => ({ ...current, second: value }))} />
+          <FeeField label="Product 3" value={agentCostForm.third} onChange={(value) => setAgentCostForm((current) => ({ ...current, third: value }))} />
+          <FeeField label="Product 4" value={agentCostForm.fourth} onChange={(value) => setAgentCostForm((current) => ({ ...current, fourth: value }))} />
+          <FeeField label="Product 5" value={agentCostForm.fifth} onChange={(value) => setAgentCostForm((current) => ({ ...current, fifth: value }))} />
+          <FeeField label="Product 6" value={agentCostForm.sixth} onChange={(value) => setAgentCostForm((current) => ({ ...current, sixth: value }))} />
+          <FeeField label="Additional Product Fee" value={agentCostForm.additional} onChange={(value) => setAgentCostForm((current) => ({ ...current, additional: value }))} />
+          <div>
+            <Label className="text-xs">Threshold</Label>
+            <Input type="number" min={1} max={6} value={agentCostForm.threshold} onChange={(event) => setAgentCostForm((current) => ({ ...current, threshold: event.target.value }))} className="mt-1" />
+          </div>
+        </div>
+
+        {agentCostConfig?.preview?.length ? (
+          <div className="mt-4 rounded-lg border border-border bg-secondary/30 p-4">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Preview</p>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-8">
+              {agentCostConfig.preview.map((item) => (
                 <div key={item.quantity} className="rounded-lg bg-card px-3 py-2 text-sm">
                   <span className="text-muted-foreground">{item.quantity} product{item.quantity === 1 ? "" : "s"}</span>
                   <p className="font-medium">€{item.amount}</p>

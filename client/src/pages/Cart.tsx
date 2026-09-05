@@ -88,10 +88,7 @@ export default function Cart() {
     (sum, item) => sum + item.supplierCost * item.quantity,
     0,
   );
-  const agentCostAmount = cart.items.reduce(
-    (sum, item) => sum + item.profitAmount * item.quantity,
-    0,
-  );
+  const agentCostAmount = cart.agentCostAmount;
 
   return (
     <div className="min-h-screen bg-background">

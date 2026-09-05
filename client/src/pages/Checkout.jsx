@@ -266,10 +266,7 @@ export default function Checkout() {
     (sum, item) => sum + item.supplierCost * item.quantity,
     0,
   );
-  const agentCostAmount = summary.cart.items.reduce(
-    (sum, item) => sum + item.profitAmount * item.quantity,
-    0,
-  );
+  const agentCostAmount = summary.cart.agentCostAmount;
 
   const applyPromotion = async () => {
     if (!promotionCode.trim()) {

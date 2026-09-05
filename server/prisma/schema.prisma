@@ -834,6 +834,7 @@ model Cart {
   countryCode       String
   subtotalAmount    Decimal      @db.Decimal(10, 2) @default(0)
   shippingAmount    Decimal      @db.Decimal(10, 2) @default(0)
+  agentCostAmount   Decimal      @db.Decimal(10, 2) @default(0)
   handlingAmount    Decimal      @db.Decimal(10, 2) @default(0)
   paymentFeeAmount  Decimal      @db.Decimal(10, 2) @default(0)
   taxAmount         Decimal      @db.Decimal(10, 2) @default(0)
@@ -899,6 +900,7 @@ model Order {
   supplierSubtotal        Decimal      @db.Decimal(10, 2) @default(0)
   subtotal                Decimal      @db.Decimal(10, 2)
   shippingAmount          Decimal      @db.Decimal(10, 2)
+  agentCostAmount         Decimal      @db.Decimal(10, 2) @default(0)
   handlingAmount          Decimal      @db.Decimal(10, 2) @default(0)
   paymentFeeAmount        Decimal      @db.Decimal(10, 2) @default(0)
   taxAmount               Decimal      @db.Decimal(10, 2)
@@ -1392,6 +1394,21 @@ model ShippingConfig {
   fifthProductFee      Decimal  @db.Decimal(10, 2) @default(4)
   additionalProductFee Decimal  @db.Decimal(10, 2) @default(4)
   threshold            Int      @default(5)
+  updatedByUserId      String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}
+
+model AgentCostConfig {
+  id                   String   @id @default(cuid())
+  firstProductFee      Decimal  @db.Decimal(10, 2) @default(7.99)
+  secondProductFee     Decimal  @db.Decimal(10, 2) @default(6.99)
+  thirdProductFee      Decimal  @db.Decimal(10, 2) @default(4.99)
+  fourthProductFee     Decimal  @db.Decimal(10, 2) @default(3.99)
+  fifthProductFee      Decimal  @db.Decimal(10, 2) @default(3.99)
+  sixthProductFee      Decimal  @db.Decimal(10, 2) @default(3.99)
+  additionalProductFee Decimal  @db.Decimal(10, 2) @default(3.99)
+  threshold            Int      @default(6)
   updatedByUserId      String?
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt

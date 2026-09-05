@@ -21,6 +21,7 @@
     "test:referral-commission-multilevel": "tsx --test tests/referral-commission-multilevel.test.ts",
     "test:referral-admin": "tsx --test tests/referral-admin.test.ts",
     "test:shipping": "tsx --test tests/shipping.test.ts",
+    "test:agent-cost": "tsx --test tests/agent-cost.test.ts",
     "prisma:generate": "prisma generate",
     "prisma:deploy": "prisma migrate deploy",
     "prisma:migrate": "prisma migrate dev",

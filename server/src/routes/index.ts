@@ -14,6 +14,7 @@ import { walletRouter } from "../modules/wallet/wallet.routes.js";
 import { referralCommissionRouter } from "../modules/wallet/referral-commission.routes.js";
 import { referralAdminRouter } from "../modules/referral-admin/referral-admin.routes.js";
 import { shippingRouter } from "../modules/shipping/shipping.routes.js";
+import { agentCostRouter } from "../modules/agent-cost/agent-cost.routes.js";
 
 export const apiRouter = Router();
 
@@ -37,3 +38,4 @@ apiRouter.use(walletRouter);
 apiRouter.use(referralCommissionRouter);
 apiRouter.use(referralAdminRouter);
 apiRouter.use(shippingRouter);
+apiRouter.use(agentCostRouter);

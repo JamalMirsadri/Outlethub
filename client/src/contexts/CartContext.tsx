@@ -28,6 +28,7 @@ const EMPTY_CART: CartRecord = {
   countryCode: "PT",
   subtotalAmount: 0,
   shippingAmount: 0,
+  agentCostAmount: 0,
   handlingAmount: 0,
   paymentFeeAmount: 0,
   taxAmount: 0,
