@@ -6,6 +6,7 @@ import {
   DEFAULT_SHIPPING_CONFIG,
   calculateQuantityShipping,
   MAX_SHIPPING_TIERS,
+  resolveCustomerShipping,
 } from "../src/modules/shipping/shipping.logic.js";
 import { updateShippingSettingsSchema } from "../src/modules/shipping/shipping.schemas.js";
 import { computeCommission } from "../src/modules/wallet/referral-commission.logic.js";
@@ -102,4 +103,29 @@ test("17. shipping settings schema exposes no user-identity fields", () => {
 test("threshold is capped to the configured tier count", () => {
   assert.equal(MAX_SHIPPING_TIERS, 5);
   assert.equal(money(calculateQuantityShipping(1000, cfg)), "4012.00");
+});
+
+test("legitimate free-shipping threshold still zeroes shipping", () => {
+  const base = calculateQuantityShipping(4, cfg);
+
+  assert.equal(
+    money(resolveCustomerShipping({ subtotalAmount: 120, freeShippingThreshold: 120, baseShippingAmount: base })),
+    "0.00",
+  );
+  assert.equal(
+    money(resolveCustomerShipping({ subtotalAmount: 119, freeShippingThreshold: 120, baseShippingAmount: base })),
+    "28.00",
+  );
+  assert.equal(
+    money(resolveCustomerShipping({ subtotalAmount: 50, freeShippingThreshold: 0, baseShippingAmount: base })),
+    "28.00",
+  );
+});
+
+test("pricing never overrides quantity-based shipping", () => {
+  // Customer shipping is the quantity result; there is no legacy flat-fee input.
+  const base = calculateQuantityShipping(4, cfg);
+  const resolved = resolveCustomerShipping({ subtotalAmount: 80, freeShippingThreshold: 120, baseShippingAmount: base });
+
+  assert.equal(money(resolved), "28.00");
 });

@@ -70,3 +70,28 @@ export function calculateQuantityShipping(quantity: number, config: QuantityShip
 
   return total.toDecimalPlaces(2);
 }
+
+/**
+ * Resolves the final customer-facing shipping amount.
+ *
+ * Precedence:
+ *   1. If freeShippingThreshold is non-zero and the subtotal reaches it -> €0.
+ *   2. Otherwise -> the quantity-based base shipping amount.
+ *
+ * The legacy flat country shipping fees must never override this result.
+ */
+export function resolveCustomerShipping(input: {
+  subtotalAmount: Prisma.Decimal | string | number;
+  freeShippingThreshold: Prisma.Decimal | string | number;
+  baseShippingAmount: Prisma.Decimal | string | number;
+}): Prisma.Decimal {
+  const subtotal = decimal(input.subtotalAmount);
+  const threshold = decimal(input.freeShippingThreshold);
+  const base = decimal(input.baseShippingAmount);
+
+  if (!threshold.isZero() && subtotal.greaterThanOrEqualTo(threshold)) {
+    return new Prisma.Decimal(0);
+  }
+
+  return base;
+}

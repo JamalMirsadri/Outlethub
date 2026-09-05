@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "../../config/prisma.js";
 import { ApiError } from "../../utils/api-error.js";
 import { shippingService } from "../shipping/shipping.service.js";
+import { resolveCustomerShipping } from "../shipping/shipping.logic.js";
 
 function decimal(value: number | string | Prisma.Decimal | null | undefined): Prisma.Decimal {
   if (value === null || value === undefined) {
@@ -65,6 +66,12 @@ export interface CartPricingResult {
 }
 
 export class PricingService {
+  /**
+   * Legacy supplier/local shipping cost per country. This is NO LONGER used for
+   * customer-facing shipping (customer shipping is quantity-based via
+   * ShippingConfig / shippingService). It is retained only as product-level
+   * informational data (e.g. supplier shipping estimate).
+   */
   private getCountryShippingDefault(
     settings: Awaited<ReturnType<PricingService["getBusinessSettings"]>>,
     countryCode?: string | null,
@@ -164,10 +171,11 @@ export class PricingService {
     );
     const freeShippingThreshold = decimal(settings.freeShippingThreshold);
     const baseShippingAmount = await shippingService.calculateShipping(totalQuantity);
-    const shippingAmount =
-      subtotalAmount.greaterThanOrEqualTo(freeShippingThreshold) && !freeShippingThreshold.isZero()
-        ? new Prisma.Decimal(0)
-        : baseShippingAmount;
+    const shippingAmount = resolveCustomerShipping({
+      subtotalAmount,
+      freeShippingThreshold,
+      baseShippingAmount,
+    });
     const handlingAmount = decimal(settings.handlingFee);
     const paymentFeeAmount = decimal(settings.paymentFee);
     const taxPercent = decimal(settings.vatPercent);

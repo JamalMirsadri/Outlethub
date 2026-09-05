@@ -182,7 +182,7 @@ export default function AdminPricing() {
       <div>
         <h1 className="font-display text-2xl font-bold">Pricing Engine</h1>
         <p className="text-sm text-muted-foreground">
-          Global Business Settings is the only pricing source for product pricing, checkout totals, order summaries, VAT, shipping, handling, payment fees, and minimum profit.
+          Global Business Settings drives product pricing, VAT, handling, payment fees, and minimum profit. Customer shipping is now quantity-based and configured separately in the Shipping Engine (Quantity Shipping Rules).
         </p>
       </div>
 
@@ -239,9 +239,9 @@ export default function AdminPricing() {
               ["defaultMarginPercent", "Agent Cost %"],
               ["fixedProfitAmount", "Fixed Agent Cost"],
               ["minimumProfitAmount", "Minimum Profit"],
-              ["portugalShippingFee", "Portugal Shipping"],
-              ["spainShippingFee", "Spain Shipping"],
-              ["iranShippingFee", "Iran Shipping"],
+              ["portugalShippingFee", "Legacy PT supplier shipping"],
+              ["spainShippingFee", "Legacy ES supplier shipping"],
+              ["iranShippingFee", "Legacy IR supplier shipping"],
               ["handlingFee", "Handling Fee"],
               ["paymentFee", "Payment Fee"],
               ["vatPercent", "VAT %"],
@@ -295,7 +295,7 @@ export default function AdminPricing() {
               <p className="font-mono text-xl font-bold">{formatCurrency(calculatorResult.agentCostAmount, businessForm.defaultCurrency || "EUR")}</p>
             </div>
             <div className="rounded-xl bg-secondary/50 p-4">
-              <p className="mb-2 text-xs text-muted-foreground">Shipping</p>
+              <p className="mb-2 text-xs text-muted-foreground">Legacy shipping (not customer)</p>
               <p className="font-mono text-xl font-bold">{formatCurrency(calculatorResult.shippingAmount, businessForm.defaultCurrency || "EUR")}</p>
             </div>
             <div className="rounded-xl bg-secondary/50 p-4">
